@@ -1,9 +1,8 @@
 ase
-seamm_ase
-seamm_util
-tabulate
 molsystem
 numpy 
 seamm
+seamm_ase
 seamm_util
 seamm_widgets
+tabulate

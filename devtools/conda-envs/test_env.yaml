@@ -9,13 +9,12 @@ dependencies:
   - pip
 
   # SEAMM
-  - seamm_util
-  - tabulate
   - molsystem
   - numpy 
   - seamm
-  - seamm_util
-  - seamm_widgets
+  - seamm-util
+  - seamm-widgets
+  - tabulate
 
   # Testing
   - black
