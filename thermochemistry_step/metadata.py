@@ -131,16 +131,16 @@ type : str
 units : str
     Optional units for the result. If present, the value should be in these units.
 """
-# metadata["results"] = {
-#     "total_energy": {
-#         "calculation": [
-#             "energy",
-#             "optimization",
-#         ],
-#         "description": "The total energy",
-#         "dimensionality": "scalar",
-#         "property": "total energy#Thermochemistry#{model}",
-#         "type": "float",
-#         "units": "E_h",
-#     },
-# }
+metadata["results"] = {
+    "total_energy": {
+        "calculation": [
+            "energy",
+            "optimization",
+        ],
+        "description": "The total energy",
+        "dimensionality": "scalar",
+        "property": "total energy#Thermochemistry#{model}",
+        "type": "float",
+        "units": "E_h",
+    },
+}

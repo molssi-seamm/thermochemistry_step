@@ -9,6 +9,7 @@ A SEAMM plug-in for Thermochemistry
 # the thermochemistry_step package.
 
 from .thermochemistry import Thermochemistry  # noqa: F401, E501
+from .thermochemistry_parameters import ThermochemistryParameters  # noqa: F401, E501
 from .thermochemistry_step import ThermochemistryStep  # noqa: F401, E501
 from .tk_thermochemistry import TkThermochemistry  # noqa: F401, E501
 

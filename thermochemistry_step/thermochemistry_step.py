@@ -32,8 +32,8 @@ class ThermochemistryStep(object):
     """
 
     my_description = {
-        "description": "An interface for Thermochemistry",
-        "group": "Simulations",
+        "description": "An step for predicting thermochemistry",
+        "group": "Properties",
         "name": "Thermochemistry",
     }
 

@@ -4,11 +4,12 @@
 
 import pprint  # noqa: F401
 import tkinter as tk
+import tkinter.ttk as ttk
 
-import thermochemistry_step  # noqa: F401
+from .thermochemistry_parameters import ThermochemistryParameters
 import seamm
 from seamm_util import ureg, Q_, units_class  # noqa: F401
-
+import seamm_widgets as sw
 
 
 class TkThermochemistry(seamm.TkNode):
@@ -47,7 +48,7 @@ class TkThermochemistry(seamm.TkNode):
         self,
         tk_flowchart=None,
         node=None,
-        namespace="org.molssi.seamm.thermochemistry.tk",
+        namespace="org.molssi.seamm.tk",
         canvas=None,
         x=None,
         y=None,
@@ -113,7 +114,7 @@ class TkThermochemistry(seamm.TkNode):
         TkThermochemistry.reset_dialog
         """
 
-        frame = super().create_dialog(title="Thermochemistry")
+        frame = super().create_dialog(title="Thermochemistry", widget="notebook")
         # make it large!
         screen_w = self.dialog.winfo_screenwidth()
         screen_h = self.dialog.winfo_screenheight()
@@ -124,12 +125,127 @@ class TkThermochemistry(seamm.TkNode):
 
         self.dialog.geometry(f"{w}x{h}+{x}+{y}")
 
+        # Add a frame for the flowchart
+        notebook = self["notebook"]
+        flowchart_frame = ttk.Frame(notebook)
+        self["flowchart frame"] = flowchart_frame
+        notebook.add(flowchart_frame, text="Flowchart", sticky=tk.NSEW)
+
         self.tk_subflowchart = seamm.TkFlowchart(
-            master=frame,
+            master=flowchart_frame,
             flowchart=self.node.subflowchart,
-            namespace=self.namespace
+            namespace=self.namespace,
         )
         self.tk_subflowchart.draw()
+
+        # Fill in the control parameters
+        # Shortcut for parameters
+        P = self.node.parameters
+
+        # thermochemistry frame to isolate widgets
+        frame = self["thermochemistry frame"] = ttk.LabelFrame(
+            self["frame"],
+            borderwidth=4,
+            relief="sunken",
+            text="Thermochemistry Parameters",
+            labelanchor="n",
+            padding=10,
+        )
+
+        for key in ThermochemistryParameters.parameters:
+            if key not in ("results",):
+                self[key] = P[key].widget(frame)
+
+        # and lay them out
+        self.reset_dialog()
+
+        self.setup_results()
+
+    def reset_dialog(self, widget=None):
+        """Layout the widgets in the dialog.
+
+        The widgets are chosen by default from the information in
+        Thermochemistry parameters.
+
+        This function simply lays them out row by row with
+        aligned labels. You may wish a more complicated layout that
+        is controlled by values of some of the control parameters.
+        If so, edit or override this method
+
+        Parameters
+        ----------
+        widget : Tk Widget = None
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        TkThermochemistry.create_dialog
+        """
+
+        # Remove any widgets previously packed
+        frame = self["frame"]
+        for slave in frame.grid_slaves():
+            slave.grid_forget()
+
+        row = 0
+
+        self["thermochemistry frame"].grid(row=row, column=0, sticky=tk.EW, pady=10)
+        row += 1
+        self.reset_thermochemistry_frame()
+
+        frame.columnconfigure(0, weight=1)
+
+        return row
+
+    def reset_thermochemistry_frame(self, widget=None):
+        """Layout the widgets in the thermochemistry frame
+        as needed for the current state"""
+
+        approach = self["approach"].get()
+
+        frame = self["thermochemistry frame"]
+        for slave in frame.grid_slaves():
+            slave.grid_forget()
+
+        # Main controls
+        row = 0
+        widgets = []
+        # widgets2 = []
+        for key in ("approach",):
+            self[key].grid(row=row, column=0, columnspan=2, sticky=tk.W)
+            widgets.append(self[key])
+            row += 1
+
+        if approach == "Harmonic approximation":
+            for key in (
+                "# imaginary modes",
+                "spin multiplicity",
+                "symmetry number",
+                "step size",
+                "T",
+                "P",
+                "print frequencies",
+            ):
+                self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
+                widgets.append(self[key])
+                row += 1
+
+            for key in (
+                "on success",
+                "on error",
+            ):
+                self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
+                widgets.append(self[key])
+                row += 1
+
+        sw.align_labels(widgets, sticky=tk.E)
+        # w1 = sw.align_labels(widgets, sticky=tk.E)
+        # w2 = sw.align_labels(widgets2, sticky=tk.E)
+        # frame.columnconfigure(0, minsize=w1 - w2 + 50)
+        frame.columnconfigure(1, weight=1)
 
     def right_click(self, event):
         """
