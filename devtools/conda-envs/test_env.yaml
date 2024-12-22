@@ -9,7 +9,13 @@ dependencies:
   - pip
 
   # SEAMM
+  - seamm_util
+  - tabulate
+  - molsystem
+  - numpy 
   - seamm
+  - seamm_util
+  - seamm_widgets
 
   # Testing
   - black
@@ -24,6 +30,8 @@ dependencies:
 
   # Pip-only installs
   - pip:
+    - ase
+    - seamm_ase
     # Documentation
     - sphinx-copybutton
     - sphinxnotes-strike

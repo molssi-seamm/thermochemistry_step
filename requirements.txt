@@ -1,3 +1,9 @@
+ase
+seamm_ase
+seamm_util
+tabulate
+molsystem
+numpy 
 seamm
-seamm-util
-seamm-widgets
+seamm_util
+seamm_widgets
