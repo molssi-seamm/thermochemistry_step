@@ -1,1 +1,17 @@
 Property,Type,Units,Description,URL
+E atomization#Thermochemistry#{model},float,kJ/mol,The {model} standard energy of formation from atoms,
+DfE0#Thermochemistry#{model},float,kJ/mol,The {model} standard energy of formation,
+H atomization#Thermochemistry#{model},float,kJ/mol,The {model} enthalpy of formation from atoms",
+DfH0#Thermochemistry#{model},float,kJ/mol,The {model} standard enthalpy of formation,https://en.wikipedia.org/wiki/Standard_enthalpy_of_formation
+E#Thermochemistry#{model},float,kJ/mol,"The {model} energy, E.",
+U#Thermochemistry#{model},float,kJ/mol,"The {model} internal energy",
+H(0 K)#Thermochemistry#{model},float,kJ/mol,"The {model} enthalpy at 0 K, H0.",
+G#Thermochemistry#{model},json,kJ/mol,"The {model} free energy, G.",
+H#Thermochemistry#{model},json,kJ/mol,"The {model} enthalpy, H.",
+P#Thermochemistry#{model},json,atm,The {model} pressures.,
+S#Thermochemistry#{model},json,J/mol/K,"The {model} entropy, S.",
+T#Thermochemistry#{model},json,K,The {model} temperatures.,
+ZPE#Thermochemistry#{model},float,kJ/mol,"The {model} zero-point energy, ZPE.",
+number of saddle modes#Thermochemistry#{model},int,,The {model} number of saddle (imaginary) vibrational modes,
+transition state frequency#Thermochemistry#{model},float,cm^-1,The {model} transition state frequency for a reaction,
+vibrational frequencies#Thermochemistry#{model},json,1/cm,The vibrational frequencies from {model},
