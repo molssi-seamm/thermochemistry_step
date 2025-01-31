@@ -160,6 +160,7 @@ class Thermochemistry(seamm.Node, ASE_mixin):
 
         if n_atoms == 1:
             symmetry_number = 1
+            imaginary_frequencies = []
             real_frequencies = []
         else:
             # Ignore any imaginary modes in the thermochemistry
@@ -264,6 +265,19 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         else:
             symmetry_number = int(_P["symmetry number"])
 
+        # Store the symmetry number and frequencies
+        data = {}
+        if n_imaginary > 0:
+            data["vibrational frequencies"] = [
+                -v for v in imaginary_frequencies
+            ] + list(real_frequencies)
+        else:
+            data["vibrational frequencies"] = list(real_frequencies)
+        data["symmetry number"] = symmetry_number
+        data["N saddle modes"] = n_imaginary
+        if n_imaginary == 1:
+            data["transition state frequency"] = imaginary_frequencies[0]
+
         thermo = IdealGasThermo(
             vib_energies=energies.real,
             potentialenergy=potential_energy,
@@ -278,6 +292,9 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         ZPE = Q_(self._vibrations.get_zero_point_energy(), "eV").to("kJ/mol")
         text += f"Zero-point energy (ZPE) = {ZPE:.1f~#P} ({ZPE.to('kcal/mol'):.1f~#P})"
         printer.important(__(text, indent=4 * " "))
+
+        ZPE = ZPE.magnitude
+        data["ZPE"] = ZPE
 
         H = []
         S = []
@@ -307,6 +324,9 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         Tfac = Q_(1, Tunits).m_as("K")
         Pfac = Q_(1, Punits).m_as("Pa")
 
+        data["P"] = Ps
+        data["T"] = Ts
+
         if len(Ps) == 1:
             title = (
                 f"ZPE and thermal contributions to thermodynamic functions at {Ps[0]}"
@@ -317,6 +337,10 @@ class Thermochemistry(seamm.Node, ASE_mixin):
                 H.append(Efac * thermo.get_enthalpy(T, verbose=False))
                 S.append(Sfac * thermo.get_entropy(T, P, verbose=False))
                 G.append(Efac * thermo.get_gibbs_energy(T, P, verbose=False))
+
+            data["E thermal"] = [[ZPE] * len(Ts)]
+            data["H thermal"] = [[h + ZPE for h in H]]
+            data["G thermal"] = [[g + ZPE for g in G]]
 
             table = {}
             table[f"T ({Tunits})"] = Ts
@@ -334,6 +358,10 @@ class Thermochemistry(seamm.Node, ASE_mixin):
                 S.append(Sfac * thermo.get_entropy(T, P, verbose=False))
                 G.append(Efac * thermo.get_gibbs_energy(T, P, verbose=False))
 
+            data["E thermal"] = [[ZPE] for i in range(len(Ts))]
+            data["H thermal"] = [[h + ZPE] for h in H]
+            data["G thermal"] = [[g + ZPE] for g in G]
+
             table = {}
             table[f"P ({Punits})"] = Ps
             table["H (kcal/mol)"] = H
@@ -343,8 +371,16 @@ class Thermochemistry(seamm.Node, ASE_mixin):
             title = "ZPE and thermal contributions to thermodynamic functions"
             aP = []
             aT = []
+
+            data["E thermal"] = []
+            data["H thermal"] = []
+            data["G thermal"] = []
+
             for Porig in Ps:
                 P = Pfac * Porig
+                Etmp = []
+                Htmp = []
+                Gtmp = []
                 for i, T in enumerate(Ts):
                     if i == 0:
                         aP.append(Porig)
@@ -352,9 +388,20 @@ class Thermochemistry(seamm.Node, ASE_mixin):
                         aP.append("")
                     aT.append(T)
                     T *= Tfac
-                    H.append(Efac * thermo.get_enthalpy(T, verbose=False))
-                    S.append(Sfac * thermo.get_entropy(T, P, verbose=False))
-                    G.append(Efac * thermo.get_gibbs_energy(T, P, verbose=False))
+                    H_value = Efac * thermo.get_enthalpy(T, verbose=False)
+                    S_value = Sfac * thermo.get_entropy(T, P, verbose=False)
+                    G_value = Efac * thermo.get_gibbs_energy(T, P, verbose=False)
+                    H.append(H_value)
+                    S.append(S_value)
+                    G.append(G_value)
+
+                    Etmp.append(ZPE)
+                    Htmp.append(ZPE + H_value)
+                    Gtmp.append(ZPE + G_value)
+
+                data["E thermal"].append(Etmp)
+                data["H thermal"].append(Htmp)
+                data["G thermal"].append(Gtmp)
 
             table = {}
             table[f"P ({Punits})"] = aP
@@ -374,6 +421,13 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         text += tmp
         text += "\n"
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
+
+        # Put any requested results into variables or tables
+        self.store_results(
+            data=data,
+            create_tables=True,
+            configuration=self._working_configuration,
+        )
 
         # Citation!
         self.ase_read_bibliography()
@@ -571,7 +625,11 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         # Get the Hessian ... save coordinates in case they are changed
         XYZ_save = self._working_configuration.atoms.coordinates
         tic = time.perf_counter_ns()
-        self._vibrations = self.run_ase_Hessian(step_size=step_size)
+        self._vibrations = self.run_ase_Hessian(
+            step_size=step_size,
+            on_error=_P["on error"],
+            on_success=_P["on success"],
+        )
         toc = time.perf_counter_ns()
         self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
         self._working_configuration.atoms.coordinates = XYZ_save
