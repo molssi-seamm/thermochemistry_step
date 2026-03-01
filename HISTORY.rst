@@ -1,6 +1,7 @@
 =======
 History
 =======
+2026.3.1 -- Internal: switching from deprecated library pkg_resources to importlib
 
 2025.1.31: Add properties and other results.
     * Added ZPE, H, G, S, P, T, number of saddle point modes, and the transition states
