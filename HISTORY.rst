@@ -7,7 +7,9 @@ History
       optimized over the engine but the finite-difference Hessian went to tasks, and
       no settings fingerprints were stored. The engine route now computes the finite
       differences over the engine as well, and the fingerprints are kept whichever
-      branch runs.
+      branch runs. Under Slurm the engine and its MPI ranks are pinned to the job's
+      allocated CPUs, so that two ranks do not share a physical core on a node
+      without cgroups.
 
 2026.10.28.8 -- Bugfix: parallel ORCA as the MDI engine could not find OpenMPI
     * The engine's own ORCA runs did not get the OpenMPI runtime the ORCA step gives

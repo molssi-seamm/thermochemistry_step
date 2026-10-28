@@ -541,3 +541,19 @@ def test_engine_route_keeps_fd_on_engine(node, monkeypatch):
     node._hessian_route = "automatic"
     E0, H, how = node.optimize_and_hessian(c, optimize=False)
     assert how == "tasks" and "fd" not in calls
+
+
+def test_slurm_allocated_cpus(monkeypatch):
+    from thermochemistry_step.hessian import parse_cpu_ids, slurm_allocated_cpus
+
+    assert parse_cpu_ids("CPU_IDs=16-31") == set(range(16, 32))
+    assert parse_cpu_ids("0-3,8,10-11") == {0, 1, 2, 3, 8, 10, 11}
+    text = (
+        "JobId=13023 JobName=seamm\n"
+        "     Nodes=ChemAI CPU_IDs=16-31 Mem=49152 GRES=\n"
+    )
+    assert slurm_allocated_cpus({"SLURM_JOB_ID": "13023"}, run=lambda j: text) == set(
+        range(16, 32)
+    )
+    assert slurm_allocated_cpus({}, run=lambda j: text) is None
+    assert slurm_allocated_cpus({"SLURM_JOB_ID": "1"}, run=lambda j: "no ids") is None
