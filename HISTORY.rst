@@ -1,6 +1,13 @@
 =======
 History
 =======
+2026.10.28.8 -- Bugfix: parallel ORCA as the MDI engine could not find OpenMPI
+    * The engine's own ORCA runs did not get the OpenMPI runtime the ORCA step gives
+      its runs (``library-path`` in orca.ini, its ``mpirun`` first on the PATH, the
+      shared-memory transport), so a parallel engine died in start-up ("cannot open
+      libmpi.so.40"). The step now sets that environment, from the program's step,
+      while the engine lives, with MPI core binding off, and restores it afterwards.
+
 2026.10.28.7 -- Bugfix: the MDI engine ran on one core
     * The warm MDI engine (ORCA) was launched with one core whatever the job had. It
       now gets the job's allocation under Slurm (else the CPUs this process may use),

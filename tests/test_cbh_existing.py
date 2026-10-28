@@ -430,3 +430,46 @@ def test_engine_ncores(node, monkeypatch):
     assert node._engine_ncores() == min(2, n_here)
     node.global_options = {"ncores": "nonsense"}
     assert node._engine_ncores() == max(1, n_here)
+
+
+def test_engine_environment(node, tmp_path, monkeypatch):
+    """The engine gets the program's environment (ORCA: its OpenMPI runtime
+    with its mpirun first on the PATH, no core binding), restored after."""
+    import os
+    import types
+
+    lib = tmp_path / "orca-mpi" / "lib"
+    lib.mkdir(parents=True)
+    (tmp_path / "orca-mpi" / "bin").mkdir()
+
+    class FakeORCA:
+        __module__ = "orca_step.fake"
+
+        @staticmethod
+        def get_executor_config(executor, options):
+            return {"library-path": str(lib)}
+
+    node._engine_step = FakeORCA()
+    node.flowchart = types.SimpleNamespace(executor=None)
+    node.global_options = {}
+    monkeypatch.delenv("OMPI_MCA_hwloc_base_binding_policy", raising=False)
+    before = dict(os.environ)
+    with node._engine_environment(16) as env:
+        assert os.environ["OMPI_MCA_hwloc_base_binding_policy"] == "none"
+        assert os.environ["LD_LIBRARY_PATH"].startswith(str(lib))
+        assert os.environ["PATH"].startswith(str(tmp_path / "orca-mpi" / "bin"))
+        assert env["OMPI_MCA_pml"] == "ob1"
+    assert dict(os.environ) == before
+
+    # A step with its own hook
+    class Hooked:
+        __module__ = "other_step"
+
+        @staticmethod
+        def mdi_engine_environment(executor, options, ncores):
+            return {"MY_VAR": str(ncores)}
+
+    node._engine_step = Hooked()
+    with node._engine_environment(4):
+        assert os.environ["MY_VAR"] == "4"
+    assert "MY_VAR" not in os.environ
