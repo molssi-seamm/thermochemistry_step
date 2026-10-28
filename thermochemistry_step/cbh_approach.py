@@ -674,6 +674,8 @@ class CBHApproach:
                     f"Several properties of {can} match '{name}': {sorted(values)}"
                 )
             (key, value), *_ = values.items()
+            if isinstance(value, dict):  # {"value": ..., "sid": ..., "cid": ...}
+                value = value["value"]
             units = properties.units(key)
             return Q_(float(value), units if units else "kJ/mol").m_as("kJ/mol")
 

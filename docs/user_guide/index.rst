@@ -4,10 +4,13 @@
 User Guide
 **********
 
-The Thermochemistry step calculates the vibrational frequencies of a molecule by
-finite differences of the gradients, and from them the ideal-gas, rigid-rotor,
-harmonic-oscillator thermodynamic functions at the requested temperatures and
-pressures.
+The Thermochemistry step has two approaches. The **harmonic approximation**
+calculates the vibrational frequencies of a molecule from its Hessian, and from
+them the ideal-gas, rigid-rotor, harmonic-oscillator thermodynamic functions at
+the requested temperatures and pressures. The **isodesmic (CBH) approach with
+ATcT references** gives the enthalpy of formation of a molecule at 0 K and
+298.15 K from the connectivity-based hierarchy of error-cancelling reactions,
+with the reference species taken from the Active Thermochemical Tables.
 
 How it works
 ============
@@ -66,6 +69,69 @@ Symmetry number
     it found, e.g. "12 (4 C3, 3 C2 axes)" for methane. A geometry must be
     symmetric to within 0.1 Å for an axis to be found, which optimized structures
     are. Give the number explicitly if the structure is deliberately distorted.
+
+Enthalpies of formation: the CBH approach
+=========================================
+
+Choose "Approach: Isodesmic (CBH) with ATcT references". The step builds the
+connectivity-based hierarchy (CBH) reactions of the molecule from its bonds, so
+the structure must have bonds (built from SMILES, or read from an SDF or MOL
+file). CBH-0 breaks the molecule into hydrides of its atoms, CBH-1 into its
+bonds, CBH-2 keeps each atom with all its neighbours, CBH-3 each bond with its
+neighbours and CBH-4 each atom with two shells of neighbours: the higher the
+rung, the more of the chemical environment, and of the error of the method, is
+the same on both sides of the reaction. The reaction enthalpy is calculated with
+the engine for the target and every reference species, and the enthalpy of
+formation of the target follows from it and the ATcT values of the reference
+species, with the 95 % uncertainty of the ATcT part (using the ATcT covariances
+when they are cached). If the target itself is in ATcT the difference is
+reported too.
+
+The ATcT tables are not distributed with SEAMM: install a version first with
+``seamm-thermochemistry-atct download`` (see the seamm_thermochemistry
+documentation). A rung is usable only when all its reference species are in
+ATcT, and the step reports the rungs it could not use and why; the result
+stored is the highest usable rung, and every rung goes into the table ``CBH``.
+
+CBH rungs
+    ``all usable`` (default), or a list such as ``1, 2``.
+
+Keep whole
+    Groups kept as single units when the reactions are built, so that they are
+    never broken: by default aromatic ring systems, 3- and 4-membered rings and
+    charge-separated or hypervalent groups (nitro, sulfonyl, phosphoryl, PF6-,
+    ...). ``none`` builds the plain hierarchy.
+
+Species energies
+    ``finite-difference harmonic`` (default): each species is built from its
+    SMILES as a system named ``CBH:<SMILES>``, optimized with the engine and
+    its Hessian calculated, giving H(0 K) = E + ZPE and H(298.15 K). The
+    optimization convergence and maximum steps, and the finite-difference step
+    size, are as for the harmonic approach. Or ``existing results (run
+    nothing)``: the energies are read from properties already stored on those
+    systems, named by the three property patterns (energy, ZPE and enthalpy;
+    each glob must match exactly one property), for example from an earlier
+    job that computed the fragments at a higher level.
+
+Thermal corrections
+    ``harmonic`` (default), or ``none`` when the engine's energy is already an
+    enthalpy of formation at 298.15 K, as for MOPAC and other NDDO methods:
+    then no Hessian is calculated and only the 298.15 K result is available.
+    Note that with NDDO methods CBH-0 is of no use, since their H2 is far from
+    experiment.
+
+ATcT version, directory, covariances
+    The version of the Thermochemical Network (``latest`` cached by default),
+    where the versions are kept, and whether to fetch missing covariance blocks
+    from atct.anl.gov (``cached only`` by default: a compute node usually has
+    no network, and the site may refuse the request; cache the blocks first
+    with ``seamm-thermochemistry-atct covariance``).
+
+The results that can be stored are the enthalpy of formation at 0 K and at
+298.15 K, its 95 % reference uncertainty, the rung and the reaction used, the
+ATcT version and, when the target is in ATcT, its values. They are also stored
+as the properties ``DfH(0 K)``, ``DfH(298.15 K)`` and ``DfH uncertainty (95%)``
+of the configuration.
 
 Results
 =======

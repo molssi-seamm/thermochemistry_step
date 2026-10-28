@@ -170,7 +170,13 @@ class TkThermochemistry(seamm.TkNode):
         )
 
         # Comboboxes whose value changes the layout re-lay out the dialog
-        for key in ("engine", "approach"):
+        for key in (
+            "engine",
+            "approach",
+            "cbh energies",
+            "thermal corrections",
+            "optimize fragments",
+        ):
             widget = self[key]
             combobox = widget.combobox if hasattr(widget, "combobox") else widget
             combobox.bind("<<ComboboxSelected>>", self.reset_dialog)
@@ -275,12 +281,57 @@ class TkThermochemistry(seamm.TkNode):
                     self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
                     widgets.append(self[key])
                     row += 1
+        elif approach.startswith("Isodesmic"):
+            row = self._layout_cbh(row, widgets, engine)
 
         sw.align_labels(widgets, sticky=tk.E)
         # w1 = sw.align_labels(widgets, sticky=tk.E)
         # w2 = sw.align_labels(widgets2, sticky=tk.E)
         # frame.columnconfigure(0, minsize=w1 - w2 + 50)
         frame.columnconfigure(1, weight=1)
+
+    def _layout_cbh(self, row, widgets, engine):
+        """Lay out the widgets of the CBH approach from `row` on, showing only
+        those that apply to the chosen mode:
+
+        * the reactions: rungs and the groups kept whole;
+        * where the species' energies come from. For "existing results" the
+          names of the stored properties, and the ZPE and enthalpy ones only
+          with harmonic thermal corrections; for computed energies the
+          optimization settings, and the finite-difference step only with
+          harmonic corrections;
+        * the ATcT settings.
+        """
+        mode = self["cbh energies"].get()
+        thermal = self["thermal corrections"].get()
+        harmonic = thermal.startswith("harmonic") or thermal.startswith("$")
+        optimize = self["optimize fragments"].get()
+        optimize = optimize.startswith("$") or optimize == "yes"
+
+        keys = ["cbh rungs", "protect", "cbh energies", "thermal corrections"]
+        if mode.startswith("existing"):
+            keys.append("energy property")
+            if harmonic:
+                keys += [
+                    "ZPE property",
+                    "enthalpy property",
+                    "low-level energy property",
+                ]
+        else:
+            keys.append("optimize fragments")
+            if optimize:
+                keys += ["fragment convergence", "fragment max steps"]
+            if harmonic:
+                keys += ["step size", "print frequencies"]
+            if engine == "subflowchart":
+                keys += ["on success", "on error"]
+        keys += ["ATcT version", "ATcT directory", "covariances", "compare with ATcT"]
+
+        for key in keys:
+            self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
+            widgets.append(self[key])
+            row += 1
+        return row
 
     def _upstream_has_model_chemistry(self):
         """True if a Model Chemistry step precedes this one in the flowchart.

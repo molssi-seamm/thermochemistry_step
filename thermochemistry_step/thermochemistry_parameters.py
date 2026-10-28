@@ -142,9 +142,9 @@ class ThermochemistryParameters(seamm.Parameters):
             "format_string": "",
             "description": "Species energies:",
             "help_text": (
-                "Run the subflowchart on every species for the finite-difference "
-                "harmonic thermochemistry, or read energies already stored as "
-                "properties on the systems named CBH:<SMILES>."
+                "Compute every species with the engine (optimization, then the "
+                "Hessian for the harmonic thermochemistry), or read energies "
+                "already stored as properties on the systems named CBH:<SMILES>."
             ),
         },
         "thermal corrections": {
@@ -171,8 +171,8 @@ class ThermochemistryParameters(seamm.Parameters):
             "format_string": "",
             "description": "Optimize the structures:",
             "help_text": (
-                "Whether to optimize each species with the subflowchart (ASE BFGS) "
-                "before the finite differences."
+                "Whether to optimize each species (ASE BFGS over the engine) "
+                "before the Hessian."
             ),
         },
         "fragment convergence": {

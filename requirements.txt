@@ -5,6 +5,7 @@ seamm
 seamm_ase
 seamm_exec
 seamm_mdi
+seamm_thermochemistry[cbh]>=2026.10.28.2
 seamm_util
 seamm_widgets
 tabulate
