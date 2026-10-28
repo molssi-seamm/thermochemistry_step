@@ -1,6 +1,25 @@
 =======
 History
 =======
+2026.10.28.3 -- CBH: radicals and ions, the fragment store, laddered reference values
+    * Radicals and ions in the CBH approach: every fragment keeps the spin or charge of
+      its atoms, the ATcT entry is selected with the same charge and multiplicity, and
+      each species runs through the engine with its own charge and multiplicity. The
+      target's SMILES is checked against the system's charge and spin multiplicity
+      before the reactions are built (needs molsystem 2026.10.28 for radicals).
+    * "Fragment store": species already in the fragment-energy store at this model
+      chemistry (``seamm-thermochemistry-fragments harvest`` promotes them from finished
+      jobs) are used instead of being computed, and serve as the fallback in "existing
+      results" mode; the species table says where each value came from.
+    * "Reference values": ATcT for every reference species, a laddered reference set
+      built with ``seamm-thermochemistry-ladder`` (CBH-ANL), or ATcT below an
+      uncertainty threshold and the ladder otherwise. With a ladder the uncertainty is
+      the ATcT part through the ladder's coefficients on the anchors plus the ladder's
+      measured method term, both reported.
+    * Bugfix: the "existing results" mode could not read the stored energies (the
+      property values came back as dicts).
+    * Requires seamm-thermochemistry 2026.10.28.3.
+
 2026.10.28.2 -- Enthalpies of formation by the isodesmic (CBH) approach with ATcT
     * A second approach, "Isodesmic (CBH) with ATcT references", gives the enthalpy
       of formation of a molecule at 0 K and 298.15 K from the connectivity-based
