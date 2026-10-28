@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.10.28.6 -- CBH species start from their lowest conformer
+    * Each fragment built from its SMILES now starts from the lowest MMFF94 conformer
+      of several RDKit embeddings ("Fragments start from", 20 embeddings by default),
+      and the target can be rebuilt the same way ("Target starts from"), as CBH-ANL
+      starts every species from its lowest rotamer: a single embedding of pentane to
+      octane is gauche, and an optimization stays in that basin. The chosen chain
+      dihedrals are printed. Requires seamm-thermochemistry 2026.10.28.4.
+
 2026.10.28.5 -- Bugfix: the CBH species were not optimized when the model prefers tasks
     * For a model chemistry with an analytic gradient but no analytic Hessian whose
       program prefers separate tasks (ORCA with a double hybrid, for one) the step
