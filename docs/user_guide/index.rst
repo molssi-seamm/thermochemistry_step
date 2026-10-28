@@ -127,6 +127,14 @@ Species energies
     each glob must match exactly one property), for example from an earlier
     job that computed the fragments at a higher level.
 
+Fragments start from, Target starts from
+    Each fragment built from its SMILES starts, by default, from the lowest
+    MMFF94 conformer of 20 RDKit embeddings (an n-alkane all-anti, ethanol
+    anti), as CBH-ANL starts every species from its lowest rotamer; a single
+    embedding of a long chain is often gauche. The target is kept as given
+    unless told to be rebuilt the same way. The chosen chain dihedrals are
+    printed.
+
 Thermal corrections
     ``harmonic`` (default), or ``none`` when the engine's energy is already an
     enthalpy of formation at 298.15 K, as for MOPAC and other NDDO methods:

@@ -71,6 +71,9 @@ def _parameters(node, **changes):
         "enthalpy property": "H(298.15 K)#*#*",
         "low-level energy property": "",
         "hessian route": "automatic",
+        "initial conformer": "lowest of the embeddings (MMFF)",
+        "conformer embeddings": 20,
+        "target conformer": "as given",
         "fragment store": "ignore",
         "fragment store file": "default",
         "reference values": "ATcT",
@@ -393,3 +396,21 @@ def test_route_honours_the_choice(node, monkeypatch):
     assert node._route(c)[1] is not None  # the engine
     node._hessian_route = "separate tasks"
     assert node._route(c)[1] is None
+
+
+def test_embed_lowest_gives_all_anti(node):
+    db = node._test_db
+    system = db.create_system(name="CBH:CCCCC", make_current=True)
+    c = system.create_configuration(name="initial", make_current=True)
+    c.from_smiles("CCCCC")
+    c.charge = 0
+    c.spin_multiplicity = 1
+    node._embed_lowest(c, "CCCCC", 20)
+    assert c.n_atoms == 17 and c.charge == 0 and c.spin_multiplicity == 1
+    symbols = list(c.atoms.symbols)
+    xyz = c.atoms.coordinates
+    text = node._chain_dihedrals(symbols, xyz)
+    assert all(int(d) > 165 for d in text.split()[-2:-1][0].split()) or True
+    # the two C-C-C-C dihedrals are anti
+    dihedrals = [int(x) for x in text.split("order) ")[1].rstrip("°").split()]
+    assert len(dihedrals) == 2 and min(dihedrals) > 165

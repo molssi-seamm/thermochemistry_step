@@ -163,6 +163,41 @@ class ThermochemistryParameters(seamm.Parameters):
                 "NDDO methods)."
             ),
         },
+        "initial conformer": {
+            "default": "lowest of the embeddings (MMFF)",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("lowest of the embeddings (MMFF)", "single embedding"),
+            "format_string": "",
+            "description": "Fragments start from:",
+            "help_text": (
+                "The starting structure of each fragment built from its SMILES: the "
+                "lowest MMFF94 conformer of several RDKit embeddings (all-anti chains, "
+                "as CBH-ANL starts from the lowest rotamer), or a single embedding."
+            ),
+        },
+        "conformer embeddings": {
+            "default": 20,
+            "kind": "integer",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Number of embeddings:",
+            "help_text": "How many RDKit embeddings to rank by MMFF94.",
+        },
+        "target conformer": {
+            "default": "as given",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("as given", "lowest of the embeddings (MMFF)"),
+            "format_string": "",
+            "description": "Target starts from:",
+            "help_text": (
+                "Keep the target structure as given, or rebuild it from its SMILES "
+                "as the lowest MMFF94 conformer of several embeddings before the "
+                "optimization (a single embedding of a long chain is often gauche)."
+            ),
+        },
         "optimize fragments": {
             "default": "yes",
             "kind": "boolean",

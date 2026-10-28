@@ -374,6 +374,12 @@ class CBHApproach:
                     )
                     sources[can] = "properties"
         else:
+            if str(_P.get("target conformer", "as given")).startswith("lowest"):
+                self._embed_lowest(
+                    target_configuration,
+                    smiles,
+                    int(_P.get("conformer embeddings", 20)),
+                )
             energies[target] = self._compute_species(
                 _P, target, smiles, target_system, target_configuration
             )
@@ -652,6 +658,52 @@ class CBHApproach:
 
     # -----------------------------------------------------------------------
 
+    def _embed_lowest(self, configuration, smiles, n=20):
+        """Rebuild the configuration's atoms and coordinates as the lowest
+        MMFF94 conformer of `n` RDKit embeddings of `smiles`, keeping its
+        charge and spin multiplicity, and say what was found."""
+        from seamm_thermochemistry import cbh
+
+        mol, symbols, xyz, energies, best = cbh.lowest_conformer(
+            smiles, n=n, return_mol=True
+        )
+        charge = configuration.charge
+        multiplicity = configuration.spin_multiplicity
+        configuration.from_RDKMol(mol, properties="none")
+        configuration.charge = charge
+        configuration.spin_multiplicity = multiplicity
+        spread = max(energies) - min(energies)
+        printer.important(
+            __(
+                f"    starting from the lowest of {len(energies)} MMFF94 conformers "
+                f"(spread {spread:.1f} kcal/mol)" + self._chain_dihedrals(symbols, xyz),
+                indent=4 * " ",
+                wrap=False,
+                dedent=False,
+            )
+        )
+
+    @staticmethod
+    def _chain_dihedrals(symbols, xyz):
+        """', heavy-atom chain dihedrals ...' for an unbranched chain of 4+
+        heavy atoms, else ''."""
+        import numpy as np
+
+        heavy = [i for i, s in enumerate(symbols) if s != "H"]
+        if len(heavy) < 4:
+            return ""
+        p = np.asarray(xyz, dtype=float)
+        text = []
+        for i in range(len(heavy) - 3):
+            a, b, c, d = (p[heavy[i + k]] for k in range(4))
+            b0, b1, b2 = a - b, c - b, d - c
+            b1n = b1 / np.linalg.norm(b1)
+            v = b0 - np.dot(b0, b1n) * b1n
+            w = b2 - np.dot(b2, b1n) * b1n
+            angle = np.degrees(np.arctan2(np.dot(np.cross(b1n, v), w), np.dot(v, w)))
+            text.append(f"{abs(angle):.0f}")
+        return ", heavy-atom dihedrals (in SMILES order) " + " ".join(text) + "°"
+
     def _fragment_store(self, _P):
         """The fragment store to read, or None if ignored or unreadable."""
         if _P.get("fragment store", "ignore") != "use if available":
@@ -745,6 +797,12 @@ class CBHApproach:
                 configuration.from_smiles(generated, name=f"CBH:{can}")
                 configuration.charge = cbh_charge(generated)
                 configuration.spin_multiplicity = cbh_multiplicity(generated)
+                if str(_P.get("initial conformer", "lowest")).startswith("lowest"):
+                    self._embed_lowest(
+                        configuration,
+                        generated,
+                        int(_P.get("conformer embeddings", 20)),
+                    )
             else:
                 system = configuration.system
         system_db.system = system

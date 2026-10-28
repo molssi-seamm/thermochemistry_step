@@ -178,6 +178,8 @@ class TkThermochemistry(seamm.TkNode):
             "optimize fragments",
             "fragment store",
             "reference values",
+            "initial conformer",
+            "target conformer",
         ):
             widget = self[key]
             combobox = widget.combobox if hasattr(widget, "combobox") else widget
@@ -321,6 +323,11 @@ class TkThermochemistry(seamm.TkNode):
                     "low-level energy property",
                 ]
         else:
+            keys += ["initial conformer", "target conformer"]
+            if self["initial conformer"].get().startswith("lowest") or self[
+                "target conformer"
+            ].get().startswith("lowest"):
+                keys.append("conformer embeddings")
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]
