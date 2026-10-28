@@ -1,6 +1,11 @@
 =======
 History
 =======
+2026.10.28.7 -- Bugfix: the MDI engine ran on one core
+    * The warm MDI engine (ORCA) was launched with one core whatever the job had. It
+      now gets the CPUs the job may use (its allocation under a scheduler), capped by
+      the job's ``ncores`` option when that is a number, and the step says how many.
+
 2026.10.28.6 -- CBH species start from their lowest conformer
     * Each fragment built from its SMILES now starts from the lowest MMFF94 conformer
       of several RDKit embeddings ("Fragments start from", 20 embeddings by default),

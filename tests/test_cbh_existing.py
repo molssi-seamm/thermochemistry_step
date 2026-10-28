@@ -414,3 +414,19 @@ def test_embed_lowest_gives_all_anti(node):
     # the two C-C-C-C dihedrals are anti
     dihedrals = [int(x) for x in text.split("order) ")[1].rstrip("°").split()]
     assert len(dihedrals) == 2 and min(dihedrals) > 165
+
+
+def test_engine_ncores(node, monkeypatch):
+    import os
+
+    n_here = (
+        len(os.sched_getaffinity(0))
+        if hasattr(os, "sched_getaffinity")
+        else os.cpu_count()
+    )
+    node.global_options = {"ncores": "available"}
+    assert node._engine_ncores() == max(1, n_here)
+    node.global_options = {"ncores": "2"}
+    assert node._engine_ncores() == min(2, n_here)
+    node.global_options = {"ncores": "nonsense"}
+    assert node._engine_ncores() == max(1, n_here)

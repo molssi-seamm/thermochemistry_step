@@ -117,8 +117,10 @@ class ModelChemistryHessian:
         method = options.get("mdi_method_arg") or mc["method"]
         basis = options.get("mdi_basis_arg")
 
+        ncores = self._engine_ncores()
+
         def build_argv(hostname, port):
-            kwargs = {}
+            kwargs = {"ncores": ncores}
             if basis is not None:
                 kwargs["basis"] = basis
             return step.get_mdi_engine_command(
@@ -196,6 +198,28 @@ class ModelChemistryHessian:
             )
             use_tasks = True
         return evaluator, (None if use_tasks else build_argv), elements, coords_ang
+
+    def _engine_ncores(self):
+        """The cores for the MDI engine: the CPUs this process may use (the
+        job's allocation under a scheduler), capped by the job's ``ncores``
+        option when that is a number."""
+        import os
+
+        try:
+            n = len(os.sched_getaffinity(0))
+        except AttributeError:  # macOS
+            n = os.cpu_count() or 1
+        wanted = None
+        try:
+            wanted = self.global_options.get("ncores", "available")
+        except Exception:
+            pass
+        if wanted not in (None, "", "available"):
+            try:
+                n = max(1, min(n, int(wanted)))
+            except (TypeError, ValueError):
+                pass
+        return max(1, int(n))
 
     def model_chemistry_energy(self, configuration):
         """The energy (kJ/mol) of the configuration with the Model Chemistry."""
@@ -325,6 +349,15 @@ class ModelChemistryHessian:
 
         from seamm_mdi import MDIEngine  # only for the MDI routes
 
+        mc = self.model_chemistry()
+        ncores = self._engine_ncores()
+        printer.important(
+            __(
+                f"The {mc['level']} engine runs on {ncores} core"
+                + ("s." if ncores != 1 else "."),
+                indent=self.indent + 4 * " ",
+            )
+        )
         with MDIEngine(build_argv, elements, name="SEAMM", logger=self.logger) as eng:
             if optimize and n > 1:
                 coords_ang = self._optimize_over_engine(
