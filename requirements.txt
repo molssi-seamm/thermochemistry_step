@@ -3,6 +3,8 @@ molsystem
 numpy 
 seamm
 seamm_ase
+seamm_exec
+seamm_mdi
 seamm_util
 seamm_widgets
 tabulate

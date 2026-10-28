@@ -1,6 +1,27 @@
 =======
 History
 =======
+2026.10.28.1 -- The energies and Hessian come from the Model Chemistry
+    * The step now takes its energies and gradients from the flowchart's Model
+      Chemistry by default, driving the program as a warm engine over MDI instead of
+      running a subflowchart once per displaced structure (a program start-up each
+      time). When the program provides an analytic Hessian (ORCA for HF and most
+      DFT functionals) it is used directly; otherwise the Hessian is finite
+      differences of the gradients over the same connection, or as separate tasks
+      where the job runs its tasks. The route is discovered at run time; there is
+      nothing to set.
+    * The subflowchart remains available ("Energies and gradients from:
+      subflowchart") for calculations an MDI engine cannot do, and a flowchart from
+      before this change, with a subflowchart and no Model Chemistry, still runs as
+      it did. The dialog shows the Flowchart tab and the subdirectory handling only
+      for the subflowchart, and reminds you to add a Model Chemistry step otherwise.
+    * The properties are named with the Model Chemistry's level, e.g.
+      ``H#Thermochemistry#ORCA:QC@HF/bse:def2-SVP``.
+    * Checked: water with MOPAC PM6-ORG gives the same thermochemistry both ways
+      (ZPE 49.76 vs 49.75 kJ/mol, H-E 59.680 vs 59.675 kJ/mol at 298.15 K), and
+      ORCA HF/def2-SVP gives the same from its analytic Hessian and from finite
+      differences (ZPE 60.67 kJ/mol both ways).
+
 2026.10.28 -- Bugfix: default parameters crashed, ZPE counted twice, results not stored
     * The default symmetry number, "from system", stopped the step with
       ``NotImplementedError``. The rotational symmetry number is now perceived from the

@@ -9,10 +9,12 @@ import sys
 import time
 
 from ase.thermochemistry import IdealGasThermo
+from ase.vibrations import VibrationsData
 import numpy as np
 from tabulate import tabulate
 
 import thermochemistry_step
+from thermochemistry_step.hessian import ModelChemistryHessian
 from thermochemistry_step.symmetry import rotational_symmetry_number
 import molsystem
 import seamm
@@ -40,7 +42,7 @@ if path.exists():
     molsystem.add_properties_from_file(csv_file)
 
 
-class Thermochemistry(seamm.Node, ASE_mixin):
+class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
     """
     The non-graphical part of a Thermochemistry step in a flowchart.
 
@@ -129,6 +131,27 @@ class Thermochemistry(seamm.Node, ASE_mixin):
     def git_revision(self):
         """The git version of this module."""
         return thermochemistry_step.__git_revision__
+
+    def model_chemistry_vibrations(self, configuration, step_size):
+        """The energy (eV) and an ASE VibrationsData from the Model Chemistry.
+
+        Parameters
+        ----------
+        configuration : molsystem._Configuration
+        step_size : float
+            The finite-difference step, Å, if the Hessian is not analytic.
+
+        Returns
+        -------
+        (float, ase.vibrations.VibrationsData, str)
+        """
+        delta_bohr = Q_(step_size, "Å").m_as("bohr")
+        E0, hessian, how = self.energy_and_hessian(configuration, delta_bohr)
+        atoms = self.ase_atoms(configuration)
+        hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
+        n = len(atoms)
+        vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
+        return Q_(E0, "kJ/mol").m_as("eV"), vibrations, how
 
     def _subflowchart_model(self, flowchart=None):
         """The model chemistry of the engine in the subflowchart, for naming the
@@ -530,10 +553,21 @@ class Thermochemistry(seamm.Node, ASE_mixin):
 
         text = (
             "Calculate the thermochemistry for the system in the harmonic approximation"
-            " using the vibrational frequencies (phonons). The force constants will be"
-            " calculated using the finite difference method, with a step size of"
-            " {step size}."
+            " using the vibrational frequencies (phonons)."
         )
+        if P.get("engine", "Model Chemistry") == "Model Chemistry":
+            text += (
+                " The energy and the Hessian will come from the flowchart's Model "
+                "Chemistry: the analytic Hessian if the program provides one, "
+                "otherwise finite differences of the gradients with a step size "
+                "of {step size}."
+            )
+        else:
+            text += (
+                " The force constants will be calculated using the finite difference"
+                " method, with a step size of {step size}, running the subflowchart"
+                " for each displaced structure."
+            )
 
         if P["# imaginary modes"] == "transition state":
             text += (
@@ -589,7 +623,7 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         # Get the first real node
         node = self.subflowchart.get_node("1").next()
 
-        if not short:
+        if not short and P.get("engine", "Model Chemistry") == "subflowchart":
             result += "\n\n"
             # Now walk through the steps in the subflowchart...
             while node is not None:
@@ -657,24 +691,55 @@ class Thermochemistry(seamm.Node, ASE_mixin):
 
         step_size = _P["step size"].m_as("Å")
 
-        # Get the Hessian ... save coordinates in case they are changed
-        XYZ_save = self._working_configuration.atoms.coordinates
-        self._XYZ0 = np.array(
-            self._working_configuration.atoms.get_coordinates(fractionals=False)
-        )
-        self._E0 = None
+        # Where the energies and gradients come from. An old flowchart with a
+        # subflowchart and no Model Chemistry keeps working.
+        engine = _P.get("engine", "Model Chemistry")
+        if engine == "Model Chemistry" and self.model_chemistry() is None:
+            if self.subflowchart.get_node("1").next() is not None:
+                printer.important(
+                    __(
+                        "There is no Model Chemistry before this step, so the "
+                        "subflowchart is used for the energies and gradients.",
+                        indent=self.indent + 4 * " ",
+                    )
+                )
+                engine = "subflowchart"
+            else:
+                raise ValueError(
+                    "Thermochemistry needs a Model Chemistry step before it, or a "
+                    "subflowchart with the calculation of the energy and gradients."
+                )
+
         tic = time.perf_counter_ns()
-        self._vibrations = self.run_ase_Hessian(
-            step_size=step_size,
-            on_error=_P["on error"],
-            on_success=_P["on success"],
-        )
+        if engine == "Model Chemistry":
+            mc = self.model_chemistry()
+            self.model = mc["level"]
+            self._E0, self._vibrations, how = self.model_chemistry_vibrations(
+                self._working_configuration, step_size
+            )
+            printer.important(
+                __(
+                    f"The Hessian was obtained with {mc['level']} ({how}).",
+                    indent=self.indent + 4 * " ",
+                )
+            )
+        else:
+            # Get the Hessian ... save coordinates in case they are changed
+            XYZ_save = self._working_configuration.atoms.coordinates
+            self._XYZ0 = np.array(
+                self._working_configuration.atoms.get_coordinates(fractionals=False)
+            )
+            self._E0 = None
+            self._vibrations = self.run_ase_Hessian(
+                step_size=step_size,
+                on_error=_P["on error"],
+                on_success=_P["on success"],
+            )
+            self._working_configuration.atoms.coordinates = XYZ_save
+            # Name the properties after the engine's model chemistry
+            self.model = self._subflowchart_model()
         toc = time.perf_counter_ns()
         self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
-        self._working_configuration.atoms.coordinates = XYZ_save
-
-        # Name the properties after the engine's model chemistry
-        self.model = self._subflowchart_model()
 
         # Analyze the results
         self.analyze(_P)
