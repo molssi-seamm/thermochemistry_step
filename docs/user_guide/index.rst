@@ -127,6 +127,16 @@ Thermal corrections
     Note that with NDDO methods CBH-0 is of no use, since their H2 is far from
     experiment.
 
+Reference values
+    ``ATcT`` for every reference species; ``laddered``: a CBH-ANL reference
+    set built with ``seamm-thermochemistry-ladder`` (ATcT only for the CBH-0
+    species, every other species from its own lower-rung reaction at a high
+    level), named in *Ladder*; or ``ATcT below the threshold, else laddered``.
+    With a ladder the uncertainty is the ATcT part through the ladder's
+    coefficients on the anchors (cᵀΣc with the covariance) plus the ladder's
+    measured method term, reported separately. Validate laddered results at
+    0 K: ATcT's 298.15 K values are conformer averages.
+
 Fragment store
     Species already in the fragment-energy store at this model chemistry
     (``seamm-thermochemistry-fragments harvest`` promotes them there from

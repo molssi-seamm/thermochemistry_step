@@ -261,6 +261,46 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Fragment store file:",
             "help_text": ("The store: fragments.db next to the ATcT cache by default."),
         },
+        "reference values": {
+            "default": "ATcT",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": (
+                "ATcT",
+                "laddered",
+                "ATcT below the threshold, else laddered",
+            ),
+            "format_string": "",
+            "description": "Reference values:",
+            "help_text": (
+                "Where the reference species' enthalpies of formation come from: "
+                "ATcT for every species; a laddered reference set (CBH-ANL: ATcT "
+                "only for the CBH-0 species, the rest from their own lower-rung "
+                "reactions at a high level, built with seamm-thermochemistry-ladder); "
+                "or ATcT where its 95 % uncertainty is below the threshold and the "
+                "ladder otherwise."
+            ),
+        },
+        "ladder": {
+            "default": "",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Ladder:",
+            "help_text": "The name of the laddered reference set.",
+        },
+        "ATcT uncertainty threshold": {
+            "default": 0.5,
+            "kind": "float",
+            "default_units": "kJ/mol",
+            "enumeration": tuple(),
+            "format_string": ".2f",
+            "description": "ATcT uncertainty threshold:",
+            "help_text": (
+                "Use the ATcT value when its 95 % uncertainty is at or below this."
+            ),
+        },
         "ATcT version": {
             "default": "latest",
             "kind": "string",

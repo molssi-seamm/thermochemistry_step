@@ -85,6 +85,17 @@ def test_cbh_layout(tk_node):
     tk_node.reset_dialog()
     assert not _mapped(tk_node["fragment store file"])
 
+    assert not _mapped(tk_node["ladder"])
+    tk_node["reference values"].set("laddered")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["ladder"])
+    assert not _mapped(tk_node["ATcT uncertainty threshold"])
+    tk_node["reference values"].set("ATcT below the threshold, else laddered")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["ATcT uncertainty threshold"])
+    tk_node["reference values"].set("ATcT")
+    tk_node.reset_dialog()
+
     # No thermal corrections (MOPAC): no step size
     tk_node["thermal corrections"].set("none (the energy is the enthalpy, e.g. MOPAC)")
     tk_node.reset_dialog()
