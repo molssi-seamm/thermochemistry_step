@@ -299,3 +299,38 @@ def test_missing_fragment_system(node, monkeypatch):
     )
     with pytest.raises(RuntimeError, match="CBH:CF"):
         node.run_cbh(_parameters(node))
+
+
+def test_store_fingerprints(node):
+    """The engine's records become the settings/frequency fingerprint
+    properties the harvest reads."""
+    c = node._test_db.system.configuration
+    node.model = "Test:PM7"
+    record = {
+        "program": "orca",
+        "version": "6.1.1",
+        "fingerprint": "sha256:abc",
+        "element fingerprints": {"C": "sha256:c"},
+        "geometry fingerprint": "sha256:geo",
+    }
+    node._fingerprints = {"energy": record, "hessian": None}
+    node._store_fingerprints(c, "finite differences over MDI")
+    p = c.properties
+    get = lambda n: p.get(pattern=n, match="glob")  # noqa: E731
+    assert list(get("settings fingerprint#*#*").values())[0]["value"] == "sha256:abc"
+    assert list(get("frequency fingerprint#*#*").values())[0]["value"] == "sha256:abc"
+    assert list(get("calculation#*#*").values())[0]["value"]["version"] == "6.1.1"
+    assert list(get("frequency element fingerprints#*#*").values())[0]["value"] == {
+        "C": "sha256:c"
+    }
+    assert node._settings_fingerprint == "sha256:abc"
+    # An analytic Hessian stores the hessian record for the frequencies
+    node._fingerprints = {
+        "energy": record,
+        "hessian": dict(record, fingerprint="sha256:hess"),
+    }
+    node._store_fingerprints(c, "analytic")
+    assert list(get("frequency fingerprint#*#*").values())[0]["value"] == "sha256:hess"
+    # No records: nothing happens
+    node._fingerprints = None
+    node._store_fingerprints(c, None)

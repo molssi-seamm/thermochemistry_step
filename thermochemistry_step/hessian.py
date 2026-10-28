@@ -197,6 +197,7 @@ class ModelChemistryHessian:
     ):
         """Optionally optimize the structure over the warm engine, then its
         energy (kJ/mol). With no engine (tasks) the energy only."""
+        self._fingerprints = None
         evaluator, build_argv, elements, coords_ang = self._route(configuration)
         if build_argv is None or not optimize or len(elements) == 1:
             return self.model_chemistry_energy(configuration)
@@ -208,7 +209,21 @@ class ModelChemistryHessian:
                 eng, configuration, elements, coords_ang, fmax, max_steps
             )
             eng.set_coordinates(coords_ang, units="Å")
-            return eng.energy(units="kJ/mol")
+            E = eng.energy(units="kJ/mol")
+            self._fingerprints = self._engine_fingerprints(eng)
+            return E
+
+    def _engine_fingerprints(self, eng):
+        """The engine's settings fingerprints, {"energy": record, "hessian":
+        record} (seamm_mdi 2026.10.28, ORCA's engine first), or None."""
+        get = getattr(eng, "fingerprints", None)
+        if get is None:
+            return None
+        try:
+            return get()
+        except Exception as e:  # pragma: no cover
+            self.logger.warning(f"The engine gave no fingerprints: {e}")
+            return None
 
     def _optimize_over_engine(
         self, eng, configuration, elements, coords_ang, fmax, max_steps
@@ -259,6 +274,7 @@ class ModelChemistryHessian:
         (float, numpy.ndarray, str)
             As `energy_and_hessian`.
         """
+        self._fingerprints = None
         evaluator, build_argv, elements, coords_ang = self._route(configuration)
         n = len(elements)
         if build_argv is None:
@@ -285,9 +301,11 @@ class ModelChemistryHessian:
             E0 = eng.energy(units="kJ/mol")
             if eng.supports("<HESSIAN"):
                 H = np.asarray(eng.hessian(), dtype=float).reshape(3 * n, 3 * n)
+                self._fingerprints = self._engine_fingerprints(eng)
                 return E0, H, "analytic"
             if evaluator.path != "batch":
                 H = self._fd_hessian(eng, coords_ang, n, delta_bohr)
+                self._fingerprints = self._engine_fingerprints(eng)
                 return E0, H, "finite differences over MDI"
         return self._fd_hessian_tasks(evaluator, configuration, coords_ang, delta_bohr)
 
