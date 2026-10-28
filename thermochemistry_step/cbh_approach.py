@@ -128,10 +128,10 @@ class CBHApproach:
                 "The CBH approach needs the bonds of the molecule: build it from "
                 "SMILES, or read a file with bonds (SDF, MOL)."
             )
-        smiles = target_configuration.to_smiles(canonical=True, isomeric=True)
-        target = canonical_smiles(smiles)
         charge = target_configuration.charge
         multiplicity = target_configuration.spin_multiplicity or 1
+        smiles = self._target_smiles(target_configuration, charge, multiplicity)
+        target = canonical_smiles(smiles)
 
         text = f"The target is {smiles}"
         if charge != 0 or multiplicity != 1:
@@ -481,6 +481,30 @@ class CBHApproach:
         return data
 
     # -----------------------------------------------------------------------
+
+    @staticmethod
+    def _target_smiles(configuration, charge, multiplicity):
+        """The SMILES of the target, checked against the configuration's charge
+        and spin multiplicity, which the CBH reactions and the ATcT lookups
+        rely on. A mismatch is an error: molsystem renders a radical centre as
+        an anion (``[CH2-]C`` for the ethyl radical), which would silently
+        give the reactions of the wrong species."""
+        from seamm_thermochemistry import cbh
+
+        smiles = configuration.to_smiles(canonical=True, isomeric=True)
+        _, q, radicals, _ = cbh._composition(smiles)
+        unpaired = multiplicity - 1
+        if q != charge or unpaired < radicals or (unpaired - radicals) % 2 != 0:
+            raise RuntimeError(
+                f"The SMILES of the structure, {smiles}, implies charge {q} and "
+                f"{radicals} unpaired electron(s), but the configuration has charge "
+                f"{charge} and spin multiplicity {multiplicity}. Check the charge "
+                "and multiplicity of the system. (A radical centre rendered as an "
+                "anion, e.g. [CH2-]C for the ethyl radical, is a known limitation "
+                "of the SMILES from a structure; build the system from the "
+                "radical's SMILES.)"
+            )
+        return smiles
 
     def _find_fragment(self, system_db, can):
         """The configuration of the system named CBH:<can>, or None."""

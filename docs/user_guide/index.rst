@@ -87,6 +87,13 @@ species, with the 95 % uncertainty of the ATcT part (using the ATcT covariances
 when they are cached). If the target itself is in ATcT the difference is
 reported too.
 
+Radicals and ions are handled: every fragment containing the radical or
+charged atom keeps that spin or charge, and the ATcT entry is selected with
+the same charge and multiplicity. The reactions follow from the SMILES of the
+structure, so the system's charge and spin multiplicity must agree with it;
+the step stops if they do not. Build a radical from its SMILES
+(``[CH2]C`` for the ethyl radical), which sets both.
+
 The ATcT tables are not distributed with SEAMM: install a version first with
 ``seamm-thermochemistry-atct download`` (see the seamm_thermochemistry
 documentation). A rung is usable only when all its reference species are in

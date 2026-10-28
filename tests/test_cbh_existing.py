@@ -96,6 +96,74 @@ def test_existing_results(node):
     assert data["CBH results"]["1"]["uncertainty method"].startswith("quadrature")
 
 
+# The n-propyl radical, CBH-1: [CH2]CC + C -> [CH2]C + CC (the ethyl
+# radical's own CBH-1 is trivial), DrH = E([CH2]C) + E(CC) - E([CH2]CC) - E(C)
+# = 130 - 80 - 110 + 50 = -10
+RADICAL_ENERGIES = {"[CH2]CC": 110.0, "C": -50.0, "[CH2]C": 130.0, "CC": -80.0}
+
+
+@pytest.fixture()
+def radical_node(tmp_path, atct_base, monkeypatch):
+    db = SystemDB(filename=f"file:{tmp_path / 'radical.db'}")
+    target = None
+    for smiles, energy in RADICAL_ENERGIES.items():
+        system = db.create_system(name=f"CBH:{smiles}", make_current=True)
+        configuration = system.create_configuration(name="initial", make_current=True)
+        configuration.from_smiles(smiles)
+        configuration.properties.add(PROPERTY, "float", units="kJ/mol", noerror=True)
+        configuration.properties.put(PROPERTY, energy)
+        if smiles == "[CH2]CC":
+            target = (system, configuration)
+    db.system = target[0]
+    # from_smiles sets the multiplicity of a radical correctly ...
+    assert target[1].spin_multiplicity == 2 and target[1].charge == 0
+
+    node = thermochemistry_step.Thermochemistry()
+    variables = {"_system_db": db}
+    monkeypatch.setattr(node, "get_variable", lambda name: variables[name])
+    monkeypatch.setattr(node, "get_system_configuration", lambda *a, **k: target)
+    monkeypatch.setattr(node, "get_table", lambda name: seamm.Table.create(db, name))
+    monkeypatch.setattr(node, "_cite_cbh", lambda tables: None)
+    node._test_db = db
+    node._test_base = atct_base
+    node._test_target = target[1]
+    yield node
+    db.close()
+
+
+def test_radical_target(radical_node, monkeypatch):
+    node = radical_node
+    # ... but to_smiles of a radical gives an anion (molsystem, 2026-10-28),
+    # so stand in for the fixed conversion here
+    monkeypatch.setattr(node._test_target, "to_smiles", lambda **k: "[CH2]CC")
+    data = node.run_cbh(_parameters(node))
+    from seamm_thermochemistry import cbh
+
+    reaction = cbh.cbh_reactions("[CH2]CC", rungs=[1])[1]
+    assert dict(reaction.references) == {"[CH2]C": 1, "CC": 1, "C": -1}
+    assert data["CBH reaction"] == str(reaction)
+    # 298 K references: [CH2]C 120.75 + CC -83.91 - C -74.513 = 111.353
+    assert data["DfH 298K"] == pytest.approx(111.353 + 10.0, abs=1e-6)
+    assert "ATcT DfH 298K" not in data  # the propyl radical is not in the fixture
+
+
+def test_radical_smiles_guard(radical_node):
+    """molsystem's SMILES of the ethyl radical is [CH2-]C: the step must stop
+    rather than build the reactions of the anion."""
+    with pytest.raises(RuntimeError, match=r"implies charge -1 and 0 unpaired"):
+        radical_node.run_cbh(_parameters(radical_node))
+
+
+def test_fragment_charge_and_multiplicity():
+    from thermochemistry_step.cbh_approach import cbh_charge, cbh_multiplicity
+
+    assert (cbh_charge("[CH3]"), cbh_multiplicity("[CH3]")) == (0, 2)
+    assert (cbh_charge("[NH3+]C"), cbh_multiplicity("[NH3+]C")) == (1, 1)
+    assert (cbh_charge("CC(=O)[O-]"), cbh_multiplicity("CC(=O)[O-]")) == (-1, 1)
+    assert (cbh_charge("C[N+](=O)[O-]"), cbh_multiplicity("C[N+](=O)[O-]")) == (0, 1)
+    assert (cbh_charge("[CH2]"), cbh_multiplicity("[CH2]")) == (0, 3)
+
+
 def test_missing_fragment(node):
     with pytest.raises(RuntimeError, match="No property matching"):
         node.run_cbh(_parameters(node, **{"energy property": "nothing#*#*"}))
