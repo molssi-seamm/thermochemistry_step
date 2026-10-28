@@ -22,6 +22,7 @@ third consumer appears.
 """
 
 import logging
+import os
 
 import numpy as np
 
@@ -200,15 +201,27 @@ class ModelChemistryHessian:
         return evaluator, (None if use_tasks else build_argv), elements, coords_ang
 
     def _engine_ncores(self):
-        """The cores for the MDI engine: the CPUs this process may use (the
-        job's allocation under a scheduler), capped by the job's ``ncores``
-        option when that is a number."""
+        """The cores for the MDI engine: the job's allocation under Slurm
+        (``SLURM_CPUS_ON_NODE``, else ``SLURM_NTASKS``, since without cgroups
+        the affinity mask is the whole node), otherwise the CPUs this process
+        may use; capped by the job's ``ncores`` option when that is a number.
+        """
         import os
 
-        try:
-            n = len(os.sched_getaffinity(0))
-        except AttributeError:  # macOS
-            n = os.cpu_count() or 1
+        n = None
+        for variable in ("SLURM_CPUS_ON_NODE", "SLURM_NTASKS"):
+            value = os.environ.get(variable)
+            if value:
+                try:
+                    n = int(value)
+                    break
+                except ValueError:
+                    pass
+        if n is None:
+            try:
+                n = len(os.sched_getaffinity(0))
+            except AttributeError:  # macOS
+                n = os.cpu_count() or 1
         wanted = None
         try:
             wanted = self.global_options.get("ncores", "available")
@@ -351,6 +364,10 @@ class ModelChemistryHessian:
 
         mc = self.model_chemistry()
         ncores = self._engine_ncores()
+        # The engine's own MPI runs (ORCA) must not pin their ranks to cores
+        # 0..n-1, which other jobs on the node may be using: the engine
+        # inherits this process's environment.
+        os.environ.setdefault("OMPI_MCA_hwloc_base_binding_policy", "none")
         printer.important(
             __(
                 f"The {mc['level']} engine runs on {ncores} core"
