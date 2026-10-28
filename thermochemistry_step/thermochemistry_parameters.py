@@ -92,10 +92,191 @@ class ThermochemistryParameters(seamm.Parameters):
             "default": "Harmonic approximation",
             "kind": "enum",
             "default_units": "",
-            "enumeration": ("Harmonic approximation",),
+            "enumeration": (
+                "Harmonic approximation",
+                "Isodesmic (CBH) with ATcT references",
+            ),
             "format_string": "",
             "description": "Approach:",
             "help_text": "The approach or method for determining the thermochemistry.",
+        },
+        "cbh rungs": {
+            "default": "all usable",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": ("all usable", "0", "1", "2", "3", "4", "1, 2", "2, 3"),
+            "format_string": "",
+            "description": "CBH rungs:",
+            "help_text": (
+                "The rungs of the connectivity-based hierarchy to use: every rung "
+                "whose reference species are all in ATcT, or a list."
+            ),
+        },
+        "protect": {
+            "default": "default",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": (
+                "default",
+                "none",
+                "aromatic rings",
+                "aromatic + small rings",
+                "all rings",
+            ),
+            "format_string": "",
+            "description": "Keep whole:",
+            "help_text": (
+                "Groups kept as single units when building the reactions. The "
+                "default keeps aromatic ring systems, 3- and 4-membered rings and "
+                "charge-separated or hypervalent groups (nitro, sulfonyl, ...)."
+            ),
+        },
+        "cbh energies": {
+            "default": "finite-difference harmonic",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": (
+                "finite-difference harmonic",
+                "existing results (run nothing)",
+            ),
+            "format_string": "",
+            "description": "Species energies:",
+            "help_text": (
+                "Run the subflowchart on every species for the finite-difference "
+                "harmonic thermochemistry, or read energies already stored as "
+                "properties on the systems named CBH:<SMILES>."
+            ),
+        },
+        "thermal corrections": {
+            "default": "harmonic",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("harmonic", "none (the energy is the enthalpy, e.g. MOPAC)"),
+            "format_string": "",
+            "description": "Thermal corrections:",
+            "help_text": (
+                "Harmonic thermal corrections, or none when the engine's energy is "
+                "already an enthalpy of formation at 298.15 K (MOPAC and other "
+                "NDDO methods)."
+            ),
+        },
+        "optimize fragments": {
+            "default": "yes",
+            "kind": "boolean",
+            "default_units": "",
+            "enumeration": ("yes", "no"),
+            "format_string": "",
+            "description": "Optimize the structures:",
+            "help_text": (
+                "Whether to optimize each species with the subflowchart (ASE BFGS) "
+                "before the finite differences."
+            ),
+        },
+        "fragment convergence": {
+            "default": 0.005,
+            "kind": "float",
+            "default_units": "eV/Å",
+            "enumeration": tuple(),
+            "format_string": ".3f",
+            "description": "Optimization convergence:",
+            "help_text": "The maximum force for a converged optimization.",
+        },
+        "fragment max steps": {
+            "default": 200,
+            "kind": "integer",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Maximum optimization steps:",
+            "help_text": "The maximum number of optimization steps per species.",
+        },
+        "energy property": {
+            "default": "total energy#*#*",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Energy property:",
+            "help_text": (
+                "The stored property holding each species' energy (a glob pattern "
+                "matching exactly one property)."
+            ),
+        },
+        "ZPE property": {
+            "default": "ZPE#*#*",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "ZPE property:",
+            "help_text": "The stored property holding the zero-point energy.",
+        },
+        "enthalpy property": {
+            "default": "H(298.15 K)#*#*",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Enthalpy property:",
+            "help_text": (
+                "The stored property holding the absolute enthalpy at 298.15 K "
+                "(its level of theory may differ from the energy's)."
+            ),
+        },
+        "low-level energy property": {
+            "default": "",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Energy at the enthalpy's level:",
+            "help_text": (
+                "If the enthalpy comes from a different level of theory than the "
+                "energy, the energy at that level, so that H - E can be formed. "
+                "Blank: the same as the energy property."
+            ),
+        },
+        "ATcT version": {
+            "default": "latest",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": ("latest",),
+            "format_string": "",
+            "description": "ATcT version:",
+            "help_text": "The version of the Thermochemical Network to use.",
+        },
+        "ATcT directory": {
+            "default": "default",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": ("default",),
+            "format_string": "",
+            "description": "ATcT directory:",
+            "help_text": (
+                "Where the ATcT versions are kept: the installation's "
+                "Parameters/thermochemistry/ATcT by default."
+            ),
+        },
+        "covariances": {
+            "default": "cached only",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("cached only", "fetch if needed"),
+            "format_string": "",
+            "description": "ATcT covariances:",
+            "help_text": (
+                "Use only the covariance blocks already cached, or fetch missing "
+                "ones from atct.anl.gov (not on a compute node without network)."
+            ),
+        },
+        "compare with ATcT": {
+            "default": "yes",
+            "kind": "boolean",
+            "default_units": "",
+            "enumeration": ("yes", "no"),
+            "format_string": "",
+            "description": "Compare with ATcT:",
+            "help_text": "Report the difference if the target itself is in ATcT.",
         },
         "step size": {
             "default": 0.01,
