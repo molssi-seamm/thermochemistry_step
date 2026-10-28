@@ -438,6 +438,7 @@ def test_engine_environment(node, tmp_path, monkeypatch):
     import os
     import types
 
+    pytest.importorskip("orca_step")  # the ORCA branch needs its mpi_env
     lib = tmp_path / "orca-mpi" / "lib"
     lib.mkdir(parents=True)
     (tmp_path / "orca-mpi" / "bin").mkdir()
