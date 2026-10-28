@@ -474,3 +474,69 @@ def test_engine_environment(node, tmp_path, monkeypatch):
     with node._engine_environment(4):
         assert os.environ["MY_VAR"] == "4"
     assert "MY_VAR" not in os.environ
+
+
+def test_engine_route_keeps_fd_on_engine(node, monkeypatch):
+    """With the warm-engine route the finite differences run over the engine
+    even when the program prefers batch (tasks), and the fingerprints are
+    captured."""
+    import numpy as np
+    import types
+
+    calls = {}
+
+    class Eng:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def set_coordinates(self, *a, **k):
+            pass
+
+        def energy(self, units="kJ/mol"):
+            return -1.0
+
+        def supports(self, cmd):
+            return False
+
+        def fingerprints(self):
+            return {"energy": {"fingerprint": "sha256:x"}, "hessian": None}
+
+    import seamm_mdi
+
+    monkeypatch.setattr(seamm_mdi, "MDIEngine", Eng)
+    evaluator = types.SimpleNamespace(path="batch", provider=None, target=None)
+    monkeypatch.setattr(
+        node,
+        "_route",
+        lambda c: (evaluator, lambda h, p: ["x"], [6, 1, 1, 1, 1], np.zeros((5, 3))),
+    )
+    monkeypatch.setattr(
+        node, "model_chemistry", lambda: {"level": "ORCA:x", "step": "ORCA"}
+    )
+    monkeypatch.setattr(node, "_engine_ncores", lambda: 1)
+    monkeypatch.setattr(
+        node, "_engine_environment", lambda n: __import__("contextlib").nullcontext()
+    )
+    monkeypatch.setattr(
+        node, "_fd_hessian", lambda *a, **k: calls.setdefault("fd", np.zeros((15, 15)))
+    )
+    monkeypatch.setattr(
+        node,
+        "_fd_hessian_tasks",
+        lambda *a, **k: calls.setdefault("tasks", (0, None, "tasks")),
+    )
+    c = node._test_db.system.configuration
+    node._hessian_route = "warm engine over MDI"
+    E0, H, how = node.optimize_and_hessian(c, optimize=False)
+    assert how == "finite differences over MDI" and "tasks" not in calls
+    assert node._fingerprints["energy"]["fingerprint"] == "sha256:x"
+    calls.clear()
+    node._hessian_route = "automatic"
+    E0, H, how = node.optimize_and_hessian(c, optimize=False)
+    assert how == "tasks" and "fd" not in calls

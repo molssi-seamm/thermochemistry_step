@@ -433,10 +433,14 @@ class ModelChemistryHessian:
                 H = np.asarray(eng.hessian(), dtype=float).reshape(3 * n, 3 * n)
                 self._fingerprints = self._engine_fingerprints(eng)
                 return E0, H, "analytic"
-            if evaluator.path != "batch":
+            route = getattr(self, "_hessian_route", "automatic") or "automatic"
+            if evaluator.path != "batch" or route.startswith("warm engine"):
+                # The engine was asked for: the finite differences run over
+                # it too (its fingerprints then describe the Hessian as well)
                 H = self._fd_hessian(eng, coords_ang, n, delta_bohr)
                 self._fingerprints = self._engine_fingerprints(eng)
                 return E0, H, "finite differences over MDI"
+            self._fingerprints = self._engine_fingerprints(eng)
         return self._fd_hessian_tasks(evaluator, configuration, coords_ang, delta_bohr)
 
     def _code_is_here(self, step):

@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.10.28.9 -- Bugfix: with the engine route the Hessian still went to tasks
+    * When the Model Chemistry was driven as the warm engine (the CBH approach's
+      default) and the program prefers separate tasks (ORCA), the structure was
+      optimized over the engine but the finite-difference Hessian went to tasks, and
+      no settings fingerprints were stored. The engine route now computes the finite
+      differences over the engine as well, and the fingerprints are kept whichever
+      branch runs.
+
 2026.10.28.8 -- Bugfix: parallel ORCA as the MDI engine could not find OpenMPI
     * The engine's own ORCA runs did not get the OpenMPI runtime the ORCA step gives
       its runs (``library-path`` in orca.ini, its ``mpirun`` first on the PATH, the
