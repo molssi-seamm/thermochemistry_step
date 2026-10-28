@@ -532,6 +532,7 @@ def test_engine_route_keeps_fd_on_engine(node, monkeypatch):
         lambda *a, **k: calls.setdefault("tasks", (0, None, "tasks")),
     )
     c = node._test_db.system.configuration
+    node._id = ("1",)  # for the step's indent
     node._hessian_route = "warm engine over MDI"
     E0, H, how = node.optimize_and_hessian(c, optimize=False)
     assert how == "finite differences over MDI" and "tasks" not in calls
