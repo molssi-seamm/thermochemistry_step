@@ -176,6 +176,8 @@ class TkThermochemistry(seamm.TkNode):
             "cbh energies",
             "thermal corrections",
             "optimize fragments",
+            "fragment store",
+            "reference values",
         ):
             widget = self[key]
             combobox = widget.combobox if hasattr(widget, "combobox") else widget
@@ -325,6 +327,15 @@ class TkThermochemistry(seamm.TkNode):
                 keys += ["step size", "print frequencies"]
             if engine == "subflowchart":
                 keys += ["on success", "on error"]
+        keys.append("fragment store")
+        if self["fragment store"].get() != "ignore":
+            keys.append("fragment store file")
+        keys.append("reference values")
+        policy = self["reference values"].get()
+        if policy != "ATcT":
+            keys.append("ladder")
+        if policy.startswith("ATcT below"):
+            keys.append("ATcT uncertainty threshold")
         keys += ["ATcT version", "ATcT directory", "covariances", "compare with ATcT"]
 
         for key in keys:

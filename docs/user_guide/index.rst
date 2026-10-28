@@ -87,6 +87,13 @@ species, with the 95 % uncertainty of the ATcT part (using the ATcT covariances
 when they are cached). If the target itself is in ATcT the difference is
 reported too.
 
+Radicals and ions are handled: every fragment containing the radical or
+charged atom keeps that spin or charge, and the ATcT entry is selected with
+the same charge and multiplicity. The reactions follow from the SMILES of the
+structure, so the system's charge and spin multiplicity must agree with it;
+the step stops if they do not. Build a radical from its SMILES
+(``[CH2]C`` for the ethyl radical), which sets both.
+
 The ATcT tables are not distributed with SEAMM: install a version first with
 ``seamm-thermochemistry-atct download`` (see the seamm_thermochemistry
 documentation). A rung is usable only when all its reference species are in
@@ -119,6 +126,24 @@ Thermal corrections
     then no Hessian is calculated and only the 298.15 K result is available.
     Note that with NDDO methods CBH-0 is of no use, since their H2 is far from
     experiment.
+
+Reference values
+    ``ATcT`` for every reference species; ``laddered``: a CBH-ANL reference
+    set built with ``seamm-thermochemistry-ladder`` (ATcT only for the CBH-0
+    species, every other species from its own lower-rung reaction at a high
+    level), named in *Ladder*; or ``ATcT below the threshold, else laddered``.
+    With a ladder the uncertainty is the ATcT part through the ladder's
+    coefficients on the anchors (cᵀΣc with the covariance) plus the ladder's
+    measured method term, reported separately. Validate laddered results at
+    0 K: ATcT's 298.15 K values are conformer averages.
+
+Fragment store
+    Species already in the fragment-energy store at this model chemistry
+    (``seamm-thermochemistry-fragments harvest`` promotes them there from
+    finished jobs) are taken from it instead of being computed, and serve as
+    the fallback in "existing results" mode. The species table says where
+    each value came from; a record without a settings fingerprint is
+    "unverified" and the output says so.
 
 ATcT version, directory, covariances
     The version of the Thermochemical Network (``latest`` cached by default),

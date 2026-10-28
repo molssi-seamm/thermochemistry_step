@@ -128,10 +128,10 @@ class CBHApproach:
                 "The CBH approach needs the bonds of the molecule: build it from "
                 "SMILES, or read a file with bonds (SDF, MOL)."
             )
-        smiles = target_configuration.to_smiles(canonical=True, isomeric=True)
-        target = canonical_smiles(smiles)
         charge = target_configuration.charge
         multiplicity = target_configuration.spin_multiplicity or 1
+        smiles = self._target_smiles(target_configuration, charge, multiplicity)
+        target = canonical_smiles(smiles)
 
         text = f"The target is {smiles}"
         if charge != 0 or multiplicity != 1:
@@ -181,6 +181,100 @@ class CBHApproach:
             _, q, radicals, _ = cbh._composition(can)
             return tables.lookup(can, charge=q, multiplicity=radicals + 1)
 
+        # The reference policy: ATcT, a ladder, or ATcT below a threshold
+        policy = _P.get("reference values", "ATcT")
+        ladder = None
+        threshold = None
+        if policy != "ATcT":
+            from seamm_thermochemistry import Ladder
+
+            name = str(_P.get("ladder", "")).strip()
+            if not name:
+                raise RuntimeError(
+                    "The reference values are to be laddered but no ladder is "
+                    "named; build one with seamm-thermochemistry-ladder."
+                )
+            store_file = _P.get("fragment store file", "default")
+            store_file = (
+                None
+                if store_file in ("default", "")
+                else os.path.expanduser(store_file)
+            )
+            ladder = Ladder.load(name, store_file)
+            if ladder.atct_version != tables.version:
+                raise RuntimeError(
+                    f"The ladder '{name}' is on ATcT ver. {ladder.atct_version} but "
+                    f"the step uses ver. {tables.version}: one version per reaction."
+                )
+            text += (
+                f"Reference values: {policy}, ladder '{name}' (energies "
+                f"{ladder.data['energy_level']}, frequencies "
+                f"{ladder.data['frequency_level']}, ZPE x {ladder.data['zpe_scale']})"
+            )
+            mu = ladder.method_uncertainty
+            if mu.get("n"):
+                text += (
+                    f"; its method term, from {mu['n']} ladder species in ATcT, is "
+                    f"{mu['rms_0K']:.2f} kJ/mol RMS at 0 K (an upper bound)"
+                )
+            text += ".\n"
+            if policy.startswith("ATcT below"):
+                threshold = _P["ATcT uncertainty threshold"]
+                if hasattr(threshold, "m_as"):
+                    threshold = threshold.m_as("kJ/mol")
+                threshold = float(threshold)
+
+        def reference(can):
+            """The reference entry under the policy: an ATcT entry (with
+            atct_coefficients {id: 1}) or the ladder's entry."""
+            atct_entry = None
+            atct_error = None
+            try:
+                atct_entry = lookup(can)
+            except (MissingEntry, AmbiguousEntry) as e:
+                atct_error = e
+            if atct_entry is not None:
+                atct_entry = dict(atct_entry)
+                atct_entry["atct_coefficients"] = {atct_entry["id"]: 1.0}
+                atct_entry["source"] = "ATcT"
+            if ladder is None:
+                if atct_entry is None:
+                    raise atct_error
+                return atct_entry
+            laddered = ladder.entry(can)
+            if laddered is not None and laddered["source"] == "ATcT":
+                laddered = None  # a CBH-0 anchor: the ATcT value itself
+            if policy == "laddered":
+                if laddered is not None:
+                    return laddered
+                if atct_entry is not None and _own_rung_is_zero(can):
+                    return atct_entry
+                raise MissingEntry(
+                    f"'{can}' is not in the ladder '{ladder.name}'"
+                    + (
+                        f" (ATcT has it: {atct_entry['id']})"
+                        if atct_entry is not None
+                        else ""
+                    )
+                )
+            # ATcT below the threshold, else laddered
+            if atct_entry is not None and (
+                atct_entry["exact"]
+                or (atct_entry["uncertainty_298K"] or 0.0) <= threshold
+            ):
+                return atct_entry
+            if laddered is not None:
+                return laddered
+            if atct_entry is not None:
+                return atct_entry
+            raise atct_error
+
+        def _own_rung_is_zero(can):
+            try:
+                return cbh.cbh_reactions(can, rungs=[0], protect=protect)[0].trivial
+            except cbh.CBHError:
+                return True  # H2
+
         entries = {}
         usable = []
         missing = {}
@@ -193,8 +287,10 @@ class CBHApproach:
                 if can in entries:
                     continue
                 try:
-                    entries[can] = lookup(can)
-                except MissingEntry:
+                    entries[can] = reference(can)
+                except MissingEntry as e:
+                    if ladder is not None:
+                        ambiguous[can] = str(e)
                     absent.append(can)
                 except AmbiguousEntry as e:
                     ambiguous[can] = str(e)
@@ -245,24 +341,50 @@ class CBHApproach:
 
         mode = _P["cbh energies"]
         energies = {}
+        sources = {}
+        store = self._fragment_store(_P)
         if mode == "existing results (run nothing)":
             energies[target] = self._energies_from_properties(
                 _P, target_configuration, target
             )
+            sources[target] = "properties"
             for can in fragments:
                 configuration = self._find_fragment(system_db, can)
                 if configuration is None:
-                    raise RuntimeError(
-                        f"No system named 'CBH:{can}' with results for the fragment "
-                        f"{can}; run the fragments first or use another mode."
+                    stored = self._energies_from_store(_P, store, can)
+                    if stored is None:
+                        raise RuntimeError(
+                            f"No system named 'CBH:{can}' with results for the "
+                            f"fragment {can}, and nothing in the fragment store; "
+                            "run the fragments first or use another mode."
+                        )
+                    energies[can], sources[can] = stored
+                else:
+                    energies[can] = self._energies_from_properties(
+                        _P, configuration, can
                     )
-                energies[can] = self._energies_from_properties(_P, configuration, can)
+                    sources[can] = "properties"
         else:
             energies[target] = self._compute_species(
                 _P, target, smiles, target_system, target_configuration
             )
+            sources[target] = "computed"
             for can, generated in fragments.items():
+                stored = self._energies_from_store(_P, store, can)
+                if stored is not None:
+                    energies[can], sources[can] = stored
+                    how = "unverified" if "unverified" in sources[can] else "verified"
+                    printer.important(
+                        __(
+                            f"\nSpecies {can}: from the fragment store ({how}).",
+                            indent=4 * " ",
+                            wrap=False,
+                            dedent=False,
+                        )
+                    )
+                    continue
                 energies[can] = self._compute_species(_P, can, generated)
+                sources[can] = "computed"
             # Back to the target
             system_db.system = target_system
             target_system.configuration = target_configuration
@@ -304,19 +426,41 @@ class CBHApproach:
                     )
                     result[f"DrH {label}"] = drH
                     result[f"DfH {label}"] = ref - drH
-            ids = [entries[s]["id"] for s in reaction.references]
-            coefficients = list(reaction.references.values())
+            # The ATcT part: the reaction's coefficients on ATcT species,
+            # through the ladder's coefficients where a reference is laddered
+            atct_c = {}
+            method_c2 = 0.0
+            for s, c in reaction.references.items():
+                for _id, cc in entries[s]["atct_coefficients"].items():
+                    atct_c[_id] = atct_c.get(_id, 0.0) + c * cc
+                if entries[s].get("source") == "laddered":
+                    method_c2 += c * c
+            atct_c = {k: v for k, v in atct_c.items() if abs(v) > 1e-12}
+            ids = list(atct_c)
+            coefficients = list(atct_c.values())
             uncertainties = [
-                entries[s]["uncertainty_298K"] or 0.0 for s in reaction.references
+                tables.entries[_id]["uncertainty_298K"] or 0.0 for _id in ids
             ]
-            covariance = tables.covariance(
-                ids, fetch=(_P["covariances"] == "fetch if needed")
+            covariance = (
+                tables.covariance(ids, fetch=(_P["covariances"] == "fetch if needed"))
+                if ids
+                else None
             )
-            u, used = reaction_uncertainty(coefficients, uncertainties, covariance)
+            u_atct, used = reaction_uncertainty(coefficients, uncertainties, covariance)
+            u_method = 0.0
+            if method_c2 > 0 and ladder is not None:
+                rms = ladder.method_uncertainty.get("rms_0K")
+                if rms:
+                    u_method = rms * method_c2**0.5
+            u = (u_atct**2 + u_method**2) ** 0.5
             result["uncertainty"] = u
+            result["uncertainty ATcT"] = u_atct
             result["uncertainty method"] = (
                 "ATcT covariance" if used else "quadrature (no covariance cached)"
             )
+            if u_method:
+                result["uncertainty ladder method"] = u_method
+                result["uncertainty method"] += " + ladder method term"
             results[rung] = result
             rows.append(result)
             table.append_row(
@@ -348,10 +492,19 @@ class CBHApproach:
             species_rows.append(
                 [
                     can if can != target else f"{can} (target)",
+                    sources.get(can, ""),
                     f"{e['E']:.3f}" if "E" in e else "",
                     f"{e['ZPE']:.3f}" if "ZPE" in e else "",
                     f"{e['H298'] - e['E']:.3f}" if "E" in e and "H298" in e else "",
-                    entry["id"] if entry else "",
+                    (
+                        (
+                            f"ladder (CBH-{entry['rung']})"
+                            if entry.get("source") == "laddered"
+                            else entry["id"]
+                        )
+                        if entry
+                        else ""
+                    ),
                     (
                         f"{entry['dfH0_0K']:.3f}"
                         if entry and entry["dfH0_0K"] is not None
@@ -370,10 +523,11 @@ class CBHApproach:
             species_rows,
             headers=[
                 "Species",
+                "Source",
                 "E",
                 "ZPE",
                 "H(298.15 K) - E",
-                "ATcT ID",
+                "Reference",
                 "ATcT ΔfH°(0 K)",
                 "ATcT ΔfH°(298.15 K)",
                 "± (95%)",
@@ -381,6 +535,7 @@ class CBHApproach:
             tablefmt="rounded_outline",
             disable_numparse=True,
             colalign=(
+                "left",
                 "left",
                 "decimal",
                 "decimal",
@@ -448,6 +603,12 @@ class CBHApproach:
             "gas-phase entry is the lowest conformer at 0 K but a conformer average "
             "at 298.15 K, which limits the 298.15 K comparison for flexible molecules."
         )
+        if any(src.startswith("store (unverified") for src in sources.values()):
+            text += (
+                "\nSome species came from the fragment store without a settings "
+                "fingerprint (matched on the model chemistry only), so they are "
+                "unverified: check that their settings match this calculation."
+            )
         if any(
             r["uncertainty method"].startswith("quadrature") for r in results.values()
         ):
@@ -481,6 +642,78 @@ class CBHApproach:
         return data
 
     # -----------------------------------------------------------------------
+
+    def _fragment_store(self, _P):
+        """The fragment store to read, or None if ignored or unreadable."""
+        if _P.get("fragment store", "ignore") != "use if available":
+            return None
+        from seamm_thermochemistry import FragmentStore
+
+        path = _P.get("fragment store file", "default")
+        path = None if path in ("default", "") else os.path.expanduser(path)
+        try:
+            return FragmentStore(path)
+        except Exception as e:  # pragma: no cover
+            logger.warning(f"The fragment store could not be opened: {e}")
+            return None
+
+    def _energies_from_store(self, _P, store, can):
+        """The energies of a species from the store at this model chemistry,
+        as ({"E", "ZPE", "H0", "H298"}, source), or None. A record must have
+        what the thermal-correction mode needs: E and H(298.15 K) with
+        harmonic corrections (ZPE too for the 0 K result), E alone without."""
+        if store is None:
+            return None
+        from thermochemistry_step.cbh_approach import cbh_charge, cbh_multiplicity
+
+        model = self.model or "unknown"
+        record = store.get(
+            can,
+            charge=cbh_charge(can),
+            multiplicity=cbh_multiplicity(can),
+            energy_fingerprint=getattr(self, "_settings_fingerprint", None),
+            model_chemistry=model,
+        )
+        if record is None or record.get("E") is None:
+            return None
+        result = {"E": record["E"]}
+        if _P["thermal corrections"] != "harmonic":
+            result["H298"] = record["E"]
+        else:
+            if record.get("H") is None:
+                return None
+            if record.get("T") not in (None, T_REF):
+                return None
+            result["H298"] = record["H"]
+            if record.get("ZPE") is not None:
+                result["ZPE"] = record["ZPE"]
+                result["H0"] = record["E"] + record["ZPE"]
+        source = "store" if record.get("verified") else "store (unverified)"
+        return result, source
+
+    @staticmethod
+    def _target_smiles(configuration, charge, multiplicity):
+        """The SMILES of the target, checked against the configuration's charge
+        and spin multiplicity, which the CBH reactions and the ATcT lookups
+        rely on. A mismatch is an error: molsystem renders a radical centre as
+        an anion (``[CH2-]C`` for the ethyl radical), which would silently
+        give the reactions of the wrong species."""
+        from seamm_thermochemistry import cbh
+
+        smiles = configuration.to_smiles(canonical=True, isomeric=True)
+        _, q, radicals, _ = cbh._composition(smiles)
+        unpaired = multiplicity - 1
+        if q != charge or unpaired < radicals or (unpaired - radicals) % 2 != 0:
+            raise RuntimeError(
+                f"The SMILES of the structure, {smiles}, implies charge {q} and "
+                f"{radicals} unpaired electron(s), but the configuration has charge "
+                f"{charge} and spin multiplicity {multiplicity}. Check the charge "
+                "and multiplicity of the system. (A radical centre rendered as an "
+                "anion, e.g. [CH2-]C for the ethyl radical, is a known limitation "
+                "of the SMILES from a structure; build the system from the "
+                "radical's SMILES.)"
+            )
+        return smiles
 
     def _find_fragment(self, system_db, can):
         """The configuration of the system named CBH:<can>, or None."""
