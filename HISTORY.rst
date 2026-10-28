@@ -1,6 +1,25 @@
 =======
 History
 =======
+2026.10.28.2 -- Enthalpies of formation by the isodesmic (CBH) approach with ATcT
+    * A second approach, "Isodesmic (CBH) with ATcT references", gives the enthalpy
+      of formation of a molecule at 0 K and 298.15 K from the connectivity-based
+      hierarchy (CBH) of error-cancelling reactions, with the reference species taken
+      from the Active Thermochemical Tables (ATcT) and the 95 % uncertainty of the
+      ATcT part, using the ATcT covariances when cached. The target and every
+      reference species are optimized with the engine and their harmonic
+      thermochemistry calculated over the same warm connection; alternatively the
+      energies are read from properties already stored on the systems
+      ``CBH:<SMILES>``. For MOPAC and other NDDO methods, whose energy is already an
+      enthalpy of formation, "Thermal corrections: none" skips the Hessians.
+    * Every usable rung goes into the table ``CBH``; the stored results are those of
+      the highest usable rung, with the difference from ATcT when the target is in
+      the tables. The dialog shows only the settings that apply to the chosen
+      approach and mode.
+    * Requires seamm-thermochemistry 2026.10.28.2 and RDKit, and a cached ATcT
+      version (``seamm-thermochemistry-atct download``); ATcT data are never
+      distributed with SEAMM.
+
 2026.10.28.1 -- The energies and Hessian come from the Model Chemistry
     * The step now takes its energies and gradients from the flowchart's Model
       Chemistry by default, driving the program as a warm engine over MDI instead of
