@@ -239,6 +239,28 @@ class ThermochemistryParameters(seamm.Parameters):
                 "Blank: the same as the energy property."
             ),
         },
+        "fragment store": {
+            "default": "use if available",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("use if available", "ignore"),
+            "format_string": "",
+            "description": "Fragment store:",
+            "help_text": (
+                "Use the energies of species already in the fragment-energy store "
+                "(seamm-thermochemistry-fragments) at this model chemistry instead "
+                "of computing them, or ignore the store."
+            ),
+        },
+        "fragment store file": {
+            "default": "default",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": ("default",),
+            "format_string": "",
+            "description": "Fragment store file:",
+            "help_text": ("The store: fragments.db next to the ATcT cache by default."),
+        },
         "ATcT version": {
             "default": "latest",
             "kind": "string",

@@ -80,6 +80,11 @@ def test_cbh_layout(tk_node):
     assert not _mapped(tk_node["energy property"])
     assert not _mapped(tk_node["on success"])
 
+    assert _mapped(tk_node["fragment store file"])
+    tk_node["fragment store"].set("ignore")
+    tk_node.reset_dialog()
+    assert not _mapped(tk_node["fragment store file"])
+
     # No thermal corrections (MOPAC): no step size
     tk_node["thermal corrections"].set("none (the energy is the enthalpy, e.g. MOPAC)")
     tk_node.reset_dialog()

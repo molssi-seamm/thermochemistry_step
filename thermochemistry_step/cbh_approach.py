@@ -245,24 +245,50 @@ class CBHApproach:
 
         mode = _P["cbh energies"]
         energies = {}
+        sources = {}
+        store = self._fragment_store(_P)
         if mode == "existing results (run nothing)":
             energies[target] = self._energies_from_properties(
                 _P, target_configuration, target
             )
+            sources[target] = "properties"
             for can in fragments:
                 configuration = self._find_fragment(system_db, can)
                 if configuration is None:
-                    raise RuntimeError(
-                        f"No system named 'CBH:{can}' with results for the fragment "
-                        f"{can}; run the fragments first or use another mode."
+                    stored = self._energies_from_store(_P, store, can)
+                    if stored is None:
+                        raise RuntimeError(
+                            f"No system named 'CBH:{can}' with results for the "
+                            f"fragment {can}, and nothing in the fragment store; "
+                            "run the fragments first or use another mode."
+                        )
+                    energies[can], sources[can] = stored
+                else:
+                    energies[can] = self._energies_from_properties(
+                        _P, configuration, can
                     )
-                energies[can] = self._energies_from_properties(_P, configuration, can)
+                    sources[can] = "properties"
         else:
             energies[target] = self._compute_species(
                 _P, target, smiles, target_system, target_configuration
             )
+            sources[target] = "computed"
             for can, generated in fragments.items():
+                stored = self._energies_from_store(_P, store, can)
+                if stored is not None:
+                    energies[can], sources[can] = stored
+                    how = "unverified" if "unverified" in sources[can] else "verified"
+                    printer.important(
+                        __(
+                            f"\nSpecies {can}: from the fragment store ({how}).",
+                            indent=4 * " ",
+                            wrap=False,
+                            dedent=False,
+                        )
+                    )
+                    continue
                 energies[can] = self._compute_species(_P, can, generated)
+                sources[can] = "computed"
             # Back to the target
             system_db.system = target_system
             target_system.configuration = target_configuration
@@ -348,6 +374,7 @@ class CBHApproach:
             species_rows.append(
                 [
                     can if can != target else f"{can} (target)",
+                    sources.get(can, ""),
                     f"{e['E']:.3f}" if "E" in e else "",
                     f"{e['ZPE']:.3f}" if "ZPE" in e else "",
                     f"{e['H298'] - e['E']:.3f}" if "E" in e and "H298" in e else "",
@@ -370,6 +397,7 @@ class CBHApproach:
             species_rows,
             headers=[
                 "Species",
+                "Source",
                 "E",
                 "ZPE",
                 "H(298.15 K) - E",
@@ -381,6 +409,7 @@ class CBHApproach:
             tablefmt="rounded_outline",
             disable_numparse=True,
             colalign=(
+                "left",
                 "left",
                 "decimal",
                 "decimal",
@@ -448,6 +477,12 @@ class CBHApproach:
             "gas-phase entry is the lowest conformer at 0 K but a conformer average "
             "at 298.15 K, which limits the 298.15 K comparison for flexible molecules."
         )
+        if any(src.startswith("store (unverified") for src in sources.values()):
+            text += (
+                "\nSome species came from the fragment store without a settings "
+                "fingerprint (matched on the model chemistry only), so they are "
+                "unverified: check that their settings match this calculation."
+            )
         if any(
             r["uncertainty method"].startswith("quadrature") for r in results.values()
         ):
@@ -481,6 +516,54 @@ class CBHApproach:
         return data
 
     # -----------------------------------------------------------------------
+
+    def _fragment_store(self, _P):
+        """The fragment store to read, or None if ignored or unreadable."""
+        if _P.get("fragment store", "ignore") != "use if available":
+            return None
+        from seamm_thermochemistry import FragmentStore
+
+        path = _P.get("fragment store file", "default")
+        path = None if path in ("default", "") else os.path.expanduser(path)
+        try:
+            return FragmentStore(path)
+        except Exception as e:  # pragma: no cover
+            logger.warning(f"The fragment store could not be opened: {e}")
+            return None
+
+    def _energies_from_store(self, _P, store, can):
+        """The energies of a species from the store at this model chemistry,
+        as ({"E", "ZPE", "H0", "H298"}, source), or None. A record must have
+        what the thermal-correction mode needs: E and H(298.15 K) with
+        harmonic corrections (ZPE too for the 0 K result), E alone without."""
+        if store is None:
+            return None
+        from thermochemistry_step.cbh_approach import cbh_charge, cbh_multiplicity
+
+        model = self.model or "unknown"
+        record = store.get(
+            can,
+            charge=cbh_charge(can),
+            multiplicity=cbh_multiplicity(can),
+            energy_fingerprint=getattr(self, "_settings_fingerprint", None),
+            model_chemistry=model,
+        )
+        if record is None or record.get("E") is None:
+            return None
+        result = {"E": record["E"]}
+        if _P["thermal corrections"] != "harmonic":
+            result["H298"] = record["E"]
+        else:
+            if record.get("H") is None:
+                return None
+            if record.get("T") not in (None, T_REF):
+                return None
+            result["H298"] = record["H"]
+            if record.get("ZPE") is not None:
+                result["ZPE"] = record["ZPE"]
+                result["H0"] = record["E"] + record["ZPE"]
+        source = "store" if record.get("verified") else "store (unverified)"
+        return result, source
 
     @staticmethod
     def _target_smiles(configuration, charge, multiplicity):

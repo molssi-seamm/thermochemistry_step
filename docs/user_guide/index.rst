@@ -127,6 +127,14 @@ Thermal corrections
     Note that with NDDO methods CBH-0 is of no use, since their H2 is far from
     experiment.
 
+Fragment store
+    Species already in the fragment-energy store at this model chemistry
+    (``seamm-thermochemistry-fragments harvest`` promotes them there from
+    finished jobs) are taken from it instead of being computed, and serve as
+    the fallback in "existing results" mode. The species table says where
+    each value came from; a record without a settings fingerprint is
+    "unverified" and the output says so.
+
 ATcT version, directory, covariances
     The version of the Thermochemical Network (``latest`` cached by default),
     where the versions are kept, and whether to fetch missing covariance blocks

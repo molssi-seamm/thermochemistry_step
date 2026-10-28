@@ -70,6 +70,8 @@ def _parameters(node, **changes):
         "ZPE property": "ZPE#*#*",
         "enthalpy property": "H(298.15 K)#*#*",
         "low-level energy property": "",
+        "fragment store": "ignore",
+        "fragment store file": "default",
         "ATcT version": "9.999",
         "ATcT directory": str(node._test_base),
         "covariances": "cached only",
@@ -147,11 +149,23 @@ def test_radical_target(radical_node, monkeypatch):
     assert "ATcT DfH 298K" not in data  # the propyl radical is not in the fixture
 
 
-def test_radical_smiles_guard(radical_node):
-    """molsystem's SMILES of the ethyl radical is [CH2-]C: the step must stop
-    rather than build the reactions of the anion."""
+def test_radical_smiles_guard(radical_node, monkeypatch):
+    """A SMILES that disagrees with the configuration's charge and spin (as
+    molsystem before 2026.10.28 gave for a radical, [CH2-]CC) must stop the
+    step rather than build the reactions of the anion."""
+    monkeypatch.setattr(radical_node._test_target, "to_smiles", lambda **k: "[CH2-]CC")
     with pytest.raises(RuntimeError, match=r"implies charge -1 and 0 unpaired"):
         radical_node.run_cbh(_parameters(radical_node))
+
+
+def test_radical_target_from_structure(radical_node):
+    """With molsystem's radical-aware SMILES (2026.10.28), the target's SMILES
+    comes straight from the structure."""
+    smiles = radical_node._test_target.to_smiles(canonical=True, isomeric=True)
+    if "-" in smiles:
+        pytest.skip(f"molsystem gives {smiles} for the n-propyl radical")
+    data = radical_node.run_cbh(_parameters(radical_node))
+    assert data["DfH 298K"] == pytest.approx(111.353 + 10.0, abs=1e-6)
 
 
 def test_fragment_charge_and_multiplicity():
@@ -167,6 +181,31 @@ def test_fragment_charge_and_multiplicity():
 def test_missing_fragment(node):
     with pytest.raises(RuntimeError, match="No property matching"):
         node.run_cbh(_parameters(node, **{"energy property": "nothing#*#*"}))
+
+
+def test_fragment_from_store(node, monkeypatch, tmp_path):
+    """A fragment with no system is served from the fragment store at the
+    step's model chemistry; an unverified record is reported as such."""
+    from seamm_thermochemistry import FragmentRecord, FragmentStore
+
+    path = tmp_path / "fragments.db"
+    with FragmentStore(path, create=True) as store:
+        store.put(FragmentRecord.make("CF", E=-230.0, model_chemistry="Test:PM7"))
+    find = node._find_fragment
+    monkeypatch.setattr(
+        node,
+        "_find_fragment",
+        lambda db, can: None if can == "CF" else find(db, can),
+    )
+    node.model = "Test:PM7"
+    P = _parameters(node, **{"fragment store": "use if available"})
+    P["fragment store file"] = str(path)
+    data = node.run_cbh(P)
+    assert data["DfH 298K"] == pytest.approx(-244.947 - 2.0, abs=1e-6)
+    # At another model chemistry the store has nothing
+    node.model = "Other:PM6"
+    with pytest.raises(RuntimeError, match="nothing in the fragment store"):
+        node.run_cbh(P)
 
 
 def test_missing_fragment_system(node, monkeypatch):
