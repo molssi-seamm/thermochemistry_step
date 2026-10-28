@@ -13,6 +13,7 @@ import numpy as np
 from tabulate import tabulate
 
 import thermochemistry_step
+from thermochemistry_step.symmetry import rotational_symmetry_number
 import molsystem
 import seamm
 from seamm_ase import ASE_mixin
@@ -109,6 +110,8 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         self.parameters = thermochemistry_step.ThermochemistryParameters()
         self._results = {}
         self._vibrations = None
+        self._E0 = None  # energy of the undisplaced structure, eV
+        self._XYZ0 = None  # its coordinates
 
         # Variable used by seamm-ase
         self._data = {}
@@ -126,6 +129,46 @@ class Thermochemistry(seamm.Node, ASE_mixin):
     def git_revision(self):
         """The git version of this module."""
         return thermochemistry_step.__git_revision__
+
+    def _subflowchart_model(self, flowchart=None):
+        """The model chemistry of the engine in the subflowchart, for naming the
+        properties: the last model set by any step, searching sub-subflowcharts."""
+        if flowchart is None:
+            flowchart = self.subflowchart
+        model = None
+        node = flowchart.get_node("1").next()
+        while node is not None:
+            if getattr(node, "model", None) is not None:
+                model = node.model
+            if getattr(node, "subflowchart", None) is not None:
+                tmp = self._subflowchart_model(node.subflowchart)
+                if tmp is not None:
+                    model = tmp
+            node = node.next()
+        return model
+
+    @staticmethod
+    def _values_and_units(value, default_units):
+        """The list of values and the units of a T or P parameter, which may be
+        a (string, units) tuple, a quantity, a plain string or a number."""
+        if isinstance(value, tuple):
+            values, units = value
+            return parse_list(values), units
+        if hasattr(value, "magnitude"):
+            return [value.magnitude], str(value.u)
+        if isinstance(value, str):
+            return parse_list(value), default_units
+        return [float(value)], default_units
+
+    def ase_calculator(self, calculator, *args, **kwargs):
+        """Run the subflowchart for one geometry, keeping the energy of the
+        undisplaced structure for the absolute thermodynamic functions."""
+        result = super().ase_calculator(calculator, *args, **kwargs)
+        if self._E0 is None and self._XYZ0 is not None:
+            if np.allclose(calculator.atoms.positions, self._XYZ0, atol=1.0e-8):
+                # eV, as the calculator reports it
+                self._E0 = calculator.results["energy"]
+        return result
 
     def analyze(self, _P, indent="", **kwargs):
         """Do any analysis of the output from this step.
@@ -156,11 +199,11 @@ class Thermochemistry(seamm.Node, ASE_mixin):
                 geometry = "nonlinear"
                 n_zeroes = 6
 
-        if n_atoms == 1:
-            symmetry_number = 1
-            imaginary_frequencies = []
-            real_frequencies = []
-        else:
+        n_imaginary = 0
+        imaginary_frequencies = []
+        real_frequencies = []
+        real_energies = np.array([])
+        if n_atoms > 1:
             # Ignore any imaginary modes in the thermochemistry
             energies = self._vibrations.get_energies()
 
@@ -244,24 +287,44 @@ class Thermochemistry(seamm.Node, ASE_mixin):
                 if "no" in n_max.lower():
                     n_max = 0
                 elif "all" in n_max.lower():
-                    n_max = len(frequencies)
+                    n_max = len(real_frequencies)
+                else:
+                    n_max = int(n_max)
 
-            if n_max > 0 and len(frequencies) <= n_max:
+            if n_max > 0 and len(real_frequencies) <= n_max:
                 text += f"There are {len(real_frequencies)} true frequencies:\n"
                 frequencies = [f"  {v:9.1f}" for v in real_frequencies]
                 text += "\n".join(frequencies)
                 text += "\n\n"
 
-        potential_energy = 0.0
         if _P["spin multiplicity"] == "from system":
             spin = (self._working_configuration.spin_multiplicity - 1) / 2
         else:
             spin = (float(_P["spin multiplicity"]) - 1) / 2
 
         if _P["symmetry number"] == "from system":
-            raise NotImplementedError("symmetry number from system")
+            symmetry_number, axes = rotational_symmetry_number(
+                atoms.get_chemical_symbols(), atoms.positions, atoms.get_masses()
+            )
+            if "linear" in axes:
+                description = "linear, " + (
+                    "centrosymmetric" if symmetry_number == 2 else "not centrosymmetric"
+                )
+            elif axes:
+                description = ", ".join(
+                    f"{count} C{order}" for order, count in axes.items()
+                )
+                description += " axes" if sum(axes.values()) > 1 else " axis"
+            else:
+                description = "no rotational symmetry"
+            text += (
+                f"The rotational symmetry number perceived from the structure is "
+                f"{symmetry_number} ({description})."
+            )
         else:
             symmetry_number = int(_P["symmetry number"])
+            text += f"The rotational symmetry number is {symmetry_number}."
+        text += "\n\n"
 
         # Store the symmetry number and frequencies
         data = {}
@@ -276,140 +339,114 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         if n_imaginary == 1:
             data["transition state frequency"] = imaginary_frequencies[0]
 
+        # The thermodynamic functions, relative to the electronic energy (ASE
+        # works in eV). The ZPE is included in ASE's U, H and G.
         thermo = IdealGasThermo(
-            vib_energies=energies.real,
-            potentialenergy=potential_energy,
+            vib_energies=np.real(real_energies),
+            potentialenergy=0.0,
             atoms=atoms,
             geometry=geometry,
             symmetrynumber=symmetry_number,
             spin=spin,
+            vib_selection="all",
         )
-        # If have imaginary frequencies, patch up those in ASE
-        thermo.vib_energies = np.real(real_energies)
 
-        ZPE = Q_(self._vibrations.get_zero_point_energy(), "eV").to("kJ/mol")
-        text += f"Zero-point energy (ZPE) = {ZPE:.1f~#P} ({ZPE.to('kcal/mol'):.1f~#P})"
+        # The ZPE from the true vibrations only, excluding the nominally zero
+        # translations and rotations and any imaginary modes
+        ZPE = Q_(0.5 * float(np.sum(np.real(real_energies))), "eV").to("kJ/mol")
         printer.important(__(text, indent=4 * " "))
-
+        text = f"Zero-point energy (ZPE) = {ZPE:.2f~#P} ({ZPE.to('kcal/mol'):.2f~#P})"
         ZPE = ZPE.magnitude
         data["ZPE"] = ZPE
 
-        H = []
-        S = []
-        G = []
-
-        T_list = _P["T"]
-        P_list = _P["P"]
-
-        if isinstance(T_list, tuple):
-            # (list, units)
-            Ts, Tunits = T_list
-            Ts = parse_list(Ts)
+        # The electronic energy of the undisplaced structure, from the
+        # subflowchart's first calculation
+        if self._E0 is not None:
+            E0 = Q_(self._E0, "eV").m_as("kJ/mol")
+            data["total_energy"] = Q_(E0, "kJ/mol").m_as("E_h")
+            data["H 0"] = E0 + ZPE
+            text += f"\nElectronic energy E = {E0:.3f} kJ/mol"
+            text += f" ({data['total_energy']:.6f} E_h)"
+            text += f"\nH(0 K) = E + ZPE = {data['H 0']:.3f} kJ/mol"
         else:
-            Tunits = str(Ts.u)
-            Ts = [T_list.magnitude]
-        if isinstance(P_list, tuple):
-            # (list, units)
-            Ps, Punits = P_list
-            Ps = parse_list(Ps)
-        else:
-            Ps = [P_list.magnitude]
-            Punits = str(P_list.u)
+            E0 = None
+        printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
 
-        # Conversion factor
-        Efac = Q_(1, "eV").m_as("kcal/mol")
-        Sfac = Q_(1, "eV/K").m_as("cal/mol/K")
+        Ts, Tunits = self._values_and_units(_P["T"], "K")
+        Ps, Punits = self._values_and_units(_P["P"], "bar")
+
+        # Conversion factors
+        Efac = Q_(1, "eV").m_as("kJ/mol")
+        Sfac = Q_(1, "eV/K").m_as("J/mol/K")
         Tfac = Q_(1, Tunits).m_as("K")
         Pfac = Q_(1, Punits).m_as("Pa")
 
         data["P"] = Ps
         data["T"] = Ts
 
+        data["E thermal"] = []
+        data["H thermal"] = []
+        data["G thermal"] = []
+        data["S"] = []
+        if E0 is not None:
+            data["U"] = []
+            data["H"] = []
+            data["G"] = []
+
+        aP = []
+        aT = []
+        Ethermal = []
+        Hthermal = []
+        Gthermal = []
+        Svalues = []
+        for Porig in Ps:
+            P = Pfac * Porig
+            Etmp = []
+            Htmp = []
+            Gtmp = []
+            Stmp = []
+            for i, Torig in enumerate(Ts):
+                T = Tfac * Torig
+                aP.append(Porig if i == 0 else "")
+                aT.append(Torig)
+                U_value = Efac * thermo.get_internal_energy(T, verbose=False)
+                H_value = Efac * thermo.get_enthalpy(T, verbose=False)
+                S_value = Sfac * thermo.get_entropy(T, P, verbose=False)
+                G_value = Efac * thermo.get_gibbs_energy(T, P, verbose=False)
+                Etmp.append(U_value)
+                Htmp.append(H_value)
+                Gtmp.append(G_value)
+                Stmp.append(S_value)
+            data["E thermal"].append(Etmp)
+            data["H thermal"].append(Htmp)
+            data["G thermal"].append(Gtmp)
+            data["S"].append(Stmp)
+            if E0 is not None:
+                data["U"].append([E0 + v for v in Etmp])
+                data["H"].append([E0 + v for v in Htmp])
+                data["G"].append([E0 + v for v in Gtmp])
+            Ethermal.extend(Etmp)
+            Hthermal.extend(Htmp)
+            Gthermal.extend(Gtmp)
+            Svalues.extend(Stmp)
+
+        table = {}
         if len(Ps) == 1:
             title = (
-                f"ZPE and thermal contributions to thermodynamic functions at {Ps[0]}"
-                f" {Punits}"
+                "Thermal corrections to the electronic energy (including the ZPE) at "
+                f"{Ps[0]} {Punits}"
             )
-            P = Pfac * Ps[0]
-            for T in Ts:
-                H.append(Efac * thermo.get_enthalpy(T, verbose=False))
-                S.append(Sfac * thermo.get_entropy(T, P, verbose=False))
-                G.append(Efac * thermo.get_gibbs_energy(T, P, verbose=False))
-
-            data["E thermal"] = [[ZPE] * len(Ts)]
-            data["H thermal"] = [[h + ZPE for h in H]]
-            data["G thermal"] = [[g + ZPE for g in G]]
-
-            table = {}
-            table[f"T ({Tunits})"] = Ts
-            table["H (kcal/mol)"] = H
-            table["S (cal/mol/K)"] = S
-            table["G (kcal/mol)"] = G
-        elif len(Ts) == 1:
-            title = (
-                f"ZPE and thermal contributions to thermodynamic functions at {Ts[0]}"
-                f" {Tunits}"
-            )
-            T = Tfac * Ts[0]
-            for P in Ps:
-                H.append(Efac * thermo.get_enthalpy(T, verbose=False))
-                S.append(Sfac * thermo.get_entropy(T, P, verbose=False))
-                G.append(Efac * thermo.get_gibbs_energy(T, P, verbose=False))
-
-            data["E thermal"] = [[ZPE] for i in range(len(Ts))]
-            data["H thermal"] = [[h + ZPE] for h in H]
-            data["G thermal"] = [[g + ZPE] for g in G]
-
-            table = {}
-            table[f"P ({Punits})"] = Ps
-            table["H (kcal/mol)"] = H
-            table["S (cal/mol/K)"] = S
-            table["G (kcal/mol)"] = G
         else:
-            title = "ZPE and thermal contributions to thermodynamic functions"
-            aP = []
-            aT = []
-
-            data["E thermal"] = []
-            data["H thermal"] = []
-            data["G thermal"] = []
-
-            for Porig in Ps:
-                P = Pfac * Porig
-                Etmp = []
-                Htmp = []
-                Gtmp = []
-                for i, T in enumerate(Ts):
-                    if i == 0:
-                        aP.append(Porig)
-                    else:
-                        aP.append("")
-                    aT.append(T)
-                    T *= Tfac
-                    H_value = Efac * thermo.get_enthalpy(T, verbose=False)
-                    S_value = Sfac * thermo.get_entropy(T, P, verbose=False)
-                    G_value = Efac * thermo.get_gibbs_energy(T, P, verbose=False)
-                    H.append(H_value)
-                    S.append(S_value)
-                    G.append(G_value)
-
-                    Etmp.append(ZPE)
-                    Htmp.append(ZPE + H_value)
-                    Gtmp.append(ZPE + G_value)
-
-                data["E thermal"].append(Etmp)
-                data["H thermal"].append(Htmp)
-                data["G thermal"].append(Gtmp)
-
-            table = {}
+            title = "Thermal corrections to the electronic energy (including the ZPE)"
             table[f"P ({Punits})"] = aP
-            table[f"T ({Tunits})"] = aT
-            table["H (kcal/mol)"] = H
-            table["S (cal/mol/K)"] = S
-            table["G (kcal/mol)"] = G
+        table[f"T ({Tunits})"] = aT
+        table["U - E (kJ/mol)"] = Ethermal
+        table["H - E (kJ/mol)"] = Hthermal
+        table["S (J/mol/K)"] = Svalues
+        table["G - E (kJ/mol)"] = Gthermal
 
         tmp = tabulate(
-            table, headers="keys", tablefmt="rounded_outline", floatfmt=".2f"
+            table, headers="keys", tablefmt="rounded_outline", floatfmt=".3f"
         )
 
         length = len(tmp.splitlines()[0])
@@ -515,15 +552,15 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         symmetry_number = P["symmetry number"]
         if spin_multiplicity == "from system":
             if symmetry_number == "from system":
-                text += " The spin multiplicity and symmetry number will be taken from"
-                text += " the system."
+                text += " The spin multiplicity will be taken from the system and the"
+                text += " rotational symmetry number perceived from the structure."
             else:
                 text += " The spin multiplicity will be taken from the system and the"
                 text += f" symmetry number will be {symmetry_number}."
         else:
             if symmetry_number == "from system":
-                text += " The symmetry number will be taken from the system and the"
-                text += f" spin multiplicity will be {spin_multiplicity}."
+                text += " The symmetry number will be perceived from the structure and"
+                text += f" the spin multiplicity will be {spin_multiplicity}."
             else:
                 text += f" The spin multiplicity will be {spin_multiplicity} and the"
                 text += f" symmetry number will be {symmetry_number}."
@@ -622,6 +659,10 @@ class Thermochemistry(seamm.Node, ASE_mixin):
 
         # Get the Hessian ... save coordinates in case they are changed
         XYZ_save = self._working_configuration.atoms.coordinates
+        self._XYZ0 = np.array(
+            self._working_configuration.atoms.get_coordinates(fractionals=False)
+        )
+        self._E0 = None
         tic = time.perf_counter_ns()
         self._vibrations = self.run_ase_Hessian(
             step_size=step_size,
@@ -631,6 +672,9 @@ class Thermochemistry(seamm.Node, ASE_mixin):
         toc = time.perf_counter_ns()
         self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
         self._working_configuration.atoms.coordinates = XYZ_save
+
+        # Name the properties after the engine's model chemistry
+        self.model = self._subflowchart_model()
 
         # Analyze the results
         self.analyze(_P)
