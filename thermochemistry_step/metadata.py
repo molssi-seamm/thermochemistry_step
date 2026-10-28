@@ -148,7 +148,7 @@ metadata["results"] = {
     },
     "U": {
         "description": "the internal energy",
-        "dimensionality": "scalar",
+        "dimensionality": "[nPs*[nTs]]",
         "property": "U#Thermochemistry#{model}",
         "type": "float",
         "units": "kJ/mol",
@@ -156,7 +156,7 @@ metadata["results"] = {
     },
     "H": {
         "description": "The enthalpy of the system",
-        "dimensionality": "scalar",
+        "dimensionality": "[nPs*[nTs]]",
         "property": "H#Thermochemistry#{model}",
         "type": "float",
         "units": "kJ/mol",
@@ -164,15 +164,15 @@ metadata["results"] = {
     },
     "S": {
         "description": "The entropy of the system",
-        "dimensionality": "scalar",
+        "dimensionality": "[nPs*[nTs]]",
         "property": "S#Thermochemistry#{model}",
         "type": "float",
-        "units": "kJ/mol/K",
+        "units": "J/mol/K",
         "format": ".6f",
     },
     "G": {
         "description": "The free energy of the system",
-        "dimensionality": "scalar",
+        "dimensionality": "[nPs*[nTs]]",
         "property": "G#Thermochemistry#{model}",
         "type": "float",
         "units": "kJ/mol",
@@ -232,21 +232,30 @@ metadata["results"] = {
         "format": "",
     },
     "E thermal": {
-        "description": "the thermal correction to the electronic energy",
+        "description": (
+            "U(T) - E, the thermal correction to the electronic energy, including "
+            "the ZPE"
+        ),
         "dimensionality": "[nPs*[nTs]]",
         "type": "float",
         "units": "kJ/mol",
         "format": ".6f",
     },
     "H thermal": {
-        "description": "the enthalpy correction to the electronic energy",
+        "description": (
+            "H(T) - E, the enthalpy correction to the electronic energy, including "
+            "the ZPE"
+        ),
         "dimensionality": "[nPs*[nTs]]",
         "type": "float",
         "units": "kJ/mol",
         "format": ".6f",
     },
     "G thermal": {
-        "description": "the free energy correction to the electronic energy",
+        "description": (
+            "G(T) - E, the free energy correction to the electronic energy, "
+            "including the ZPE"
+        ),
         "dimensionality": "[nPs*[nTs]]",
         "type": "float",
         "units": "kJ/mol",

@@ -4,7 +4,8 @@ DfE0#Thermochemistry#{model},float,kJ/mol,The {model} standard energy of formati
 H atomization#Thermochemistry#{model},float,kJ/mol,The {model} enthalpy of formation from atoms",
 DfH0#Thermochemistry#{model},float,kJ/mol,The {model} standard enthalpy of formation,https://en.wikipedia.org/wiki/Standard_enthalpy_of_formation
 E#Thermochemistry#{model},float,kJ/mol,"The {model} energy, E.",
-U#Thermochemistry#{model},float,kJ/mol,"The {model} internal energy",
+total energy#Thermochemistry#{model},float,E_h,"The {model} total (electronic) energy of the undisplaced structure, from the subflowchart.",
+U#Thermochemistry#{model},json,kJ/mol,"The {model} internal energy",
 H(0 K)#Thermochemistry#{model},float,kJ/mol,"The {model} enthalpy at 0 K, H0.",
 G#Thermochemistry#{model},json,kJ/mol,"The {model} free energy, G.",
 H#Thermochemistry#{model},json,kJ/mol,"The {model} enthalpy, H.",
