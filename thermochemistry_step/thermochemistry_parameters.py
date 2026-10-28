@@ -74,6 +74,20 @@ class ThermochemistryParameters(seamm.Parameters):
     """
 
     parameters = {
+        "engine": {
+            "default": "Model Chemistry",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("Model Chemistry", "subflowchart"),
+            "format_string": "",
+            "description": "Energies and gradients from:",
+            "help_text": (
+                "The flowchart's Model Chemistry, run as a warm engine over MDI "
+                "(the analytic Hessian when the program has one, else finite "
+                "differences of the gradients), or this step's subflowchart, run "
+                "once per displaced structure."
+            ),
+        },
         "approach": {
             "default": "Harmonic approximation",
             "kind": "enum",
@@ -90,7 +104,10 @@ class ThermochemistryParameters(seamm.Parameters):
             "enumeration": tuple(),
             "format_string": ".g",
             "description": "Step size:",
-            "help_text": "The size of the step for finite differences.",
+            "help_text": (
+                "The size of the step for finite differences (not used when the "
+                "program provides the analytic Hessian)."
+            ),
         },
         "# imaginary modes": {
             "default": "perceive",

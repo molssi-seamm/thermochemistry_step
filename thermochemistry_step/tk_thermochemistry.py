@@ -156,6 +156,27 @@ class TkThermochemistry(seamm.TkNode):
             if key not in ("results",):
                 self[key] = P[key].widget(frame)
 
+        # Shown when the Model Chemistry is chosen but none precedes this step
+        self["model chemistry note"] = ttk.Label(
+            frame,
+            text=(
+                "Add a Model Chemistry step before this step: it defines the "
+                "method (e.g. MOPAC PM6-ORG, or an ORCA DFT model) used for the "
+                "energy and the Hessian. Or choose the subflowchart."
+            ),
+            foreground="red",
+            wraplength=500,
+            justify=tk.LEFT,
+        )
+
+        # Comboboxes whose value changes the layout re-lay out the dialog
+        for key in ("engine", "approach"):
+            widget = self[key]
+            combobox = widget.combobox if hasattr(widget, "combobox") else widget
+            combobox.bind("<<ComboboxSelected>>", self.reset_dialog)
+            combobox.bind("<Return>", self.reset_dialog)
+            combobox.bind("<FocusOut>", self.reset_dialog)
+
         # and lay them out
         self.reset_dialog()
 
@@ -213,11 +234,24 @@ class TkThermochemistry(seamm.TkNode):
         # Main controls
         row = 0
         widgets = []
-        # widgets2 = []
-        for key in ("approach",):
+        for key in ("engine", "approach"):
             self[key].grid(row=row, column=0, columnspan=2, sticky=tk.W)
             widgets.append(self[key])
             row += 1
+
+        # The subflowchart tab applies only to the subflowchart engine
+        engine = self["engine"].get()
+        notebook = self["notebook"]
+        flowchart_frame = self["flowchart frame"]
+        if engine == "subflowchart":
+            notebook.add(flowchart_frame, text="Flowchart", sticky=tk.NSEW)
+        else:
+            notebook.hide(flowchart_frame)
+            if not self._upstream_has_model_chemistry():
+                self["model chemistry note"].grid(
+                    row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 6)
+                )
+                row += 1
 
         if approach == "Harmonic approximation":
             for key in (
@@ -233,19 +267,40 @@ class TkThermochemistry(seamm.TkNode):
                 widgets.append(self[key])
                 row += 1
 
-            for key in (
-                "on success",
-                "on error",
-            ):
-                self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
-                widgets.append(self[key])
-                row += 1
+            if engine == "subflowchart":
+                for key in (
+                    "on success",
+                    "on error",
+                ):
+                    self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
+                    widgets.append(self[key])
+                    row += 1
 
         sw.align_labels(widgets, sticky=tk.E)
         # w1 = sw.align_labels(widgets, sticky=tk.E)
         # w2 = sw.align_labels(widgets2, sticky=tk.E)
         # frame.columnconfigure(0, minsize=w1 - w2 + 50)
         frame.columnconfigure(1, weight=1)
+
+    def _upstream_has_model_chemistry(self):
+        """True if a Model Chemistry step precedes this one in the flowchart.
+        On any error (e.g. the node is not yet linked in) returns False, so the
+        reminder is shown."""
+        try:
+            return any(
+                type(node).__name__ == "ModelChemistry"
+                and type(node).__module__.startswith("model_chemistry_step")
+                for node in self.previous_nodes()
+            )
+        except Exception:
+            return False
+
+    def edit(self):
+        """Re-lay out the dialog when it is opened, so the reminder tracks
+        the flowchart."""
+        if self.dialog is not None:
+            self.reset_dialog()
+        super().edit()
 
     def right_click(self, event):
         """

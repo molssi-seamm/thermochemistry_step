@@ -12,25 +12,42 @@ pressures.
 How it works
 ============
 
-The step holds a subflowchart with the engine that provides the energy and
-gradients: a MOPAC, ORCA, Gaussian, Psi4, LAMMPS or MLFF energy step, for example.
-The subflowchart runs once for the undisplaced structure and once for each
-displacement of each atom in ±x, ±y and ±z (6N+1 runs). The engine step must pass
-its energy and gradients back as JSON: in its *Results* tab, store ``energy`` and
-``gradients`` as JSON. Without these the step stops with "There are no energy and
-gradients in properties.json".
+The step needs the energy and the Hessian (second derivatives) of the
+structure. By default they come from the flowchart's **Model Chemistry**: put a
+Model Chemistry step before this one to choose the program and method (MOPAC
+PM6-ORG, xTB, an ORCA DFT model, an MLFF model, ...). The program runs as a
+warm engine over MDI. When it provides an analytic Hessian, as ORCA does for
+Hartree-Fock and most density functionals, that is used; otherwise the Hessian
+is built from central finite differences of the gradients over the same
+connection, or as separate calculations where the job runs its tasks. The step
+reports which route it took.
 
-The frequencies come from ASE's finite-difference Hessian. The six (five for a
-linear molecule) nominally zero translations and rotations are reported so that
-the quality of the gradients can be judged, and imaginary modes are excluded from
-the thermodynamic functions: by default the step perceives how many there are, or
-you can declare the structure a transition state or give the number.
+The alternative, "Energies and gradients from: subflowchart", keeps a
+subflowchart inside the step holding the engine (a MOPAC, ORCA, Gaussian, Psi4,
+LAMMPS or MLFF energy step, for example). The subflowchart runs once for the
+undisplaced structure and once for each displacement of each atom in ±x, ±y and
+±z (6N+1 runs). The engine step must pass its energy and gradients back as JSON:
+in its *Results* tab, store ``energy`` and ``gradients`` as JSON. Without these
+the step stops with "There are no energy and gradients in properties.json". Use
+this route for calculations an MDI engine cannot do. A flowchart made before
+the Model Chemistry route existed, with a subflowchart and no Model Chemistry,
+still runs as before.
+
+The frequencies come from the Hessian through ASE. The six (five for a linear
+molecule) nominally zero translations and rotations are reported so that the
+quality of the gradients can be judged, and imaginary modes are excluded from
+the thermodynamic functions: by default the step perceives how many there are,
+or you can declare the structure a transition state or give the number.
 
 Parameters
 ==========
 
+Energies and gradients from
+    The flowchart's Model Chemistry (default) or this step's subflowchart.
+
 Step size
-    The finite-difference displacement, 0.01 Å by default.
+    The finite-difference displacement, 0.01 Å by default; not used when the
+    program provides the analytic Hessian.
 
 Number of imaginary modes
     ``perceive`` (default), ``transition state`` (one), or an integer.
@@ -63,8 +80,10 @@ configuration are the frequencies, the symmetry number, the number of saddle
 modes and the transition-state frequency, the ZPE, the total (electronic) energy,
 H(0 K), and U, H, S and G. The last four are lists over the pressures and then
 the temperatures, in the same order as the stored ``P`` and ``T`` lists. The
-properties are named with the engine's model chemistry, for example
-``H#Thermochemistry#PM6-ORG`` or ``S#Thermochemistry#B3LYP/def2-TZVP``.
+properties are named with the Model Chemistry's level, for example
+``H#Thermochemistry#MOPAC:SQM@PM6-ORG`` or
+``S#Thermochemistry#ORCA:DFT@B3LYP/bse:def2-TZVP``, or with the subflowchart
+engine's model, e.g. ``H#Thermochemistry#PM6-ORG``.
 
 Indices and tables
 ==================
