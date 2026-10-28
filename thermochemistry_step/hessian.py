@@ -145,10 +145,43 @@ class ModelChemistryHessian:
             "queue",
             "taskserver",
         )
+        route = getattr(self, "_hessian_route", "automatic") or "automatic"
+        has_mdi = bool(options.get("mdi_capable", False)) and hasattr(
+            step, "get_mdi_engine_command"
+        )
         use_tasks = False
-        if on_queue and has_tasks:
+        if route.startswith("warm engine"):
+            if not has_mdi:
+                if not has_tasks:
+                    raise ValueError(
+                        f"{mc['level']} has no MDI engine, so it cannot be driven as a "
+                        "warm engine; choose another Hessian route or model chemistry."
+                    )
+                printer.important(
+                    __(
+                        f"{mc['level']} has no MDI engine: the Hessian is computed by "
+                        "finite differences as separate tasks, and the structure is "
+                        "not optimized.",
+                        indent=self.indent + 4 * " ",
+                    )
+                )
+                use_tasks = True
+            elif has_tasks and not self._code_is_here(step):
+                printer.important(
+                    __(
+                        f"{mc['level']} is not installed on this machine, so the "
+                        "Hessian is computed by finite differences, as separate "
+                        "calculations where the job runs its tasks, and the structure "
+                        "is not optimized.",
+                        indent=self.indent + 4 * " ",
+                    )
+                )
+                use_tasks = True
+        elif route.startswith("separate tasks") and has_tasks:
             use_tasks = True
-        elif not options.get("mdi_capable", False):
+        elif on_queue and has_tasks:
+            use_tasks = True
+        elif not has_mdi:
             use_tasks = True
         elif options.get("analytic_hessian") is False and evaluator.path == "batch":
             use_tasks = True

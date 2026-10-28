@@ -48,6 +48,13 @@ Parameters
 Energies and gradients from
     The flowchart's Model Chemistry (default) or this step's subflowchart.
 
+Energies and Hessian via
+    ``automatic`` (default for the harmonic approach): the warm MDI engine when
+    the program has an analytic Hessian or no task route, else finite
+    differences as separate tasks where the job runs them; ``warm engine over
+    MDI``; or ``separate tasks``. The CBH approach uses the engine by default,
+    since it optimizes each species over it.
+
 Step size
     The finite-difference displacement, 0.01 Å by default; not used when the
     program provides the analytic Hessian.

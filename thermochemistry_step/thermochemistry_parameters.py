@@ -343,6 +343,26 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Compare with ATcT:",
             "help_text": "Report the difference if the target itself is in ATcT.",
         },
+        "hessian route": {
+            "default": "automatic",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": (
+                "automatic",
+                "warm engine over MDI",
+                "separate tasks",
+            ),
+            "format_string": "",
+            "description": "Energies and Hessian via:",
+            "help_text": (
+                "How the Model Chemistry is driven: automatically (the engine when the "
+                "program has an analytic Hessian or no task route, else finite "
+                "differences as separate tasks where the job runs them); the warm MDI "
+                "engine, which also allows the optimization of the structure; or "
+                "separate tasks. The CBH approach uses the engine by default, since it "
+                "optimizes each species."
+            ),
+        },
         "step size": {
             "default": 0.01,
             "kind": "float",

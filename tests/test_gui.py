@@ -50,6 +50,7 @@ def test_dialog_layouts(tk_node):
     assert not _mapped(tk_node["on success"])
     assert _mapped(tk_node["model chemistry note"])
     assert _mapped(tk_node["symmetry number"])
+    assert _mapped(tk_node["hessian route"])
 
     # The subflowchart: the tab is back, with the subdirectory handling
     tk_node["engine"].set("subflowchart")
@@ -76,6 +77,7 @@ def test_cbh_layout(tk_node):
     assert _mapped(tk_node["cbh rungs"]) and _mapped(tk_node["ATcT version"])
     assert _mapped(tk_node["fragment convergence"])
     assert _mapped(tk_node["step size"])
+    assert _mapped(tk_node["hessian route"])
     assert not _mapped(tk_node["T"]) and not _mapped(tk_node["P"])
     assert not _mapped(tk_node["energy property"])
     assert not _mapped(tk_node["on success"])
