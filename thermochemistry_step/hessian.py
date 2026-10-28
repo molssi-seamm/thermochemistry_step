@@ -21,8 +21,10 @@ undisplaced structure collected as well. It belongs in a shared library once a
 third consumer appears.
 """
 
+import contextlib
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -115,6 +117,7 @@ class ModelChemistryHessian:
             )
 
         step = self.flowchart.plugin_manager.get(mc["step"])
+        self._engine_step = step
         method = options.get("mdi_method_arg") or mc["method"]
         basis = options.get("mdi_basis_arg")
 
@@ -200,6 +203,50 @@ class ModelChemistryHessian:
             use_tasks = True
         return evaluator, (None if use_tasks else build_argv), elements, coords_ang
 
+    @contextlib.contextmanager
+    def _engine_environment(self, ncores):
+        """The environment the MDI engine's own runs need, set for the time
+        the engine lives and restored afterwards: what the program's step
+        gives (``mdi_engine_environment(executor, options, ncores)`` when it
+        has one; for ORCA its ``mpi_env``: the OpenMPI runtime matching its
+        libraries, with its ``mpirun`` first on the PATH, and the transport
+        settings), and no MPI core binding, since the ranks of several jobs
+        on a node without cgroups would otherwise pile onto the same cores.
+        """
+        step = getattr(self, "_engine_step", None)
+        saved = dict(os.environ)
+        env = {}
+        try:
+            hook = getattr(step, "mdi_engine_environment", None)
+            if hook is not None:
+                env.update(
+                    hook(self.flowchart.executor, self.global_options, ncores) or {}
+                )
+            elif step is not None and type(step).__module__.startswith("orca_step"):
+                try:
+                    from orca_step.orca_base import mpi_env
+                except ImportError:  # pragma: no cover
+                    mpi_env = None
+                if mpi_env is not None:
+                    config = step.get_executor_config(
+                        self.flowchart.executor, self.global_options
+                    )
+                    extra, _ = mpi_env(ncores, config)
+                    env.update(extra)
+                    library_path = config.get("library-path", "") or ""
+                    if ncores > 1 and library_path:
+                        bindir = Path(library_path).expanduser().parent / "bin"
+                        if bindir.is_dir():
+                            env["PATH"] = (
+                                f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}"
+                            )
+            env["OMPI_MCA_hwloc_base_binding_policy"] = "none"
+            os.environ.update(env)
+            yield env
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
+
     def _engine_ncores(self):
         """The cores for the MDI engine: the job's allocation under Slurm
         (``SLURM_CPUS_ON_NODE``, else ``SLURM_NTASKS``, since without cgroups
@@ -274,7 +321,9 @@ class ModelChemistryHessian:
 
         from seamm_mdi import MDIEngine
 
-        with MDIEngine(build_argv, elements, name="SEAMM", logger=self.logger) as eng:
+        with self._engine_environment(self._engine_ncores()), MDIEngine(
+            build_argv, elements, name="SEAMM", logger=self.logger
+        ) as eng:
             coords_ang = self._optimize_over_engine(
                 eng, configuration, elements, coords_ang, fmax, max_steps
             )
@@ -364,10 +413,6 @@ class ModelChemistryHessian:
 
         mc = self.model_chemistry()
         ncores = self._engine_ncores()
-        # The engine's own MPI runs (ORCA) must not pin their ranks to cores
-        # 0..n-1, which other jobs on the node may be using: the engine
-        # inherits this process's environment.
-        os.environ.setdefault("OMPI_MCA_hwloc_base_binding_policy", "none")
         printer.important(
             __(
                 f"The {mc['level']} engine runs on {ncores} core"
@@ -375,7 +420,9 @@ class ModelChemistryHessian:
                 indent=self.indent + 4 * " ",
             )
         )
-        with MDIEngine(build_argv, elements, name="SEAMM", logger=self.logger) as eng:
+        with self._engine_environment(ncores), MDIEngine(
+            build_argv, elements, name="SEAMM", logger=self.logger
+        ) as eng:
             if optimize and n > 1:
                 coords_ang = self._optimize_over_engine(
                     eng, configuration, elements, coords_ang, fmax, max_steps
