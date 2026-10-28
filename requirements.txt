@@ -4,7 +4,7 @@ numpy
 seamm
 seamm_ase
 seamm_exec
-seamm_mdi
+seamm_mdi>=2026.10.28
 seamm_thermochemistry[cbh]>=2026.10.28.3
 seamm_util
 seamm_widgets

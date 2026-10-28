@@ -143,7 +143,9 @@ Fragment store
     finished jobs) are taken from it instead of being computed, and serve as
     the fallback in "existing results" mode. The species table says where
     each value came from; a record without a settings fingerprint is
-    "unverified" and the output says so.
+    "unverified" and the output says so. When the engine provides them (ORCA),
+    the settings fingerprints of each species' calculations are stored with its
+    energies, so the harvest files verified records.
 
 ATcT version, directory, covariances
     The version of the Thermochemical Network (``latest`` cached by default),

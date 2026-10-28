@@ -1,6 +1,16 @@
 =======
 History
 =======
+2026.10.28.4 -- Settings fingerprints of the CBH species from the engine
+    * After each CBH species the step asks the MDI engine for the settings
+      fingerprints of its calculations (seamm-mdi 2026.10.28; ORCA's engine first) and
+      stores them with the species' energies as the properties ``settings
+      fingerprint``, ``element fingerprints`` and ``calculation``, and the ``frequency
+      ...`` three for the Hessian (the analytic-Hessian record, or the energy record for
+      finite differences), so that ``seamm-thermochemistry-fragments harvest`` files
+      them as verified records and the fragment store is searched by fingerprint.
+      Engines that give no fingerprints leave the records unverified, as before.
+
 2026.10.28.3 -- CBH: radicals and ions, the fragment store, laddered reference values
     * Radicals and ions in the CBH approach: every fragment keeps the spin or charge of
       its atoms, the ATcT entry is selected with the same charge and multiplicity, and

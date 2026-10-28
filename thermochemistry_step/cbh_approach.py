@@ -814,6 +814,7 @@ class CBHApproach:
                     dedent=False,
                 )
             )
+            self._store_fingerprints(configuration, None)
             return {"H298": E, "E": E}
         delta_bohr = Q_(_P["step size"].m_as("Å"), "Å").m_as("bohr")
         E0, hessian, how = self.optimize_and_hessian(
@@ -844,7 +845,47 @@ class CBHApproach:
             "H298": E + data["H thermal"][0][0],
         }
         self._store_species_properties(configuration, data)
+        self._store_fingerprints(configuration, how)
         return result
+
+    def _store_fingerprints(self, configuration, how):
+        """Store the engine's settings fingerprints as the properties
+        ``settings fingerprint``, ``element fingerprints`` and ``calculation``
+        (and the ``frequency ...`` three for a Hessian: the analytic-Hessian
+        record, or the energy record for finite differences) under
+        ``#Thermochemistry#<model>``, the names the fragment store's harvest
+        reads. Nothing is stored when the engine gives no fingerprints."""
+        records = getattr(self, "_fingerprints", None)
+        if not records:
+            return
+        energy = records.get("energy")
+        if energy and energy.get("fingerprint"):
+            self._settings_fingerprint = energy["fingerprint"]
+        kinds = [("", energy)]
+        if how is not None:
+            kinds.append(
+                ("frequency ", records.get("hessian") if how == "analytic" else energy)
+            )
+        model = self.model or "unknown"
+        properties = configuration.properties
+        for prefix, record in kinds:
+            if not record or not record.get("fingerprint"):
+                continue
+            for name, value, kind in (
+                (f"{prefix}settings fingerprint", record["fingerprint"], "str"),
+                (
+                    f"{prefix}element fingerprints",
+                    record.get("element fingerprints", {}),
+                    "json",
+                ),
+                (f"{prefix}calculation", record, "json"),
+            ):
+                if prefix and name.startswith("frequency settings"):
+                    name = "frequency fingerprint"
+                full = f"{name}#Thermochemistry#{model}"
+                if not properties.exists(full):
+                    properties.add(full, kind, units=None, description=name)
+                properties.put(full, value)
 
     def _optimize(self, configuration, _P):
         """Optimize the structure with ASE's BFGS through the subflowchart."""
