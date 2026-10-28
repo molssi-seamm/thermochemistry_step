@@ -735,6 +735,7 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
                 )
 
         self._engine_mode = engine
+        self._hessian_route = _P.get("hessian route", "automatic")
         if _P["approach"].startswith("Isodesmic"):
             if engine == "Model Chemistry":
                 self.model = self.model_chemistry()["level"]

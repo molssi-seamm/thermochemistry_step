@@ -266,6 +266,7 @@ class TkThermochemistry(seamm.TkNode):
                 "# imaginary modes",
                 "spin multiplicity",
                 "symmetry number",
+                "hessian route",
                 "step size",
                 "T",
                 "P",
@@ -323,6 +324,7 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]
+            keys.append("hessian route")
             if harmonic:
                 keys += ["step size", "print frequencies"]
             if engine == "subflowchart":

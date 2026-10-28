@@ -1,6 +1,17 @@
 =======
 History
 =======
+2026.10.28.5 -- Bugfix: the CBH species were not optimized when the model prefers tasks
+    * For a model chemistry with an analytic gradient but no analytic Hessian whose
+      program prefers separate tasks (ORCA with a double hybrid, for one) the step
+      took the tasks route, so the CBH species were never optimized and no settings
+      fingerprints were stored. A new parameter, "Energies and Hessian via", chooses
+      the route: automatic (as before), the warm MDI engine, or separate tasks. The
+      CBH approach now drives the engine by default, so every species is optimized
+      over it and the Hessian is finite differences over the same connection; it
+      falls back to tasks, with a note, only when the program has no engine or is
+      not installed where the job runs.
+
 2026.10.28.4 -- Settings fingerprints of the CBH species from the engine
     * After each CBH species the step asks the MDI engine for the settings
       fingerprints of its calculations (seamm-mdi 2026.10.28; ORCA's engine first) and

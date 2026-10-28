@@ -340,6 +340,15 @@ class CBHApproach:
         fragments = cbh.unique_fragments([reactions[r] for r in usable])
 
         mode = _P["cbh energies"]
+        # The species are optimized over the warm engine, so the CBH approach
+        # drives the Model Chemistry as an engine unless told otherwise
+        route = _P.get("hessian route", "automatic") or "automatic"
+        if route == "automatic":
+            route = "warm engine over MDI"
+        self._hessian_route = route
+        if mode != "existing results (run nothing)":
+            text = f"The Model Chemistry is driven as: {route}.\n"
+            printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
         energies = {}
         sources = {}
         store = self._fragment_store(_P)

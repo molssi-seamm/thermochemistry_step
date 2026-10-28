@@ -70,6 +70,7 @@ def _parameters(node, **changes):
         "ZPE property": "ZPE#*#*",
         "enthalpy property": "H(298.15 K)#*#*",
         "low-level energy property": "",
+        "hessian route": "automatic",
         "fragment store": "ignore",
         "fragment store file": "default",
         "reference values": "ATcT",
@@ -334,3 +335,61 @@ def test_store_fingerprints(node):
     # No records: nothing happens
     node._fingerprints = None
     node._store_fingerprints(c, None)
+
+
+def test_cbh_drives_the_engine_by_default(node):
+    """The CBH approach turns 'automatic' into the warm engine, since it
+    optimizes the species; an explicit choice is kept."""
+    node.run_cbh(_parameters(node))
+    assert node._hessian_route == "warm engine over MDI"
+    node.run_cbh(_parameters(node, **{"hessian route": "separate tasks"}))
+    assert node._hessian_route == "separate tasks"
+
+
+def test_route_honours_the_choice(node, monkeypatch):
+    """_route uses the engine when asked, even for a model that prefers batch
+    and has no analytic Hessian; tasks when asked; automatic as before."""
+    import types
+
+    class Provider:
+        def get_task(self):  # has a task route
+            pass
+
+        def analyze_task(self):
+            pass
+
+        def get_mdi_engine_command(self, *a, **k):
+            return ["engine"]
+
+    class Evaluator:
+        def __init__(self, *a, **k):
+            self.provider = Provider()
+            self.target = None
+            self.path = "batch"
+
+    import seamm_exec
+
+    monkeypatch.setattr(seamm_exec, "Evaluator", Evaluator)
+    mc = {
+        "level": "ORCA:DFT@B2PLYP/cc-pVTZ",
+        "step": "ORCA",
+        "method": "B2PLYP",
+        "options": {
+            "mdi_capable": True,
+            "analytic_hessian": False,
+            "prefers_batch": True,
+        },
+    }
+    monkeypatch.setattr(node, "model_chemistry", lambda: mc)
+    node.flowchart = types.SimpleNamespace(
+        plugin_manager=types.SimpleNamespace(get=lambda name: Provider()),
+        executor=None,
+    )
+    monkeypatch.setattr(node, "_code_is_here", lambda step: True)
+    c = node._test_db.system.configuration
+    node._hessian_route = "automatic"
+    assert node._route(c)[1] is None  # tasks: no analytic Hessian, batch path
+    node._hessian_route = "warm engine over MDI"
+    assert node._route(c)[1] is not None  # the engine
+    node._hessian_route = "separate tasks"
+    assert node._route(c)[1] is None
