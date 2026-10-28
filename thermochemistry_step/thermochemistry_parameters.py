@@ -151,7 +151,10 @@ class ThermochemistryParameters(seamm.Parameters):
             "default": "harmonic",
             "kind": "enum",
             "default_units": "",
-            "enumeration": ("harmonic", "none (the energy is the enthalpy, e.g. MOPAC)"),
+            "enumeration": (
+                "harmonic",
+                "none (the energy is the enthalpy, e.g. MOPAC)",
+            ),
             "format_string": "",
             "description": "Thermal corrections:",
             "help_text": (

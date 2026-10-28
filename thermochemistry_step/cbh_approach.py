@@ -103,7 +103,7 @@ class CBHApproach:
                     " The subflowchart's energy will be taken as the enthalpy at "
                     "298.15 K (as for MOPAC), with no thermal corrections."
                 )
-        if P["compare with ATcT"] == "yes":
+        if _yes(P["compare with ATcT"]):
             text += " If the target is itself in ATcT the result will be compared."
         return text
 
@@ -205,7 +205,7 @@ class CBHApproach:
                 usable.append(rung)
 
         target_entry = None
-        if _P["compare with ATcT"] == "yes":
+        if _yes(_P["compare with ATcT"]):
             try:
                 target_entry = tables.lookup(
                     target, charge=charge, multiplicity=multiplicity
@@ -273,18 +273,18 @@ class CBHApproach:
         rows = []
         table = self.get_table("CBH")
         for column, coltype in (
-            ("rung", "int"),
-            ("reaction", "str"),
+            ("rung", "integer"),
+            ("reaction", "string"),
             ("DfH(0 K)", "float"),
             ("DfH(298.15 K)", "float"),
             ("uncertainty (95%)", "float"),
-            ("uncertainty method", "str"),
+            ("uncertainty method", "string"),
             ("DrH(0 K)", "float"),
             ("DrH(298.15 K)", "float"),
             ("ATcT DfH(0 K)", "float"),
             ("ATcT DfH(298.15 K)", "float"),
             ("ATcT uncertainty (95%)", "float"),
-            ("ATcT version", "str"),
+            ("ATcT version", "string"),
         ):
             if column not in table.columns:
                 table.add_column(column, coltype)
@@ -295,7 +295,9 @@ class CBHApproach:
             result = {"rung": rung, "reaction": str(reaction)}
             for key, label in (("H0", "0 K"), ("H298", "298.15 K")):
                 if all(key in energies[s] for s in reaction.coefficients):
-                    drH = sum(c * energies[s][key] for s, c in reaction.coefficients.items())
+                    drH = sum(
+                        c * energies[s][key] for s, c in reaction.coefficients.items()
+                    )
                     column = "dfH0_0K" if key == "H0" else "dfH0_298K"
                     ref = sum(
                         c * entries[s][column] for s, c in reaction.references.items()
@@ -304,7 +306,9 @@ class CBHApproach:
                     result[f"DfH {label}"] = ref - drH
             ids = [entries[s]["id"] for s in reaction.references]
             coefficients = list(reaction.references.values())
-            uncertainties = [entries[s]["uncertainty_298K"] or 0.0 for s in reaction.references]
+            uncertainties = [
+                entries[s]["uncertainty_298K"] or 0.0 for s in reaction.references
+            ]
             covariance = tables.covariance(
                 ids, fetch=(_P["covariances"] == "fetch if needed")
             )
@@ -348,7 +352,11 @@ class CBHApproach:
                     f"{e['ZPE']:.3f}" if "ZPE" in e else "",
                     f"{e['H298'] - e['E']:.3f}" if "E" in e and "H298" in e else "",
                     entry["id"] if entry else "",
-                    f"{entry['dfH0_0K']:.3f}" if entry and entry["dfH0_0K"] is not None else "",
+                    (
+                        f"{entry['dfH0_0K']:.3f}"
+                        if entry and entry["dfH0_0K"] is not None
+                        else ""
+                    ),
                     f"{entry['dfH0_298K']:.3f}" if entry else "",
                     (
                         "exact"
@@ -372,7 +380,16 @@ class CBHApproach:
             ],
             tablefmt="rounded_outline",
             disable_numparse=True,
-            colalign=("left", "decimal", "decimal", "decimal", "left", "decimal", "decimal", "decimal"),
+            colalign=(
+                "left",
+                "decimal",
+                "decimal",
+                "decimal",
+                "left",
+                "decimal",
+                "decimal",
+                "decimal",
+            ),
         )
         text += "\n"
 
@@ -384,7 +401,10 @@ class CBHApproach:
                 row.append(f"{r[key]:.2f}" if key in r else "")
             row.append(f"{r['uncertainty']:.2f}")
             if target_entry is not None:
-                for key, column in (("DfH 0 K", "dfH0_0K"), ("DfH 298.15 K", "dfH0_298K")):
+                for key, column in (
+                    ("DfH 0 K", "dfH0_0K"),
+                    ("DfH 298.15 K", "dfH0_298K"),
+                ):
                     if key in r and target_entry[column] is not None:
                         row.append(f"{r[key] - target_entry[column]:+.2f}")
                     else:
@@ -410,7 +430,11 @@ class CBHApproach:
         )
         text += "\n"
         if target_entry is not None:
-            unc = "exact" if target_entry["exact"] else f"± {target_entry['uncertainty_298K']:.2f}"
+            unc = (
+                "exact"
+                if target_entry["exact"]
+                else f"± {target_entry['uncertainty_298K']:.2f}"
+            )
             text += (
                 f"\nATcT ({target_entry['id']}, ver. {tables.version}) gives "
                 f"ΔfH°(0 K) = {target_entry['dfH0_0K']:.2f} and ΔfH°(298.15 K) = "
@@ -424,7 +448,9 @@ class CBHApproach:
             "gas-phase entry is the lowest conformer at 0 K but a conformer average "
             "at 298.15 K, which limits the 298.15 K comparison for flexible molecules."
         )
-        if any(r["uncertainty method"].startswith("quadrature") for r in results.values()):
+        if any(
+            r["uncertainty method"].startswith("quadrature") for r in results.values()
+        ):
             text += (
                 "\nNo ATcT covariance block was cached for some reactions, so their "
                 "reference uncertainties ignore the correlations (quadrature); run "
@@ -489,7 +515,9 @@ class CBHApproach:
             __(f"\nSpecies {can}:", indent=4 * " ", wrap=False, dedent=False)
         )
         try:
-            if _P["thermal corrections"] != "harmonic":
+            if getattr(self, "_engine_mode", "subflowchart") == "Model Chemistry":
+                result = self._compute_species_mc(_P, can, configuration)
+            elif _P["thermal corrections"] != "harmonic":
                 atoms = self.ase_atoms(configuration)
                 E = Q_(atoms.get_potential_energy(), "eV").m_as("kJ/mol")
                 printer.important(
@@ -502,7 +530,7 @@ class CBHApproach:
                 )
                 result = {"H298": E, "E": E}
             else:
-                if _P["optimize fragments"] == "yes" and configuration.n_atoms > 1:
+                if _yes(_P["optimize fragments"]) and configuration.n_atoms > 1:
                     self._optimize(configuration, _P)
                 self._XYZ0 = np.array(
                     configuration.atoms.get_coordinates(fractionals=False)
@@ -533,6 +561,56 @@ class CBHApproach:
                 self._store_species_properties(configuration, data)
         finally:
             self._subdirectory = None
+        return result
+
+    def _compute_species_mc(self, _P, can, configuration):
+        """One species through the Model Chemistry: energy only, or optimize
+        + Hessian + harmonic thermochemistry."""
+        if _P["thermal corrections"] != "harmonic":
+            E = self.optimize_and_energy(
+                configuration,
+                optimize=(_yes(_P["optimize fragments"])),
+                fmax=_P["fragment convergence"].m_as("eV/Å"),
+                max_steps=int(_P["fragment max steps"]),
+            )
+            printer.important(
+                __(
+                    f"    enthalpy of formation (from the engine) = {E:.3f} kJ/mol",
+                    indent=4 * " ",
+                    wrap=False,
+                    dedent=False,
+                )
+            )
+            return {"H298": E, "E": E}
+        delta_bohr = Q_(_P["step size"].m_as("Å"), "Å").m_as("bohr")
+        E0, hessian, how = self.optimize_and_hessian(
+            configuration,
+            delta_bohr,
+            optimize=(_yes(_P["optimize fragments"])),
+            fmax=_P["fragment convergence"].m_as("eV/Å"),
+            max_steps=int(_P["fragment max steps"]),
+        )
+        from ase.vibrations import VibrationsData
+
+        atoms = self.ase_atoms(configuration)
+        n = len(atoms)
+        hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
+        self._vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
+        self._E0 = Q_(E0, "kJ/mol").m_as("eV")
+        printer.important(
+            __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
+        )
+        data = self.harmonic_thermochemistry(
+            _P, [T_REF], "K", [1.0], "bar", print_frequencies=False
+        )
+        E = Q_(data["total_energy"], "E_h").m_as("kJ/mol")
+        result = {
+            "E": E,
+            "ZPE": data["ZPE"],
+            "H0": E + data["ZPE"],
+            "H298": E + data["H thermal"][0][0],
+        }
+        self._store_species_properties(configuration, data)
         return result
 
     def _optimize(self, configuration, _P):
@@ -570,7 +648,8 @@ class CBHApproach:
             ),
             (
                 f"H(298.15 K)#Thermochemistry#{model}",
-                Q_(data["total_energy"], "E_h").m_as("kJ/mol") + data["H thermal"][0][0],
+                Q_(data["total_energy"], "E_h").m_as("kJ/mol")
+                + data["H thermal"][0][0],
                 "kJ/mol",
                 "H(298.15 K)",
             ),
@@ -657,6 +736,13 @@ class CBHApproach:
             level=1,
             note="The ATcT values used as references.",
         )
+
+
+def _yes(value):
+    """A yes/no parameter, which arrives as a bool or a string."""
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("yes", "true", "1", "on")
 
 
 def cbh_charge(smiles):

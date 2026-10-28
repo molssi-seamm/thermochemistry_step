@@ -33,6 +33,43 @@ logger = logging.getLogger(__name__)
 printer = printing.getPrinter("Thermochemistry")
 
 
+class _MDICalculator:
+    """A minimal ASE calculator over a warm MDI engine, for the optimization."""
+
+    implemented_properties = ["energy", "forces"]
+
+    def __init__(self, engine):
+        self.engine = engine
+        self.results = {}
+        self.n_calls = 0
+        self._positions = None
+
+    def _update(self, atoms):
+        if self._positions is None or not np.array_equal(
+            self._positions, atoms.positions
+        ):
+            self.engine.set_coordinates(atoms.positions, units="Å")
+            self.results = {
+                "energy": self.engine.energy(units="eV"),
+                "forces": np.asarray(self.engine.forces(units="eV/Å"), dtype=float),
+            }
+            self._positions = np.array(atoms.positions)
+            self.n_calls += 1
+
+    def get_potential_energy(self, atoms=None, force_consistent=False):
+        self._update(atoms)
+        return self.results["energy"]
+
+    def get_forces(self, atoms=None):
+        self._update(atoms)
+        return self.results["forces"]
+
+    def calculation_required(self, atoms, properties):
+        return self._positions is None or not np.array_equal(
+            self._positions, atoms.positions
+        )
+
+
 class ModelChemistryHessian:
     """Mixin: the energy and Cartesian Hessian from the Model Chemistry."""
 
@@ -42,16 +79,14 @@ class ModelChemistryHessian:
             return None
         return self.get_variable("_model_chemistry")
 
-    def energy_and_hessian(self, configuration, delta_bohr=0.01):
-        """The energy (kJ/mol) and the Cartesian Hessian (hartree/bohr²,
-        (3N, 3N)) of the configuration with the Model Chemistry.
+    def _route(self, configuration):
+        """How to drive the Model Chemistry for this configuration.
 
         Returns
         -------
-        (float, numpy.ndarray, str)
-            The energy, the Hessian, and how the Hessian was obtained:
-            "analytic", "finite differences over MDI" or "finite differences
-            as tasks".
+        (evaluator, build_argv or None, elements, coords_ang)
+            ``build_argv`` is None when the finite difference must run as
+            tasks (no MDI engine, a queue target, or the program not here).
         """
         mc = self.model_chemistry()
         if mc is None:
@@ -103,7 +138,6 @@ class ModelChemistryHessian:
             configuration.atoms.get_coordinates(fractionals=False, as_array=True),
             dtype=float,
         )
-        n = len(elements)
 
         has_tasks = hasattr(evaluator.provider, "get_task")
         target = evaluator.target
@@ -111,13 +145,14 @@ class ModelChemistryHessian:
             "queue",
             "taskserver",
         )
+        use_tasks = False
         if on_queue and has_tasks:
-            return self._fd_hessian_tasks(evaluator, configuration, coords_ang)
-        if not options.get("mdi_capable", False):
-            return self._fd_hessian_tasks(evaluator, configuration, coords_ang)
-        if options.get("analytic_hessian") is False and evaluator.path == "batch":
-            return self._fd_hessian_tasks(evaluator, configuration, coords_ang)
-        if has_tasks and not self._code_is_here(step):
+            use_tasks = True
+        elif not options.get("mdi_capable", False):
+            use_tasks = True
+        elif options.get("analytic_hessian") is False and evaluator.path == "batch":
+            use_tasks = True
+        elif has_tasks and not self._code_is_here(step):
             printer.important(
                 __(
                     f"{mc['level']} is not installed on this machine, so the "
@@ -126,11 +161,126 @@ class ModelChemistryHessian:
                     indent=self.indent + 4 * " ",
                 )
             )
-            return self._fd_hessian_tasks(evaluator, configuration, coords_ang)
+            use_tasks = True
+        return evaluator, (None if use_tasks else build_argv), elements, coords_ang
+
+    def model_chemistry_energy(self, configuration):
+        """The energy (kJ/mol) of the configuration with the Model Chemistry."""
+        from seamm_exec import Evaluator
+
+        mc = self.model_chemistry()
+        if mc is None:
+            raise ValueError("Thermochemistry needs a Model Chemistry step before it.")
+        with Evaluator(self, mc, properties=("energy",)) as evaluator:
+            evaluator.submit(configuration, key="energy")
+            for result in evaluator.results():
+                if not result.ok:
+                    raise RuntimeError(f"The energy failed: {result.reason}")
+                return float(result.energy)
+        raise RuntimeError("No energy was returned by the Model Chemistry")
+
+    def energy_and_hessian(self, configuration, delta_bohr=0.01):
+        """The energy (kJ/mol) and the Cartesian Hessian (hartree/bohr²,
+        (3N, 3N)) of the configuration with the Model Chemistry.
+
+        Returns
+        -------
+        (float, numpy.ndarray, str)
+            The energy, the Hessian, and how the Hessian was obtained:
+            "analytic", "finite differences over MDI" or "finite differences
+            as tasks".
+        """
+        return self.optimize_and_hessian(configuration, delta_bohr, optimize=False)
+
+    def optimize_and_energy(
+        self, configuration, optimize=True, fmax=0.005, max_steps=200
+    ):
+        """Optionally optimize the structure over the warm engine, then its
+        energy (kJ/mol). With no engine (tasks) the energy only."""
+        evaluator, build_argv, elements, coords_ang = self._route(configuration)
+        if build_argv is None or not optimize or len(elements) == 1:
+            return self.model_chemistry_energy(configuration)
+
+        from seamm_mdi import MDIEngine
+
+        with MDIEngine(build_argv, elements, name="SEAMM", logger=self.logger) as eng:
+            coords_ang = self._optimize_over_engine(
+                eng, configuration, elements, coords_ang, fmax, max_steps
+            )
+            eng.set_coordinates(coords_ang, units="Å")
+            return eng.energy(units="kJ/mol")
+
+    def _optimize_over_engine(
+        self, eng, configuration, elements, coords_ang, fmax, max_steps
+    ):
+        """ASE BFGS over the warm engine; updates the configuration."""
+        from ase import Atoms
+        from ase.optimize import BFGS
+
+        atoms = Atoms(numbers=elements, positions=coords_ang)
+        atoms.calc = _MDICalculator(eng)
+        converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=max_steps)
+        coords_ang = np.asarray(atoms.positions, dtype=float)
+        configuration.atoms.set_coordinates(coords_ang, fractionals=False)
+        printer.important(
+            __(
+                f"The structure was optimized in {atoms.calc.n_calls} energy "
+                "evaluations"
+                + ("." if converged else f" without converging in {max_steps} steps."),
+                indent=self.indent + 4 * " ",
+            )
+        )
+        return coords_ang
+
+    def optimize_and_hessian(
+        self,
+        configuration,
+        delta_bohr=0.01,
+        optimize=True,
+        fmax=0.005,
+        max_steps=200,
+    ):
+        """Optionally optimize the structure (ASE BFGS over the warm engine),
+        then the energy and Hessian, in one engine session.
+
+        Parameters
+        ----------
+        configuration : molsystem._Configuration
+            Its coordinates are updated by the optimization.
+        delta_bohr : float
+            The finite-difference step.
+        optimize : bool
+        fmax : float
+            The convergence criterion for the optimization, eV/Å.
+        max_steps : int
+
+        Returns
+        -------
+        (float, numpy.ndarray, str)
+            As `energy_and_hessian`.
+        """
+        evaluator, build_argv, elements, coords_ang = self._route(configuration)
+        n = len(elements)
+        if build_argv is None:
+            if optimize:
+                printer.important(
+                    __(
+                        "The structure is not optimized: the Model Chemistry runs as "
+                        "separate tasks, with no engine to drive the optimization.",
+                        indent=self.indent + 4 * " ",
+                    )
+                )
+            return self._fd_hessian_tasks(
+                evaluator, configuration, coords_ang, delta_bohr
+            )
 
         from seamm_mdi import MDIEngine  # only for the MDI routes
 
         with MDIEngine(build_argv, elements, name="SEAMM", logger=self.logger) as eng:
+            if optimize and n > 1:
+                coords_ang = self._optimize_over_engine(
+                    eng, configuration, elements, coords_ang, fmax, max_steps
+                )
             eng.set_coordinates(coords_ang, units="Å")
             E0 = eng.energy(units="kJ/mol")
             if eng.supports("<HESSIAN"):

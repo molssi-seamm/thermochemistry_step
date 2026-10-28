@@ -211,7 +211,9 @@ metadata["results"] = {
         "format": ".2f",
     },
     "DfH 298K": {
-        "description": "The enthalpy of formation at 298.15 K (CBH with ATcT references)",
+        "description": (
+            "The enthalpy of formation at 298.15 K (CBH with ATcT references)"
+        ),
         "dimensionality": "scalar",
         "property": "DfH(298.15 K)#Thermochemistry#{model}",
         "type": "float",

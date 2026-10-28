@@ -14,6 +14,7 @@ import numpy as np
 from tabulate import tabulate
 
 import thermochemistry_step
+from thermochemistry_step.cbh_approach import CBHApproach
 from thermochemistry_step.hessian import ModelChemistryHessian
 from thermochemistry_step.symmetry import rotational_symmetry_number
 import molsystem
@@ -42,7 +43,7 @@ if path.exists():
     molsystem.add_properties_from_file(csv_file)
 
 
-class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
+class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach):
     """
     The non-graphical part of a Thermochemistry step in a flowchart.
 
@@ -204,6 +205,43 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
         indent: str
             An extra indentation for the output
         """
+        Ts, Tunits = self._values_and_units(_P["T"], "K")
+        Ps, Punits = self._values_and_units(_P["P"], "bar")
+        data = self.harmonic_thermochemistry(_P, Ts, Tunits, Ps, Punits)
+
+        # Put any requested results into variables or tables
+        self.store_results(
+            data=data,
+            create_tables=True,
+            configuration=self._working_configuration,
+        )
+
+        # Citation!
+        self.ase_read_bibliography()
+        self.references.cite(
+            raw=self._bibliography["ASE"],
+            alias="ASE",
+            module="structure_step",
+            level=1,
+            note="Main reference for ASE.",
+        )
+
+    def harmonic_thermochemistry(
+        self, _P, Ts, Tunits, Ps, Punits, print_frequencies=True
+    ):
+        """The harmonic thermochemistry of the working configuration from
+        ``self._vibrations`` and ``self._E0``, printed and returned as the
+        data dictionary of results.
+
+        Parameters
+        ----------
+        _P : dict
+            The parameters.
+        Ts, Tunits, Ps, Punits
+            The temperatures and pressures and their units.
+        print_frequencies : bool
+            Whether to list the frequencies.
+        """
         text = ""
         atoms = self.ase_atoms(self._working_configuration)
 
@@ -314,7 +352,7 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
                 else:
                     n_max = int(n_max)
 
-            if n_max > 0 and len(real_frequencies) <= n_max:
+            if print_frequencies and n_max > 0 and len(real_frequencies) <= n_max:
                 text += f"There are {len(real_frequencies)} true frequencies:\n"
                 frequencies = [f"  {v:9.1f}" for v in real_frequencies]
                 text += "\n".join(frequencies)
@@ -394,9 +432,6 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
         else:
             E0 = None
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
-
-        Ts, Tunits = self._values_and_units(_P["T"], "K")
-        Ps, Punits = self._values_and_units(_P["P"], "bar")
 
         # Conversion factors
         Efac = Q_(1, "eV").m_as("kJ/mol")
@@ -479,23 +514,7 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
         text += tmp
         text += "\n"
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
-
-        # Put any requested results into variables or tables
-        self.store_results(
-            data=data,
-            create_tables=True,
-            configuration=self._working_configuration,
-        )
-
-        # Citation!
-        self.ase_read_bibliography()
-        self.references.cite(
-            raw=self._bibliography["ASE"],
-            alias="ASE",
-            module="structure_step",
-            level=1,
-            note="Main reference for ASE.",
-        )
+        return data
 
     def create_parser(self):
         """Setup the command-line / config file parser"""
@@ -550,6 +569,11 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
             P = self.parameters.values_to_dict()
 
         result = self.header + "\n\n"
+
+        if str(P["approach"]).startswith("Isodesmic"):
+            text = self.describe_cbh(P)
+            result += str(__(text, indent=4 * " ", **P))
+            return result
 
         text = (
             "Calculate the thermochemistry for the system in the harmonic approximation"
@@ -709,6 +733,23 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian):
                     "Thermochemistry needs a Model Chemistry step before it, or a "
                     "subflowchart with the calculation of the energy and gradients."
                 )
+
+        self._engine_mode = engine
+        if _P["approach"].startswith("Isodesmic"):
+            if engine == "Model Chemistry":
+                self.model = self.model_chemistry()["level"]
+            else:
+                self.model = self._subflowchart_model()
+            tic = time.perf_counter_ns()
+            data = self.run_cbh(_P)
+            toc = time.perf_counter_ns()
+            self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
+            self.store_results(
+                data=data,
+                create_tables=True,
+                configuration=self._working_configuration,
+            )
+            return next_node
 
         tic = time.perf_counter_ns()
         if engine == "Model Chemistry":
