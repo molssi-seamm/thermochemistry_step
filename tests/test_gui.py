@@ -78,6 +78,8 @@ def test_cbh_layout(tk_node):
     assert _mapped(tk_node["fragment convergence"])
     assert _mapped(tk_node["step size"])
     assert _mapped(tk_node["hessian route"])
+    assert _mapped(tk_node["initial conformer"])
+    assert _mapped(tk_node["conformer embeddings"])
     assert not _mapped(tk_node["T"]) and not _mapped(tk_node["P"])
     assert not _mapped(tk_node["energy property"])
     assert not _mapped(tk_node["on success"])
