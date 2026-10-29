@@ -866,7 +866,11 @@ class CBHApproach:
                 self._store_species_properties(configuration, data)
         finally:
             self._subdirectory = None
-        self._write_species_sdf(configuration, can, result)
+        try:
+            self._write_species_sdf(configuration, can, result)
+        except Exception as e:
+            # Diagnostic output: it must never fail the species
+            logger.warning(f"Could not write the structure of {can}: {e}")
         return result
 
     def _species_directory(self):
@@ -905,8 +909,9 @@ class CBHApproach:
             ("H0", "H(0 K) (kJ/mol)"),
             ("H298", "H(298.15 K) (kJ/mol)"),
         ):
-            if result.get(key) is not None:
-                fields[title] = f"{result[key]:.3f}"
+            value = result.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                fields[title] = f"{value:.3f}"
         if "imaginary" in result:
             fields["imaginary modes"] = str(result["imaginary"])
         body = text.rstrip()

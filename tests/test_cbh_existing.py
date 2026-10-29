@@ -718,3 +718,24 @@ def test_species_sdf(node, tmp_path, monkeypatch):
     # SMILES with stereo slashes give safe file names
     node._write_species_sdf(configuration, "C/C=C/C", {"E": 0.0})
     assert (tmp_path / "step" / "C_C=C_C.sdf").exists()
+
+
+def test_species_sdf_never_fails_a_species(node, tmp_path, monkeypatch, caplog):
+    """The SDF writer is diagnostic output: an error in it is logged, not raised."""
+    monkeypatch.setattr(node, "_species_directory", lambda: tmp_path / "step")
+    monkeypatch.setattr(node, "_engine_mode", "Model Chemistry", raising=False)
+    monkeypatch.setattr(
+        node, "_compute_species_mc", lambda _P, can, configuration: {"E": "n/a"}
+    )
+    configuration = None
+    for system in node._test_db.systems:
+        if system.name == "CBH:CC":
+            configuration = system.configuration
+    monkeypatch.setattr(
+        node, "_write_species_sdf", lambda *a: (_ for _ in ()).throw(ValueError("x"))
+    )
+    result = node._compute_species(
+        {}, "CC", "CC", system=configuration.system, configuration=configuration
+    )
+    assert result == {"E": "n/a"}
+    assert "Could not write the structure of CC" in caplog.text
