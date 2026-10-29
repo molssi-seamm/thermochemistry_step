@@ -416,7 +416,12 @@ class ModelChemistryHessian:
                     config = step.get_executor_config(
                         self.flowchart.executor, self.global_options
                     )
-                except Exception:
+                except Exception as e:
+                    logger.warning(
+                        f"Could not read the executor configuration of "
+                        f"{type(step).__name__} ({e}); its MDI engine starts without "
+                        "the program's modules, if it has any."
+                    )
                     config = {}
                 ce = None
                 try:
