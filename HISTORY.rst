@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.10.28.10 -- Bugfix: one engine rank per physical core
+    * Where hyperthreading is on, Slurm counts hardware threads as CPUs and confines
+      the job to them, so a 16-task job holds 8 physical cores and the engine's 16
+      ranks ran two to a core. The engine now uses one rank per distinct physical
+      core among the CPUs the job may use (ask Slurm for twice the tasks, or
+      ``--hint=nomultithread``). The pin to Slurm's abstract CPU ids of 2026.10.28.9,
+      which could not apply, is gone.
+
 2026.10.28.9 -- Bugfix: with the engine route the Hessian still went to tasks
     * When the Model Chemistry was driven as the warm engine (the CBH approach's
       default) and the program prefers separate tasks (ORCA), the structure was

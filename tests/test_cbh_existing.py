@@ -557,3 +557,18 @@ def test_slurm_allocated_cpus(monkeypatch):
     )
     assert slurm_allocated_cpus({}, run=lambda j: text) is None
     assert slurm_allocated_cpus({"SLURM_JOB_ID": "1"}, run=lambda j: "no ids") is None
+
+
+def test_physical_cores_allowed(tmp_path):
+    from thermochemistry_step.hessian import physical_cores_allowed
+
+    # 4 CPUs on 2 cores (hyperthread siblings 0/2 and 1/3)
+    for cpu, core in ((0, 0), (1, 1), (2, 0), (3, 1)):
+        d = tmp_path / f"cpu{cpu}" / "topology"
+        d.mkdir(parents=True)
+        (d / "core_id").write_text(f"{core}\n")
+        (d / "physical_package_id").write_text("0\n")
+    assert physical_cores_allowed({0, 1, 2, 3}, sysfs=str(tmp_path)) == 2
+    assert physical_cores_allowed({0, 1}, sysfs=str(tmp_path)) == 2
+    assert physical_cores_allowed({0, 2}, sysfs=str(tmp_path)) == 1
+    assert physical_cores_allowed({7}, sysfs=str(tmp_path)) is None

@@ -52,6 +52,34 @@ def parse_cpu_ids(text):
     return cpus
 
 
+def physical_cores_allowed(cpus=None, sysfs="/sys/devices/system/cpu"):
+    """The number of distinct physical cores among the CPUs (hardware
+    threads) this process may run on, from the kernel's topology; None where
+    that is unknown (macOS, no sysfs)."""
+    if cpus is None:
+        try:
+            cpus = os.sched_getaffinity(0)
+        except AttributeError:
+            return None
+    cores = set()
+    for cpu in cpus:
+        path = os.path.join(sysfs, f"cpu{cpu}", "topology", "core_id")
+        try:
+            with open(path) as fd:
+                core_id = int(fd.read().strip())
+        except (OSError, ValueError):
+            return None
+        # core ids repeat across sockets
+        spath = os.path.join(sysfs, f"cpu{cpu}", "topology", "physical_package_id")
+        try:
+            with open(spath) as fd:
+                socket_id = int(fd.read().strip())
+        except (OSError, ValueError):
+            socket_id = 0
+        cores.add((socket_id, core_id))
+    return len(cores) or None
+
+
 def slurm_allocated_cpus(environ=None, run=None):
     """The CPU ids Slurm allocated to this job on this node, from
     ``scontrol show job -d``, or None outside Slurm or when unknown."""
@@ -267,21 +295,8 @@ class ModelChemistryHessian:
         """
         step = getattr(self, "_engine_step", None)
         saved = dict(os.environ)
-        saved_affinity = None
         env = {}
         try:
-            # Pin this process, and so the engine and its MPI ranks, to the
-            # CPUs Slurm allocated: without cgroups the OS may otherwise put
-            # two ranks on one physical core (its hyperthread siblings)
-            cpus = slurm_allocated_cpus()
-            if cpus and hasattr(os, "sched_setaffinity"):
-                try:
-                    saved_affinity = os.sched_getaffinity(0)
-                    os.sched_setaffinity(0, cpus)
-                    self.logger.info(f"The engine is pinned to CPUs {sorted(cpus)}")
-                except OSError as e:  # pragma: no cover
-                    self.logger.warning(f"Could not set the CPU affinity: {e}")
-                    saved_affinity = None
             hook = getattr(step, "mdi_engine_environment", None)
             if hook is not None:
                 env.update(
@@ -311,11 +326,6 @@ class ModelChemistryHessian:
         finally:
             os.environ.clear()
             os.environ.update(saved)
-            if saved_affinity is not None:
-                try:
-                    os.sched_setaffinity(0, saved_affinity)
-                except OSError:  # pragma: no cover
-                    pass
 
     def _engine_ncores(self):
         """The cores for the MDI engine: the job's allocation under Slurm
@@ -339,6 +349,12 @@ class ModelChemistryHessian:
                 n = len(os.sched_getaffinity(0))
             except AttributeError:  # macOS
                 n = os.cpu_count() or 1
+        # Slurm counts hardware threads as CPUs where hyperthreading is on,
+        # and confines the job to those threads: the engine wants one rank
+        # per PHYSICAL core, so count the distinct cores in the allowed set
+        cores = physical_cores_allowed()
+        if cores:
+            n = min(n, cores)
         wanted = None
         try:
             wanted = self.global_options.get("ncores", "available")
