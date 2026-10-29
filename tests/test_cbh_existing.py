@@ -587,3 +587,40 @@ def test_engine_ncores_uses_physical_cores(node, monkeypatch):
     monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: 8)
     node.global_options = {"ncores": "available"}
     assert node._engine_ncores() == 8
+
+
+def test_ncores_passed_only_when_accepted():
+    from thermochemistry_step.hessian import _accepts_keyword
+
+    def orca(
+        executor,
+        options,
+        method,
+        port,
+        hostname,
+        charge,
+        multiplicity,
+        n_atoms,
+        ncores=1,
+    ):
+        pass
+
+    def mopac(
+        executor,
+        options,
+        method,
+        port,
+        hostname,
+        charge,
+        multiplicity,
+        n_atoms,
+        extra_args=None,
+    ):
+        pass
+
+    def anything(executor, options, **kwargs):
+        pass
+
+    assert _accepts_keyword(orca, "ncores")
+    assert not _accepts_keyword(mopac, "ncores")
+    assert _accepts_keyword(anything, "ncores")

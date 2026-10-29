@@ -1,6 +1,12 @@
 =======
 History
 =======
+2026.10.29 -- Bugfix: MOPAC (and other single-threaded engines) could not be started
+    * Since 2026.10.28.7 the step passed the core count to every program's MDI engine
+      command, which only ORCA's accepts; MOPAC's engine then failed to start ("got
+      an unexpected keyword argument 'ncores'"). The core count is now passed only to
+      a program whose engine command takes it.
+
 2026.10.28.10 -- Bugfix: one engine rank per physical core
     * Where hyperthreading is on, Slurm counts hardware threads as CPUs and confines
       the job to them, so a 16-task job holds 8 physical cores and the engine's 16
