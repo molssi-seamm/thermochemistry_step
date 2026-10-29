@@ -628,29 +628,38 @@ def test_ncores_passed_only_when_accepted():
 
 def _fake_module_shell(tmp_path, body='export SEAMM_TEST_MODULE="$2"'):
     """A 'shell' whose module function sets a variable, standing in for Lmod."""
-    shell = tmp_path / "fake_shell"
+    shell = tmp_path / f"fake_shell_{abs(hash(body))}"
     shell.write_text("#!/bin/bash\n" f"module() {{ {body}; }}\n" 'eval "$2"\n')
     shell.chmod(0o755)
     return str(shell)
 
 
-def test_module_environment(tmp_path, caplog):
+def test_module_environment(tmp_path):
     """A module installation's environment: the variables `module load`
-    changes, nothing for other installations or when the load fails."""
-    from thermochemistry_step.hessian import module_environment
+    changes, by Local.exec's module rule; a clear error when it fails."""
+    from thermochemistry_step.hessian import module_environment, modules_to_load
 
     assert module_environment({"installation": "local", "code": "orca"}) == {}
     assert module_environment({"installation": "modules", "modules": ""}) == {}
     config = {
         "installation": "modules",
         "modules": " ORCA ",
+        "gpu_modules": "ORCA-gpu",
         "shell": _fake_module_shell(tmp_path),
     }
+    assert modules_to_load(config) == "ORCA"
+    assert modules_to_load(config, {"NGPUS": 1}) == "ORCA-gpu"
+    assert modules_to_load({**config, "gpu_modules": ""}, {"NGPUS": 1}) == "ORCA"
     env = module_environment(config, environ={"PATH": "/usr/bin:/bin", "KEEP": "1"})
     assert env == {"SEAMM_TEST_MODULE": "ORCA"}
-    config["shell"] = _fake_module_shell(tmp_path, body="return 1")
-    assert module_environment(config) == {}
-    assert "'module load ORCA' failed" in caplog.text
+    env = module_environment(config, {"NGPUS": 2}, environ={"PATH": "/usr/bin:/bin"})
+    assert env == {"SEAMM_TEST_MODULE": "ORCA-gpu"}
+    # A failing load names the module
+    config["shell"] = _fake_module_shell(
+        tmp_path, body="echo 'Lmod has detected the following error' >&2; return 1"
+    )
+    with pytest.raises(RuntimeError, match=r"'module load ORCA' failed.*Lmod"):
+        module_environment(config)
 
 
 def test_engine_environment_loads_modules(node, tmp_path, monkeypatch):

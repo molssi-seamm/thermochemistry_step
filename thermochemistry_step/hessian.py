@@ -132,29 +132,47 @@ def slurm_allocated_cpus(environ=None, run=None):
 
 _MODULE_INIT = (
     "/etc/profile.d/lmod.sh",
+    "$LMOD_PKG/init/bash",
     "/etc/profile.d/modules.sh",
     "/usr/share/lmod/lmod/init/bash",
     "/usr/share/Modules/init/bash",
 )
 _IGNORED_VARIABLES = {"_", "SHLVL", "PWD", "OLDPWD"}
+_SEPARATOR = b"\0__SEAMM_MODULE_LOAD__\0"
 
 
-def module_environment(config, environ=None):
-    """The variables that ``module load <modules>`` changes, for a program
-    whose executor config says ``installation = modules``; {} otherwise.
+def modules_to_load(config, ce=None):
+    """The modules for this run, by the rule seamm_exec's Local.exec uses: the
+    ``gpu_modules`` when the computational environment has GPUs and they are
+    given, otherwise ``modules``; '' unless ``installation = modules``."""
+    if (config.get("installation") or "").strip() != "modules":
+        return ""
+    modules = ""
+    if ce is not None and "NGPUS" in ce:
+        modules = config.get("gpu_modules") or ""
+    if not modules:
+        modules = config.get("modules") or ""
+    return " ".join(str(modules).split())
+
+
+def module_environment(config, ce=None, environ=None):
+    """The variables that ``module load`` changes, for a program whose
+    executor config says ``installation = modules``; {} otherwise.
 
     A normal run of the program gets them because seamm_exec puts
     ``module load`` in front of the command, but the MDI engine is started
     directly, so without them a module-installed code cannot even load its
     own libraries (ORCA on TinkerCliffs: "liborca_tools_6_1_1_avx2.so.6:
     cannot open shared object file"). The modules are loaded in a child
-    shell, sourcing the module system's init script if the ``module``
-    function is not already defined, and the resulting environment is
-    compared with this one.
+    shell (``config["shell"]``, default bash), sourcing the module system's
+    init script if the ``module`` function is not defined (it is not under
+    ``--export=NONE``), and its environment before and after the load is
+    compared. Exported shell functions and the variables bash itself sets
+    are left out.
+
+    Raises RuntimeError naming the modules if they cannot be loaded.
     """
-    if (config.get("installation") or "").strip() != "modules":
-        return {}
-    modules = " ".join(str(config.get("modules") or "").split())
+    modules = modules_to_load(config, ce)
     if not modules:
         return {}
     environ = dict(os.environ if environ is None else environ)
@@ -164,33 +182,47 @@ def module_environment(config, environ=None):
     )
     script = (
         "_init() { " + init + "; return 1; }\n"
-        "type module >/dev/null 2>&1 || _init\n"
-        f"module load {modules} >/dev/null 2>&1 || exit 3\n"
+        "type module >/dev/null 2>&1 || _init || exit 4\n"
+        "env -0\n"
+        "printf '__SEAMM_MODULE_LOAD__\\0'\n"
+        f"module load {modules} >&2 || exit 3\n"
         "env -0\n"
     )
     shell = config.get("shell") or "/bin/bash"
+    tried = ", ".join(_MODULE_INIT)
     try:
         result = subprocess.run(
             [shell, "-c", script], capture_output=True, env=environ, timeout=120
         )
     except (OSError, subprocess.SubprocessError) as e:
-        logger.warning(f"Could not load the modules '{modules}': {e}")
-        return {}
+        raise RuntimeError(f"Could not load the modules '{modules}' with {shell}: {e}")
     if result.returncode != 0:
-        logger.warning(
-            f"'module load {modules}' failed (return code {result.returncode}); the "
-            "engine runs with this process's environment."
+        why = (
+            "no 'module' command, and none of these init scripts defined it: " + tried
+            if result.returncode == 4
+            else result.stderr.decode(errors="replace").strip()[-500:]
         )
-        return {}
-    loaded = {}
-    for item in result.stdout.split(b"\0"):
-        name, sep, value = item.decode(errors="replace").partition("=")
-        if sep and name and name not in _IGNORED_VARIABLES:
-            loaded[name] = value
+        raise RuntimeError(
+            f"'module load {modules}' failed (return code {result.returncode}), so the "
+            f"MDI engine cannot be started with the program's environment: {why}"
+        )
+    before, _, after = (b"\0" + result.stdout).partition(_SEPARATOR)
+
+    def parse(blob):
+        variables = {}
+        for item in blob.split(b"\0"):
+            name, sep, value = item.decode(errors="replace").partition("=")
+            if sep and name:
+                variables[name] = value
+        return variables
+
+    before, after = parse(before), parse(after)
     return {
         name: value
-        for name, value in loaded.items()
-        if environ.get(name) != value and not name.startswith("BASH_FUNC_")
+        for name, value in after.items()
+        if before.get(name) != value
+        and name not in _IGNORED_VARIABLES
+        and not name.startswith("BASH_FUNC_")
     }
 
 
@@ -386,7 +418,14 @@ class ModelChemistryHessian:
                     )
                 except Exception:
                     config = {}
-                loaded = module_environment(config or {})
+                ce = None
+                try:
+                    from seamm_exec import computational_environment
+
+                    ce = computational_environment()
+                except Exception:
+                    pass
+                loaded = module_environment(config or {}, ce)
                 if loaded:
                     env.update(loaded)
                     os.environ.update(loaded)
