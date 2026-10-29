@@ -36,6 +36,58 @@ logger = logging.getLogger(__name__)
 printer = printing.getPrinter("Thermochemistry")
 
 
+def parse_cpu_ids(text):
+    """The CPU ids in a Slurm ``CPU_IDs=`` list such as ``16-31`` or
+    ``0-3,8,10-11`` (``scontrol show job -d``), as a set of ints."""
+    cpus = set()
+    for part in text.replace("CPU_IDs=", "").strip().split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo, hi = part.split("-", 1)
+            cpus.update(range(int(lo), int(hi) + 1))
+        else:
+            cpus.add(int(part))
+    return cpus
+
+
+def slurm_allocated_cpus(environ=None, run=None):
+    """The CPU ids Slurm allocated to this job on this node, from
+    ``scontrol show job -d``, or None outside Slurm or when unknown."""
+    import socket
+    import subprocess
+
+    environ = os.environ if environ is None else environ
+    job_id = environ.get("SLURM_JOB_ID")
+    if not job_id:
+        return None
+    try:
+        if run is None:
+            text = subprocess.run(
+                ["scontrol", "show", "job", "-d", job_id],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            ).stdout
+        else:
+            text = run(job_id)
+    except Exception:
+        return None
+    host = socket.gethostname().split(".")[0]
+    chosen = None
+    for line in text.splitlines():
+        if "CPU_IDs=" not in line:
+            continue
+        ids = line.split("CPU_IDs=")[1].split()[0]
+        nodes = line.split("Nodes=")[1].split()[0] if "Nodes=" in line else ""
+        if chosen is None or host in nodes:
+            chosen = ids
+        if host in nodes:
+            break
+    return parse_cpu_ids(chosen) if chosen else None
+
+
 class _MDICalculator:
     """A minimal ASE calculator over a warm MDI engine, for the optimization."""
 
@@ -215,8 +267,21 @@ class ModelChemistryHessian:
         """
         step = getattr(self, "_engine_step", None)
         saved = dict(os.environ)
+        saved_affinity = None
         env = {}
         try:
+            # Pin this process, and so the engine and its MPI ranks, to the
+            # CPUs Slurm allocated: without cgroups the OS may otherwise put
+            # two ranks on one physical core (its hyperthread siblings)
+            cpus = slurm_allocated_cpus()
+            if cpus and hasattr(os, "sched_setaffinity"):
+                try:
+                    saved_affinity = os.sched_getaffinity(0)
+                    os.sched_setaffinity(0, cpus)
+                    self.logger.info(f"The engine is pinned to CPUs {sorted(cpus)}")
+                except OSError as e:  # pragma: no cover
+                    self.logger.warning(f"Could not set the CPU affinity: {e}")
+                    saved_affinity = None
             hook = getattr(step, "mdi_engine_environment", None)
             if hook is not None:
                 env.update(
@@ -246,6 +311,11 @@ class ModelChemistryHessian:
         finally:
             os.environ.clear()
             os.environ.update(saved)
+            if saved_affinity is not None:
+                try:
+                    os.sched_setaffinity(0, saved_affinity)
+                except OSError:  # pragma: no cover
+                    pass
 
     def _engine_ncores(self):
         """The cores for the MDI engine: the job's allocation under Slurm
@@ -433,10 +503,14 @@ class ModelChemistryHessian:
                 H = np.asarray(eng.hessian(), dtype=float).reshape(3 * n, 3 * n)
                 self._fingerprints = self._engine_fingerprints(eng)
                 return E0, H, "analytic"
-            if evaluator.path != "batch":
+            route = getattr(self, "_hessian_route", "automatic") or "automatic"
+            if evaluator.path != "batch" or route.startswith("warm engine"):
+                # The engine was asked for: the finite differences run over
+                # it too (its fingerprints then describe the Hessian as well)
                 H = self._fd_hessian(eng, coords_ang, n, delta_bohr)
                 self._fingerprints = self._engine_fingerprints(eng)
                 return E0, H, "finite differences over MDI"
+            self._fingerprints = self._engine_fingerprints(eng)
         return self._fd_hessian_tasks(evaluator, configuration, coords_ang, delta_bohr)
 
     def _code_is_here(self, step):
