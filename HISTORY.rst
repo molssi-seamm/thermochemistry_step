@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.10.29.1 -- Bugfix: the MDI engine of a module-installed code now gets its modules
+    * A program installed with environment modules (``installation = modules`` in its
+      ``.ini`` file, as ORCA is on TinkerCliffs) is now started as a warm MDI engine with
+      the environment that ``module load`` gives it. Before, the engine was started
+      without the modules, so ORCA on TinkerCliffs could not load its own libraries and
+      every Isodesmic (CBH) species failed at its first energy with "MDI_Recv failed".
+      A normal (non-MDI) run of the program was not affected.
+
 2026.10.29 -- Bugfix: MOPAC (and other single-threaded engines) could not be started
     * Since 2026.10.28.7 the step passed the core count to every program's MDI engine
       command, which only ORCA's accepts; MOPAC's engine then failed to start ("got

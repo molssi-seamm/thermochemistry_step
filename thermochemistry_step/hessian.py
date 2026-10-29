@@ -25,6 +25,7 @@ import contextlib
 import logging
 import os
 from pathlib import Path
+import subprocess
 
 import numpy as np
 
@@ -127,6 +128,70 @@ def slurm_allocated_cpus(environ=None, run=None):
         if host in nodes:
             break
     return parse_cpu_ids(chosen) if chosen else None
+
+
+_MODULE_INIT = (
+    "/etc/profile.d/lmod.sh",
+    "/etc/profile.d/modules.sh",
+    "/usr/share/lmod/lmod/init/bash",
+    "/usr/share/Modules/init/bash",
+)
+_IGNORED_VARIABLES = {"_", "SHLVL", "PWD", "OLDPWD"}
+
+
+def module_environment(config, environ=None):
+    """The variables that ``module load <modules>`` changes, for a program
+    whose executor config says ``installation = modules``; {} otherwise.
+
+    A normal run of the program gets them because seamm_exec puts
+    ``module load`` in front of the command, but the MDI engine is started
+    directly, so without them a module-installed code cannot even load its
+    own libraries (ORCA on TinkerCliffs: "liborca_tools_6_1_1_avx2.so.6:
+    cannot open shared object file"). The modules are loaded in a child
+    shell, sourcing the module system's init script if the ``module``
+    function is not already defined, and the resulting environment is
+    compared with this one.
+    """
+    if (config.get("installation") or "").strip() != "modules":
+        return {}
+    modules = " ".join(str(config.get("modules") or "").split())
+    if not modules:
+        return {}
+    environ = dict(os.environ if environ is None else environ)
+    init = "; ".join(
+        f'[ -r "{path}" ] && . "{path}" && type module >/dev/null 2>&1 && return 0'
+        for path in _MODULE_INIT
+    )
+    script = (
+        "_init() { " + init + "; return 1; }\n"
+        "type module >/dev/null 2>&1 || _init\n"
+        f"module load {modules} >/dev/null 2>&1 || exit 3\n"
+        "env -0\n"
+    )
+    shell = config.get("shell") or "/bin/bash"
+    try:
+        result = subprocess.run(
+            [shell, "-c", script], capture_output=True, env=environ, timeout=120
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.warning(f"Could not load the modules '{modules}': {e}")
+        return {}
+    if result.returncode != 0:
+        logger.warning(
+            f"'module load {modules}' failed (return code {result.returncode}); the "
+            "engine runs with this process's environment."
+        )
+        return {}
+    loaded = {}
+    for item in result.stdout.split(b"\0"):
+        name, sep, value = item.decode(errors="replace").partition("=")
+        if sep and name and name not in _IGNORED_VARIABLES:
+            loaded[name] = value
+    return {
+        name: value
+        for name, value in loaded.items()
+        if environ.get(name) != value and not name.startswith("BASH_FUNC_")
+    }
 
 
 class _MDICalculator:
@@ -313,6 +378,18 @@ class ModelChemistryHessian:
         saved = dict(os.environ)
         env = {}
         try:
+            # A module installation: what `module load` gives a normal run
+            if step is not None and hasattr(step, "get_executor_config"):
+                try:
+                    config = step.get_executor_config(
+                        self.flowchart.executor, self.global_options
+                    )
+                except Exception:
+                    config = {}
+                loaded = module_environment(config or {})
+                if loaded:
+                    env.update(loaded)
+                    os.environ.update(loaded)
             hook = getattr(step, "mdi_engine_environment", None)
             if hook is not None:
                 env.update(
