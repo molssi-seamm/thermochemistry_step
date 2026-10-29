@@ -36,6 +36,19 @@ logger = logging.getLogger(__name__)
 printer = printing.getPrinter("Thermochemistry")
 
 
+def _accepts_keyword(function, name):
+    """Whether `function` takes the keyword argument `name` (or **kwargs)."""
+    import inspect
+
+    try:
+        parameters = inspect.signature(function).parameters
+    except (TypeError, ValueError):  # pragma: no cover
+        return False
+    if name in parameters:
+        return True
+    return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters.values())
+
+
 def parse_cpu_ids(text):
     """The CPU ids in a Slurm ``CPU_IDs=`` list such as ``16-31`` or
     ``0-3,8,10-11`` (``scontrol show job -d``), as a set of ints."""
@@ -202,9 +215,12 @@ class ModelChemistryHessian:
         basis = options.get("mdi_basis_arg")
 
         ncores = self._engine_ncores()
+        takes_ncores = _accepts_keyword(step.get_mdi_engine_command, "ncores")
 
         def build_argv(hostname, port):
-            kwargs = {"ncores": ncores}
+            kwargs = {}
+            if takes_ncores:  # ORCA does; MOPAC's engine is single-threaded
+                kwargs["ncores"] = ncores
             if basis is not None:
                 kwargs["basis"] = basis
             return step.get_mdi_engine_command(
