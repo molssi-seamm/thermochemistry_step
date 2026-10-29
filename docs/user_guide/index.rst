@@ -178,6 +178,17 @@ ATcT version and, when the target is in ATcT, its values. They are also stored
 as the properties ``DfH(0 K)``, ``DfH(298.15 K)`` and ``DfH uncertainty (95%)``
 of the configuration.
 
+Every species the step computes, the target and each fragment, is written as
+it was computed (optimized, if optimization is on) to ``<SMILES>.sdf`` in the
+step's directory, and all of them together to ``species.sdf``, with the SMILES,
+the role (target or fragment), the model chemistry, E, ZPE, H(0 K),
+H(298.15 K) and the number of imaginary modes as SDF data fields. Open them to
+check that each conformation is the one intended; the output also lists the
+heavy-atom dihedrals of the final structure next to those of the starting one.
+Slashes in a SMILES (double-bond stereo) become ``_`` and ``-`` in the file
+name. Species taken from the fragment store or from existing results are not
+written, since their structures are not computed here.
+
 Results
 =======
 

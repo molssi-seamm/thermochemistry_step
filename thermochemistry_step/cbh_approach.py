@@ -38,6 +38,7 @@ from collections import Counter
 import logging
 import math
 import os
+from pathlib import Path
 
 import numpy as np
 from tabulate import tabulate
@@ -122,6 +123,9 @@ class CBHApproach:
 
         system_db = self.get_variable("_system_db")
         target_system, target_configuration = self.get_system_configuration()
+        directory = self._species_directory()
+        if directory is not None and (directory / "species.sdf").exists():
+            (directory / "species.sdf").unlink()
         n_atoms = target_configuration.n_atoms
         if target_configuration.bonds.n_bonds == 0 and n_atoms > 1:
             raise RuntimeError(
@@ -857,11 +861,81 @@ class CBHApproach:
                     "H0": E + data["ZPE"],
                     "H298": E + data["H thermal"][0][0],
                 }
+                result["imaginary"] = data.get("N saddle modes", 0)
                 # Keep them on the configuration for "existing results" runs
                 self._store_species_properties(configuration, data)
         finally:
             self._subdirectory = None
+        try:
+            self._write_species_sdf(configuration, can, result)
+        except Exception as e:
+            # Diagnostic output: it must never fail the species
+            logger.warning(f"Could not write the structure of {can}: {e}")
         return result
+
+    def _species_directory(self):
+        """The step's directory, or None when it has none (outside a flowchart)."""
+        try:
+            return Path(self.directory)
+        except Exception:
+            return None
+
+    def _write_species_sdf(self, configuration, can, result):
+        """Write the species' structure, as computed, to ``<SMILES>.sdf`` in the
+        step's directory and append it to ``species.sdf``, with its energies as
+        SDF data fields, so the conformations can be checked; and print the
+        heavy-atom dihedrals of the final structure next to the starting ones."""
+        directory = self._species_directory()
+        if directory is None:
+            return
+        label = can.replace("/", "_").replace("\\", "-")
+        symbols = configuration.atoms.symbols
+        xyz = configuration.atoms.get_coordinates(fractionals=False)
+        dihedrals = self._chain_dihedrals(symbols, xyz)
+        try:
+            text = configuration.to_sdf_text()
+        except Exception as e:  # pragma: no cover - needs Open Babel
+            logger.warning(f"Could not write the structure of {can}: {e}")
+            return
+        name = configuration.system.name if configuration.system else ""
+        fields = {
+            "SMILES": can,
+            "role": "fragment" if str(name).startswith("CBH:") else "target",
+            "model chemistry": self.model or "",
+        }
+        for key, title in (
+            ("E", "E (kJ/mol)"),
+            ("ZPE", "ZPE (kJ/mol)"),
+            ("H0", "H(0 K) (kJ/mol)"),
+            ("H298", "H(298.15 K) (kJ/mol)"),
+        ):
+            value = result.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                fields[title] = f"{value:.3f}"
+        if "imaginary" in result:
+            fields["imaginary modes"] = str(result["imaginary"])
+        body = text.rstrip()
+        if body.endswith("$$$$"):
+            body = body[: -len("$$$$")].rstrip()
+        body += "\n" + "".join(f"> <{k}>\n{v}\n\n" for k, v in fields.items())
+        body += "$$$$\n"
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / f"{label}.sdf").write_text(body)
+            with open(directory / "species.sdf", "a") as fd:
+                fd.write(body)
+        except OSError as e:  # pragma: no cover
+            logger.warning(f"Could not write the structure of {can}: {e}")
+            return
+        printer.important(
+            __(
+                f"    structure: {label}.sdf"
+                + (f"; final{dihedrals[1:]}" if dihedrals else ""),
+                indent=4 * " ",
+                wrap=False,
+                dedent=False,
+            )
+        )
 
     def _compute_species_mc(self, _P, can, configuration):
         """One species through the Model Chemistry: energy only, or optimize
@@ -910,6 +984,7 @@ class CBHApproach:
             "ZPE": data["ZPE"],
             "H0": E + data["ZPE"],
             "H298": E + data["H thermal"][0][0],
+            "imaginary": data.get("N saddle modes", 0),
         }
         self._store_species_properties(configuration, data)
         self._store_fingerprints(configuration, how)

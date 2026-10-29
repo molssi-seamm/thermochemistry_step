@@ -686,3 +686,56 @@ def test_engine_environment_loads_modules(node, tmp_path, monkeypatch):
         assert os.environ["SEAMM_TEST_MODULE"] == "ORCA"
         assert env["SEAMM_TEST_MODULE"] == "ORCA"
     assert "SEAMM_TEST_MODULE" not in os.environ
+
+
+def test_species_sdf(node, tmp_path, monkeypatch):
+    """Each computed species is written to <SMILES>.sdf in the step's directory
+    and appended to species.sdf, with its energies as SDF data fields."""
+    pytest.importorskip("openbabel")
+    monkeypatch.setattr(node, "_species_directory", lambda: tmp_path / "step")
+    db = node._test_db
+    configuration = None
+    for system in db.systems:
+        if system.name == "CBH:CC":
+            configuration = system.configuration
+    target = None
+    for system in db.systems:
+        if system.name == "CBH:CCF":
+            target = system.configuration
+    node._write_species_sdf(
+        configuration,
+        "CC",
+        {"E": -1.0, "ZPE": 2.0, "H0": 1.0, "H298": 3.5, "imaginary": 0},
+    )
+    node._write_species_sdf(target, "CCF", {"H298": -270.0, "E": -270.0})
+    single = (tmp_path / "step" / "CC.sdf").read_text()
+    assert single.count("$$$$") == 1
+    assert "> <SMILES>\nCC\n" in single and "> <role>\nfragment\n" in single
+    assert "> <H(298.15 K) (kJ/mol)>\n3.500\n" in single
+    assert "> <imaginary modes>\n0\n" in single
+    combined = (tmp_path / "step" / "species.sdf").read_text()
+    assert combined.count("$$$$") == 2 and "> <SMILES>\nCCF\n" in combined
+    # SMILES with stereo slashes give safe file names
+    node._write_species_sdf(configuration, "C/C=C/C", {"E": 0.0})
+    assert (tmp_path / "step" / "C_C=C_C.sdf").exists()
+
+
+def test_species_sdf_never_fails_a_species(node, tmp_path, monkeypatch, caplog):
+    """The SDF writer is diagnostic output: an error in it is logged, not raised."""
+    monkeypatch.setattr(node, "_species_directory", lambda: tmp_path / "step")
+    monkeypatch.setattr(node, "_engine_mode", "Model Chemistry", raising=False)
+    monkeypatch.setattr(
+        node, "_compute_species_mc", lambda _P, can, configuration: {"E": "n/a"}
+    )
+    configuration = None
+    for system in node._test_db.systems:
+        if system.name == "CBH:CC":
+            configuration = system.configuration
+    monkeypatch.setattr(
+        node, "_write_species_sdf", lambda *a: (_ for _ in ()).throw(ValueError("x"))
+    )
+    result = node._compute_species(
+        {}, "CC", "CC", system=configuration.system, configuration=configuration
+    )
+    assert result == {"E": "n/a"}
+    assert "Could not write the structure of CC" in caplog.text
