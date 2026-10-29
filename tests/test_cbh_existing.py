@@ -419,6 +419,11 @@ def test_embed_lowest_gives_all_anti(node):
 def test_engine_ncores(node, monkeypatch):
     import os
 
+    import thermochemistry_step.hessian as H
+
+    # No physical-core cap here: the test machine's topology is not the point
+    monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: None)
+
     n_here = (
         len(os.sched_getaffinity(0))
         if hasattr(os, "sched_getaffinity")
@@ -557,3 +562,28 @@ def test_slurm_allocated_cpus(monkeypatch):
     )
     assert slurm_allocated_cpus({}, run=lambda j: text) is None
     assert slurm_allocated_cpus({"SLURM_JOB_ID": "1"}, run=lambda j: "no ids") is None
+
+
+def test_physical_cores_allowed(tmp_path):
+    from thermochemistry_step.hessian import physical_cores_allowed
+
+    # 4 CPUs on 2 cores (hyperthread siblings 0/2 and 1/3)
+    for cpu, core in ((0, 0), (1, 1), (2, 0), (3, 1)):
+        d = tmp_path / f"cpu{cpu}" / "topology"
+        d.mkdir(parents=True)
+        (d / "core_id").write_text(f"{core}\n")
+        (d / "physical_package_id").write_text("0\n")
+    assert physical_cores_allowed({0, 1, 2, 3}, sysfs=str(tmp_path)) == 2
+    assert physical_cores_allowed({0, 1}, sysfs=str(tmp_path)) == 2
+    assert physical_cores_allowed({0, 2}, sysfs=str(tmp_path)) == 1
+    assert physical_cores_allowed({7}, sysfs=str(tmp_path)) is None
+
+
+def test_engine_ncores_uses_physical_cores(node, monkeypatch):
+    """16 allowed hardware threads on 8 cores give 8 engine ranks."""
+    import thermochemistry_step.hessian as H
+
+    monkeypatch.setenv("SLURM_CPUS_ON_NODE", "16")
+    monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: 8)
+    node.global_options = {"ncores": "available"}
+    assert node._engine_ncores() == 8
