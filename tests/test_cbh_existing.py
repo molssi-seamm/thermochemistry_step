@@ -419,6 +419,11 @@ def test_embed_lowest_gives_all_anti(node):
 def test_engine_ncores(node, monkeypatch):
     import os
 
+    import thermochemistry_step.hessian as H
+
+    # No physical-core cap here: the test machine's topology is not the point
+    monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: None)
+
     n_here = (
         len(os.sched_getaffinity(0))
         if hasattr(os, "sched_getaffinity")
@@ -572,3 +577,13 @@ def test_physical_cores_allowed(tmp_path):
     assert physical_cores_allowed({0, 1}, sysfs=str(tmp_path)) == 2
     assert physical_cores_allowed({0, 2}, sysfs=str(tmp_path)) == 1
     assert physical_cores_allowed({7}, sysfs=str(tmp_path)) is None
+
+
+def test_engine_ncores_uses_physical_cores(node, monkeypatch):
+    """16 allowed hardware threads on 8 cores give 8 engine ranks."""
+    import thermochemistry_step.hessian as H
+
+    monkeypatch.setenv("SLURM_CPUS_ON_NODE", "16")
+    monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: 8)
+    node.global_options = {"ncores": "available"}
+    assert node._engine_ncores() == 8
