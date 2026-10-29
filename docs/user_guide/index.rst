@@ -23,7 +23,10 @@ warm engine over MDI. When it provides an analytic Hessian, as ORCA does for
 Hartree-Fock and most density functionals, that is used; otherwise the Hessian
 is built from central finite differences of the gradients over the same
 connection, or as separate calculations where the job runs its tasks. The step
-reports which route it took.
+reports which route it took. The engine is started with the environment the
+program's own runs get: for a program installed with environment modules
+(``installation = modules`` in its ``.ini`` file, as on many clusters) its
+modules are loaded first.
 
 The alternative, "Energies and gradients from: subflowchart", keeps a
 subflowchart inside the step holding the engine (a MOPAC, ORCA, Gaussian, Psi4,

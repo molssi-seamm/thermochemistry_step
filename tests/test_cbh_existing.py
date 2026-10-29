@@ -624,3 +624,65 @@ def test_ncores_passed_only_when_accepted():
     assert _accepts_keyword(orca, "ncores")
     assert not _accepts_keyword(mopac, "ncores")
     assert _accepts_keyword(anything, "ncores")
+
+
+def _fake_module_shell(tmp_path, body='export SEAMM_TEST_MODULE="$2"'):
+    """A 'shell' whose module function sets a variable, standing in for Lmod."""
+    shell = tmp_path / f"fake_shell_{abs(hash(body))}"
+    shell.write_text("#!/bin/bash\n" f"module() {{ {body}; }}\n" 'eval "$2"\n')
+    shell.chmod(0o755)
+    return str(shell)
+
+
+def test_module_environment(tmp_path):
+    """A module installation's environment: the variables `module load`
+    changes, by Local.exec's module rule; a clear error when it fails."""
+    from thermochemistry_step.hessian import module_environment, modules_to_load
+
+    assert module_environment({"installation": "local", "code": "orca"}) == {}
+    assert module_environment({"installation": "modules", "modules": ""}) == {}
+    config = {
+        "installation": "modules",
+        "modules": " ORCA ",
+        "gpu_modules": "ORCA-gpu",
+        "shell": _fake_module_shell(tmp_path),
+    }
+    assert modules_to_load(config) == "ORCA"
+    assert modules_to_load(config, {"NGPUS": 1}) == "ORCA-gpu"
+    assert modules_to_load({**config, "gpu_modules": ""}, {"NGPUS": 1}) == "ORCA"
+    env = module_environment(config, environ={"PATH": "/usr/bin:/bin", "KEEP": "1"})
+    assert env == {"SEAMM_TEST_MODULE": "ORCA"}
+    env = module_environment(config, {"NGPUS": 2}, environ={"PATH": "/usr/bin:/bin"})
+    assert env == {"SEAMM_TEST_MODULE": "ORCA-gpu"}
+    # A failing load names the module
+    config["shell"] = _fake_module_shell(
+        tmp_path, body="echo 'Lmod has detected the following error' >&2; return 1"
+    )
+    with pytest.raises(RuntimeError, match=r"'module load ORCA' failed.*Lmod"):
+        module_environment(config)
+
+
+def test_engine_environment_loads_modules(node, tmp_path, monkeypatch):
+    """The engine of a module-installed program gets the module's environment
+    (ORCA on TinkerCliffs could not load its libraries without it), restored
+    afterwards."""
+    import os
+    import types
+
+    shell = _fake_module_shell(tmp_path)
+
+    class FakeModuleProgram:
+        __module__ = "other_step"
+
+        @staticmethod
+        def get_executor_config(executor, options):
+            return {"installation": "modules", "modules": "ORCA", "shell": shell}
+
+    node._engine_step = FakeModuleProgram()
+    node.flowchart = types.SimpleNamespace(executor=None)
+    node.global_options = {}
+    monkeypatch.delenv("SEAMM_TEST_MODULE", raising=False)
+    with node._engine_environment(4) as env:
+        assert os.environ["SEAMM_TEST_MODULE"] == "ORCA"
+        assert env["SEAMM_TEST_MODULE"] == "ORCA"
+    assert "SEAMM_TEST_MODULE" not in os.environ
