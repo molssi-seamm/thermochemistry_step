@@ -1,6 +1,15 @@
 =======
 History
 =======
+2026.10.29.2 -- The structure of every computed CBH species is written to SDF files
+    * Each species the Isodesmic (CBH) approach computes, the target and every fragment,
+      is written as computed (optimized) to ``<SMILES>.sdf`` in the step's directory,
+      and all of them to ``species.sdf``, with the SMILES, the role, the model
+      chemistry, E, ZPE, H(0 K), H(298.15 K) and the number of imaginary modes as SDF
+      data fields, so the conformations can be checked.
+    * The output gives the heavy-atom dihedrals of each final structure next to those
+      of the starting conformer.
+
 2026.10.29.1 -- Bugfix: the MDI engine of a module-installed code now gets its modules
     * A program installed with environment modules (``installation = modules`` in its
       ``.ini`` file, as ORCA is on TinkerCliffs) is now started as a warm MDI engine with
