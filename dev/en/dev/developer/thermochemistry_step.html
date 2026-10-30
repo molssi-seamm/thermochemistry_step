@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>thermochemistry_step package &#8212; SEAMM Thermochemistry Plug-in 2026.10.30 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c224919a" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
+
+    <script src="../_static/documentation_options.js?v=fcc0a42c"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'developer/thermochemistry_step';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="2026.10.30" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/SEAMM logo.png" class="logo__image only-light" alt=""/>
+    <img src="../_static/SEAMM Inverted 288x181.png" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">Thermochemistry</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting_started/index.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../developer_guide/index.html">
+    Developer Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../api/index.html">
+    API Documentation
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../authors.html">
+    Development Team
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../history.html">
+    History
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-external" href="https://molssi-seamm.github.io">
+    Main SEAMM documentation
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-external" href="https://molssi-seamm.github.io">
+    SEAMM Documentation
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-external" href="https://molssi.org">
+    MolSSI
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/molssi-seamm/geometry_analysis_step" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://twitter.com/MolSSI_NSF" title="Twitter" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-twitter fa-lg" aria-hidden="true"></i><span class="visually-hidden">Twitter</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting_started/index.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../developer_guide/index.html">
+    Developer Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../api/index.html">
+    API Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../authors.html">
+    Development Team
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../history.html">
+    History
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://molssi-seamm.github.io">
+    Main SEAMM documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://molssi-seamm.github.io">
+    SEAMM Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://molssi.org">
+    MolSSI
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/molssi-seamm/geometry_analysis_step" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://twitter.com/MolSSI_NSF" title="Twitter" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-twitter fa-lg" aria-hidden="true"></i><span class="visually-hidden">Twitter</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">thermochemistry_step package</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="thermochemistry-step-package">
+<h1>thermochemistry_step package<a class="headerlink" href="#thermochemistry-step-package" title="Link to this heading">#</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
+</section>
+<section id="module-thermochemistry_step.cbh_approach">
+<span id="thermochemistry-step-cbh-approach-module"></span><h2>thermochemistry_step.cbh_approach module<a class="headerlink" href="#module-thermochemistry_step.cbh_approach" title="Link to this heading">#</a></h2>
+<p>The isodesmic (CBH) approach with ATcT references.</p>
+<p>The enthalpy of formation of the target molecule is obtained from an
+error-cancelling reaction of the connectivity-based hierarchy (CBH), whose
+other species have reference enthalpies of formation in the Active
+Thermochemical Tables (ATcT):</p>
+<blockquote>
+<div><p>ΔfH(target, T) = Σ_j ν_j ΔfH_j(ATcT, T) - Δ_rH(T)</p>
+</div></blockquote>
+<p>with Δ_rH(T) = Σ_i ν_i H_i(T) computed with the subflowchart’s engine for
+every species (the target has ν = -1). The reaction, the ATcT lookups, the
+covariance-propagated 95 % uncertainty and the combination are done here; the
+science lives in <code class="docutils literal notranslate"><span class="pre">seamm_thermochemistry</span></code> (<code class="docutils literal notranslate"><span class="pre">atct</span></code> and <code class="docutils literal notranslate"><span class="pre">cbh</span></code>).</p>
+<p>The energies H_i(T) come from one of three places:</p>
+<ul class="simple">
+<li><p>“finite-difference harmonic”: the subflowchart is run on each species, first
+to optimize it (ASE BFGS) and then for the finite-difference Hessian; the
+rigid-rotor harmonic-oscillator thermochemistry of the Harmonic approach
+gives H(0 K) = E + ZPE and H(298.15 K);</p></li>
+<li><p>“finite-difference harmonic” with “thermal corrections” = none: the
+subflowchart’s energy already is the enthalpy of formation at 298.15 K, as
+for MOPAC’s NDDO methods, so only Δ_rH(298.15 K) is formed;</p></li>
+<li><p>“existing results (run nothing)”: the species’ energies are read from
+properties already stored on the systems named <code class="docutils literal notranslate"><span class="pre">CBH:&lt;SMILES&gt;</span></code> (and the
+target), e.g. by an earlier parallel Loop, so the expensive part can be
+run in parallel and at two levels of theory.</p></li>
+</ul>
+<p>Results are reported at 0 K and 298.15 K and paired with the ATcT values at
+the same temperature, never converted between them. ATcT’s plain gas-phase
+entries are the lowest conformer at 0 K and a conformer average at 298.15 K,
+so the 0 K comparison is the cleaner one for a single-conformer calculation.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="thermochemistry_step.cbh_approach.CBHApproach">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">thermochemistry_step.cbh_approach.</span></span><span class="sig-name descname"><span class="pre">CBHApproach</span></span><a class="reference internal" href="../_modules/thermochemistry_step/cbh_approach.html#CBHApproach"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.cbh_approach.CBHApproach" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Mixin for Thermochemistry: the CBH approach.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.cbh_approach.CBHApproach.describe_cbh">
+<span class="sig-name descname"><span class="pre">describe_cbh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/cbh_approach.html#CBHApproach.describe_cbh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.cbh_approach.CBHApproach.describe_cbh" title="Link to this definition">#</a></dt>
+<dd><p>The description of the CBH approach for the step’s summary.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.cbh_approach.CBHApproach.run_cbh">
+<span class="sig-name descname"><span class="pre">run_cbh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_P</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/cbh_approach.html#CBHApproach.run_cbh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.cbh_approach.CBHApproach.run_cbh" title="Link to this definition">#</a></dt>
+<dd><p>Run the CBH approach. Returns the data dictionary stored as results.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.cbh_approach.cbh_charge">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.cbh_approach.</span></span><span class="sig-name descname"><span class="pre">cbh_charge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smiles</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/cbh_approach.html#cbh_charge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.cbh_approach.cbh_charge" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.cbh_approach.cbh_multiplicity">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.cbh_approach.</span></span><span class="sig-name descname"><span class="pre">cbh_multiplicity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smiles</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/cbh_approach.html#cbh_multiplicity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.cbh_approach.cbh_multiplicity" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.hessian">
+<span id="thermochemistry-step-hessian-module"></span><h2>thermochemistry_step.hessian module<a class="headerlink" href="#module-thermochemistry_step.hessian" title="Link to this heading">#</a></h2>
+<p>The energy and Hessian of a structure from the flowchart’s Model Chemistry.</p>
+<p>The Model Chemistry step upstream publishes <code class="docutils literal notranslate"><span class="pre">_model_chemistry</span></code>; the program
+behind it is driven through <code class="docutils literal notranslate"><span class="pre">seamm_exec.Evaluator</span></code>, either as a warm MDI
+engine (<code class="docutils literal notranslate"><span class="pre">seamm_mdi.MDIEngine</span></code>) or as separate calculations (tasks) where the
+job runs them. The route follows the Normal Mode Sampling step (design of
+2026-10-03):</p>
+<ul class="simple">
+<li><p>on a queue target the finite difference runs as tasks on the cluster, with
+no local engine started even to ask;</p></li>
+<li><p>otherwise the analytic Hessian over MDI when the program offers one (the
+engine advertises the custom <code class="docutils literal notranslate"><span class="pre">&lt;HESSIAN</span></code> command only when the method has
+a genuine analytic Hessian), else central finite differences of the forces
+over the warm engine, or as tasks when the evaluator chose that path;</p></li>
+<li><p>with no MDI engine, the finite difference as tasks.</p></li>
+</ul>
+<p>This mirrors <code class="docutils literal notranslate"><span class="pre">normal_mode_sampling_step</span></code>’s driver, with the energy of the
+undisplaced structure collected as well. It belongs in a shared library once a
+third consumer appears.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.ModelChemistryHessian">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">thermochemistry_step.hessian.</span></span><span class="sig-name descname"><span class="pre">ModelChemistryHessian</span></span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#ModelChemistryHessian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.ModelChemistryHessian" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Mixin: the energy and Cartesian Hessian from the Model Chemistry.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.ModelChemistryHessian.energy_and_hessian">
+<span class="sig-name descname"><span class="pre">energy_and_hessian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta_bohr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#ModelChemistryHessian.energy_and_hessian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.ModelChemistryHessian.energy_and_hessian" title="Link to this definition">#</a></dt>
+<dd><p>The energy (kJ/mol) and the Cartesian Hessian (hartree/bohr²,
+(3N, 3N)) of the configuration with the Model Chemistry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The energy, the Hessian, and how the Hessian was obtained:
+“analytic”, “finite differences over MDI” or “finite differences
+as tasks”.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float, numpy.ndarray, str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.ModelChemistryHessian.model_chemistry">
+<span class="sig-name descname"><span class="pre">model_chemistry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#ModelChemistryHessian.model_chemistry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.ModelChemistryHessian.model_chemistry" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">_model_chemistry</span></code> wrapper published upstream, or None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.ModelChemistryHessian.model_chemistry_energy">
+<span class="sig-name descname"><span class="pre">model_chemistry_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#ModelChemistryHessian.model_chemistry_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.ModelChemistryHessian.model_chemistry_energy" title="Link to this definition">#</a></dt>
+<dd><p>The energy (kJ/mol) of the configuration with the Model Chemistry.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.ModelChemistryHessian.optimize_and_energy">
+<span class="sig-name descname"><span class="pre">optimize_and_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.005</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_steps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#ModelChemistryHessian.optimize_and_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.ModelChemistryHessian.optimize_and_energy" title="Link to this definition">#</a></dt>
+<dd><p>Optionally optimize the structure over the warm engine, then its
+energy (kJ/mol). With no engine (tasks) the energy only.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.ModelChemistryHessian.optimize_and_hessian">
+<span class="sig-name descname"><span class="pre">optimize_and_hessian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta_bohr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.005</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_steps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#ModelChemistryHessian.optimize_and_hessian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.ModelChemistryHessian.optimize_and_hessian" title="Link to this definition">#</a></dt>
+<dd><p>Optionally optimize the structure (ASE BFGS over the warm engine),
+then the energy and Hessian, in one engine session.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>configuration</strong> (<em>molsystem._Configuration</em>) – Its coordinates are updated by the optimization.</p></li>
+<li><p><strong>delta_bohr</strong> (<em>float</em>) – The finite-difference step.</p></li>
+<li><p><strong>optimize</strong> (<em>bool</em>)</p></li>
+<li><p><strong>fmax</strong> (<em>float</em>) – The convergence criterion for the optimization, eV/Å.</p></li>
+<li><p><strong>max_steps</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>As <cite>energy_and_hessian</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float, numpy.ndarray, str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.module_environment">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.hessian.</span></span><span class="sig-name descname"><span class="pre">module_environment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ce</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">environ</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#module_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.module_environment" title="Link to this definition">#</a></dt>
+<dd><p>The variables that <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span></code> changes, for a program whose
+executor config says <code class="docutils literal notranslate"><span class="pre">installation</span> <span class="pre">=</span> <span class="pre">modules</span></code>; {} otherwise.</p>
+<p>A normal run of the program gets them because seamm_exec puts
+<code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span></code> in front of the command, but the MDI engine is started
+directly, so without them a module-installed code cannot even load its
+own libraries (ORCA on TinkerCliffs: “liborca_tools_6_1_1_avx2.so.6:
+cannot open shared object file”). The modules are loaded in a child
+shell (<code class="docutils literal notranslate"><span class="pre">config[&quot;shell&quot;]</span></code>, default bash), sourcing the module system’s
+init script if the <code class="docutils literal notranslate"><span class="pre">module</span></code> function is not defined (it is not under
+<code class="docutils literal notranslate"><span class="pre">--export=NONE</span></code>), and its environment before and after the load is
+compared. Exported shell functions and the variables bash itself sets
+are left out.</p>
+<p>Raises RuntimeError naming the modules if they cannot be loaded.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.modules_to_load">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.hessian.</span></span><span class="sig-name descname"><span class="pre">modules_to_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ce</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#modules_to_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.modules_to_load" title="Link to this definition">#</a></dt>
+<dd><p>The modules for this run, by the rule seamm_exec’s Local.exec uses: the
+<code class="docutils literal notranslate"><span class="pre">gpu_modules</span></code> when the computational environment has GPUs and they are
+given, otherwise <code class="docutils literal notranslate"><span class="pre">modules</span></code>; ‘’ unless <code class="docutils literal notranslate"><span class="pre">installation</span> <span class="pre">=</span> <span class="pre">modules</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.parse_cpu_ids">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.hessian.</span></span><span class="sig-name descname"><span class="pre">parse_cpu_ids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#parse_cpu_ids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.parse_cpu_ids" title="Link to this definition">#</a></dt>
+<dd><p>The CPU ids in a Slurm <code class="docutils literal notranslate"><span class="pre">CPU_IDs=</span></code> list such as <code class="docutils literal notranslate"><span class="pre">16-31</span></code> or
+<code class="docutils literal notranslate"><span class="pre">0-3,8,10-11</span></code> (<code class="docutils literal notranslate"><span class="pre">scontrol</span> <span class="pre">show</span> <span class="pre">job</span> <span class="pre">-d</span></code>), as a set of ints.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.physical_cores_allowed">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.hessian.</span></span><span class="sig-name descname"><span class="pre">physical_cores_allowed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpus</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sysfs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/sys/devices/system/cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#physical_cores_allowed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.physical_cores_allowed" title="Link to this definition">#</a></dt>
+<dd><p>The number of distinct physical cores among the CPUs (hardware
+threads) this process may run on, from the kernel’s topology; None where
+that is unknown (macOS, no sysfs).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.hessian.slurm_allocated_cpus">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.hessian.</span></span><span class="sig-name descname"><span class="pre">slurm_allocated_cpus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">environ</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/hessian.html#slurm_allocated_cpus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.hessian.slurm_allocated_cpus" title="Link to this definition">#</a></dt>
+<dd><p>The CPU ids Slurm allocated to this job on this node, from
+<code class="docutils literal notranslate"><span class="pre">scontrol</span> <span class="pre">show</span> <span class="pre">job</span> <span class="pre">-d</span></code>, or None outside Slurm or when unknown.</p>
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.metadata">
+<span id="thermochemistry-step-metadata-module"></span><h2>thermochemistry_step.metadata module<a class="headerlink" href="#module-thermochemistry_step.metadata" title="Link to this heading">#</a></h2>
+<p>This file contains metadata describing the results from Thermochemistry</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="thermochemistry_step.metadata.metadata">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.metadata.</span></span><span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'results':</span> <span class="pre">{'ATcT</span> <span class="pre">DfH</span> <span class="pre">0K':</span> <span class="pre">{'description':</span> <span class="pre">&quot;ATcT's</span> <span class="pre">own</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">target</span> <span class="pre">at</span> <span class="pre">0</span> <span class="pre">K&quot;,</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'ATcT</span> <span class="pre">DfH</span> <span class="pre">298K':</span> <span class="pre">{'description':</span> <span class="pre">&quot;ATcT's</span> <span class="pre">own</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">target</span> <span class="pre">at</span> <span class="pre">298.15</span> <span class="pre">K&quot;,</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'ATcT</span> <span class="pre">DfH</span> <span class="pre">uncertainty':</span> <span class="pre">{'description':</span> <span class="pre">&quot;ATcT's</span> <span class="pre">95</span> <span class="pre">%</span> <span class="pre">uncertainty</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">target</span> <span class="pre">at</span> <span class="pre">298.15</span> <span class="pre">K&quot;,</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'ATcT</span> <span class="pre">version':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">ATcT</span> <span class="pre">Thermochemical</span> <span class="pre">Network</span> <span class="pre">version</span> <span class="pre">used',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'',</span> <span class="pre">'type':</span> <span class="pre">'string'},</span> <span class="pre">'CBH</span> <span class="pre">reaction':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">CBH</span> <span class="pre">reaction</span> <span class="pre">used',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'',</span> <span class="pre">'property':</span> <span class="pre">'CBH</span> <span class="pre">reaction#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'string'},</span> <span class="pre">'CBH</span> <span class="pre">results':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">results</span> <span class="pre">for</span> <span class="pre">every</span> <span class="pre">usable</span> <span class="pre">rung',</span> <span class="pre">'dimensionality':</span> <span class="pre">'dictionary',</span> <span class="pre">'format':</span> <span class="pre">'',</span> <span class="pre">'type':</span> <span class="pre">'json'},</span> <span class="pre">'CBH</span> <span class="pre">rung':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">CBH</span> <span class="pre">rung</span> <span class="pre">the</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">comes</span> <span class="pre">from',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'',</span> <span class="pre">'property':</span> <span class="pre">'CBH</span> <span class="pre">rung#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'integer'},</span> <span class="pre">'DfH</span> <span class="pre">0K':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">at</span> <span class="pre">0</span> <span class="pre">K</span> <span class="pre">(CBH</span> <span class="pre">with</span> <span class="pre">ATcT</span> <span class="pre">references)',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'property':</span> <span class="pre">'DfH(0</span> <span class="pre">K)#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'DfH</span> <span class="pre">298K':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">at</span> <span class="pre">298.15</span> <span class="pre">K</span> <span class="pre">(CBH</span> <span class="pre">with</span> <span class="pre">ATcT</span> <span class="pre">references)',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'property':</span> <span class="pre">'DfH(298.15</span> <span class="pre">K)#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'DfH</span> <span class="pre">uncertainty':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">95</span> <span class="pre">%</span> <span class="pre">uncertainty</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">ATcT</span> <span class="pre">reference</span> <span class="pre">part</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'property':</span> <span class="pre">'DfH</span> <span class="pre">uncertainty</span> <span class="pre">(95%)#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'E</span> <span class="pre">thermal':</span> <span class="pre">{'description':</span> <span class="pre">'U(T)</span> <span class="pre">-</span> <span class="pre">E,</span> <span class="pre">the</span> <span class="pre">thermal</span> <span class="pre">correction</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">electronic</span> <span class="pre">energy,</span> <span class="pre">including</span> <span class="pre">the</span> <span class="pre">ZPE',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'G':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">free</span> <span class="pre">energy</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">system',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'property':</span> <span class="pre">'G#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'G</span> <span class="pre">thermal':</span> <span class="pre">{'description':</span> <span class="pre">'G(T)</span> <span class="pre">-</span> <span class="pre">E,</span> <span class="pre">the</span> <span class="pre">free</span> <span class="pre">energy</span> <span class="pre">correction</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">electronic</span> <span class="pre">energy,</span> <span class="pre">including</span> <span class="pre">the</span> <span class="pre">ZPE',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'H':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">system',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'property':</span> <span class="pre">'H#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'H</span> <span class="pre">0':</span> <span class="pre">{'description':</span> <span class="pre">'the</span> <span class="pre">electronic</span> <span class="pre">energy</span> <span class="pre">plus</span> <span class="pre">ZPE',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'property':</span> <span class="pre">'H(0</span> <span class="pre">K)#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'H</span> <span class="pre">thermal':</span> <span class="pre">{'description':</span> <span class="pre">'H(T)</span> <span class="pre">-</span> <span class="pre">E,</span> <span class="pre">the</span> <span class="pre">enthalpy</span> <span class="pre">correction</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">electronic</span> <span class="pre">energy,</span> <span class="pre">including</span> <span class="pre">the</span> <span class="pre">ZPE',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'N</span> <span class="pre">saddle</span> <span class="pre">modes':</span> <span class="pre">{'description':</span> <span class="pre">'Number</span> <span class="pre">of</span> <span class="pre">saddle</span> <span class="pre">point</span> <span class="pre">modes',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'',</span> <span class="pre">'property':</span> <span class="pre">'number</span> <span class="pre">of</span> <span class="pre">saddle</span> <span class="pre">modes#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'integer'},</span> <span class="pre">'P':</span> <span class="pre">{'description':</span> <span class="pre">'Pressure',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs]',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'property':</span> <span class="pre">'P#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'atm'},</span> <span class="pre">'S':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">entropy</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">system',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'property':</span> <span class="pre">'S#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'J/mol/K'},</span> <span class="pre">'T':</span> <span class="pre">{'description':</span> <span class="pre">'Temperature',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nTs]',</span> <span class="pre">'format':</span> <span class="pre">'.2f',</span> <span class="pre">'property':</span> <span class="pre">'T#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'K'},</span> <span class="pre">'U':</span> <span class="pre">{'description':</span> <span class="pre">'the</span> <span class="pre">internal</span> <span class="pre">energy',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nPs*[nTs]]',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'property':</span> <span class="pre">'U#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'ZPE':</span> <span class="pre">{'description':</span> <span class="pre">'the</span> <span class="pre">zero</span> <span class="pre">point</span> <span class="pre">energy',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.6f',</span> <span class="pre">'property':</span> <span class="pre">'ZPE#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'kJ/mol'},</span> <span class="pre">'symmetry</span> <span class="pre">number':</span> <span class="pre">{'description':</span> <span class="pre">'Symmetry</span> <span class="pre">number',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'',</span> <span class="pre">'type':</span> <span class="pre">'integer'},</span> <span class="pre">'total_energy':</span> <span class="pre">{'description':</span> <span class="pre">'The</span> <span class="pre">total</span> <span class="pre">energy',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'property':</span> <span class="pre">'total</span> <span class="pre">energy#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'E_h'},</span> <span class="pre">'transition</span> <span class="pre">state</span> <span class="pre">frequency':</span> <span class="pre">{'description':</span> <span class="pre">'Transition</span> <span class="pre">state</span> <span class="pre">curvature',</span> <span class="pre">'dimensionality':</span> <span class="pre">'scalar',</span> <span class="pre">'format':</span> <span class="pre">'.1f',</span> <span class="pre">'property':</span> <span class="pre">'transition</span> <span class="pre">state</span> <span class="pre">frequency#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'cm^-1'},</span> <span class="pre">'vibrational</span> <span class="pre">frequencies':</span> <span class="pre">{'description':</span> <span class="pre">'Vibrational</span> <span class="pre">frequencies',</span> <span class="pre">'dimensionality':</span> <span class="pre">'[nvibs]',</span> <span class="pre">'format':</span> <span class="pre">'.1f',</span> <span class="pre">'property':</span> <span class="pre">'vibrational</span> <span class="pre">frequencies#Thermochemistry#{model}',</span> <span class="pre">'type':</span> <span class="pre">'float',</span> <span class="pre">'units':</span> <span class="pre">'cm^-1'}}}</span></span><a class="headerlink" href="#thermochemistry_step.metadata.metadata" title="Link to this definition">#</a></dt>
+<dd><p>Description of the computational models for Thermochemistry.</p>
+<p>Hamiltonians, approximations, and basis set or parameterizations,
+only if appropriate for this code. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">metadata</span><span class="p">[</span><span class="s2">"computational models"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"Hartree-Fock"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"models"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"PM7"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"parameterizations"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"PM7"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"elements"</span><span class="p">:</span> <span class="s2">"1-60,62-83"</span><span class="p">,</span>
+                        <span class="s2">"periodic"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">"reactions"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">"optimization"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">"code"</span><span class="p">:</span> <span class="s2">"mopac"</span><span class="p">,</span>
+                    <span class="p">},</span>
+                    <span class="s2">"PM7-TS"</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">"elements"</span><span class="p">:</span> <span class="s2">"1-60,62-83"</span><span class="p">,</span>
+                        <span class="s2">"periodic"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">"reactions"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                        <span class="s2">"optimization"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                        <span class="s2">"code"</span><span class="p">:</span> <span class="s2">"mopac"</span><span class="p">,</span>
+                    <span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">},</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.symmetry">
+<span id="thermochemistry-step-symmetry-module"></span><h2>thermochemistry_step.symmetry module<a class="headerlink" href="#module-thermochemistry_step.symmetry" title="Link to this heading">#</a></h2>
+<p>The rotational symmetry number of a molecule, perceived from its geometry.</p>
+<p>The symmetry number σ is the number of proper rotations (including the
+identity) in the molecule’s point group: the number of indistinguishable
+orientations reached by rotation alone. It enters the rotational partition
+function as 1/σ, i.e. the entropy as -R ln σ. This module finds σ by testing
+candidate rotation axes directly against the structure, which needs no
+point-group assignment and no external library.</p>
+<p>Candidate axes are the principal axes of inertia, the vectors from the centre
+of mass to each atom, the midpoints and cross products of pairs of
+like atoms, and the normals of planes through triples of like atoms. For every
+candidate axis and every order n from 2 up to the largest number of atoms of
+one element, the rotation by 2π/n is applied and accepted if it maps every
+atom onto an atom of the same element within the tolerance.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="thermochemistry_step.symmetry.rotational_symmetry_number">
+<span class="sig-prename descclassname"><span class="pre">thermochemistry_step.symmetry.</span></span><span class="sig-name descname"><span class="pre">rotational_symmetry_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xyz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masses</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/symmetry.html#rotational_symmetry_number"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.symmetry.rotational_symmetry_number" title="Link to this definition">#</a></dt>
+<dd><p>The rotational symmetry number of a molecule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>symbols</strong> (<em>[</em><em>str</em><em>]</em>) – The element symbol of each atom.</p></li>
+<li><p><strong>xyz</strong> (<em>array-like</em><em>, </em><em>shape</em><em> (</em><em>n_atoms</em><em>, </em><em>3</em><em>)</em>) – The Cartesian coordinates, Å.</p></li>
+<li><p><strong>masses</strong> (<em>array-like</em><em>, </em><em>optional</em>) – The atomic masses, for the centre of mass. Equal masses are used if
+omitted (the centre of mass then coincides with the centroid; for
+the symmetry this only matters through the candidate axes).</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – The distance, in Å, within which a rotated atom must land on a like
+atom.</p></li>
+<li><p><strong>max_order</strong> (<em>int</em>) – The largest rotation order tested.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>sigma</strong> (<em>int</em>) – The symmetry number.</p></li>
+<li><p><strong>axes</strong> (<em>{int: int}</em>) – The number of distinct proper rotation axes of each order found,
+e.g. <code class="docutils literal notranslate"><span class="pre">{6:</span> <span class="pre">1,</span> <span class="pre">2:</span> <span class="pre">7}</span></code> for benzene (the C6 axis also carries C3 and
+C2, which are not counted separately), <code class="docutils literal notranslate"><span class="pre">{3:</span> <span class="pre">4,</span> <span class="pre">2:</span> <span class="pre">3}</span></code> for methane.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.thermochemistry">
+<span id="thermochemistry-step-thermochemistry-module"></span><h2>thermochemistry_step.thermochemistry module<a class="headerlink" href="#module-thermochemistry_step.thermochemistry" title="Link to this heading">#</a></h2>
+<p>Non-graphical part of the Thermochemistry step in a SEAMM flowchart</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">thermochemistry_step.thermochemistry.</span></span><span class="sig-name descname"><span class="pre">Thermochemistry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flowchart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Thermochemistry'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namespace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'org.molssi.seamm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extension</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;Logger</span> <span class="pre">thermochemistry_step.thermochemistry</span> <span class="pre">(WARNING)&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Node</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ASE_mixin</span></code>, <a class="reference internal" href="#thermochemistry_step.hessian.ModelChemistryHessian" title="thermochemistry_step.hessian.ModelChemistryHessian"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelChemistryHessian</span></code></a>, <a class="reference internal" href="#thermochemistry_step.cbh_approach.CBHApproach" title="thermochemistry_step.cbh_approach.CBHApproach"><code class="xref py py-class docutils literal notranslate"><span class="pre">CBHApproach</span></code></a></p>
+<p>The non-graphical part of a Thermochemistry step in a flowchart.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.parser">
+<span class="sig-name descname"><span class="pre">parser</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.parser" title="Link to this definition">#</a></dt>
+<dd><p>The parser object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>configargparse.ArgParser</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.options">
+<span class="sig-name descname"><span class="pre">options</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.options" title="Link to this definition">#</a></dt>
+<dd><p>It contains a two item tuple containing the populated namespace and the
+list of remaining argument strings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.subflowchart">
+<span class="sig-name descname"><span class="pre">subflowchart</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.subflowchart" title="Link to this definition">#</a></dt>
+<dd><p>A SEAMM Flowchart object that represents a subflowchart, if needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>seamm.Flowchart</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.parameters">
+<span class="sig-name descname"><span class="pre">parameters</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.parameters" title="Link to this definition">#</a></dt>
+<dd><p>The control parameters for Thermochemistry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters" title="thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters">ThermochemistryParameters</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">TkThermochemistry</span></code>, <a class="reference internal" href="#thermochemistry_step.thermochemistry.Thermochemistry" title="thermochemistry_step.thermochemistry.Thermochemistry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Thermochemistry</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">ThermochemistryParameters</span></code></p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.analyze">
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_P</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.analyze" title="Link to this definition">#</a></dt>
+<dd><p>Do any analysis of the output from this step.</p>
+<p>Also print important results to the local step.out file using
+“printer”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>indent</strong> (<em>str</em>) – An extra indentation for the output</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.ase_calculator">
+<span class="sig-name descname"><span class="pre">ase_calculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calculator</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.ase_calculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.ase_calculator" title="Link to this definition">#</a></dt>
+<dd><p>Run the subflowchart for one geometry, keeping the energy of the
+undisplaced structure for the absolute thermodynamic functions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.create_parser">
+<span class="sig-name descname"><span class="pre">create_parser</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.create_parser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.create_parser" title="Link to this definition">#</a></dt>
+<dd><p>Setup the command-line / config file parser</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.description_text">
+<span class="sig-name descname"><span class="pre">description_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">short</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">natoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.description_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.description_text" title="Link to this definition">#</a></dt>
+<dd><p>Create the text description of what this step will do.
+The dictionary of control values is passed in as P so that
+the code can test values, etc.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>P</strong> (<em>dict</em>) – An optional dictionary of the current values of the control
+parameters.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A description of the current step.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.git_revision">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">git_revision</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.git_revision" title="Link to this definition">#</a></dt>
+<dd><p>The git version of this module.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.harmonic_thermochemistry">
+<span class="sig-name descname"><span class="pre">harmonic_thermochemistry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_P</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Tunits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Punits</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_frequencies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.harmonic_thermochemistry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.harmonic_thermochemistry" title="Link to this definition">#</a></dt>
+<dd><p>The harmonic thermochemistry of the working configuration from
+<code class="docutils literal notranslate"><span class="pre">self._vibrations</span></code> and <code class="docutils literal notranslate"><span class="pre">self._E0</span></code>, printed and returned as the
+data dictionary of results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_P</strong> (<em>dict</em>) – The parameters.</p></li>
+<li><p><strong>Ts</strong> – The temperatures and pressures and their units.</p></li>
+<li><p><strong>Tunits</strong> – The temperatures and pressures and their units.</p></li>
+<li><p><strong>Ps</strong> – The temperatures and pressures and their units.</p></li>
+<li><p><strong>Punits</strong> – The temperatures and pressures and their units.</p></li>
+<li><p><strong>print_frequencies</strong> (<em>bool</em>) – Whether to list the frequencies.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.model_chemistry_vibrations">
+<span class="sig-name descname"><span class="pre">model_chemistry_vibrations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.model_chemistry_vibrations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.model_chemistry_vibrations" title="Link to this definition">#</a></dt>
+<dd><p>The energy (eV) and an ASE VibrationsData from the Model Chemistry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>configuration</strong> (<em>molsystem._Configuration</em>)</p></li>
+<li><p><strong>step_size</strong> (<em>float</em>) – The finite-difference step, Å, if the Hessian is not analytic.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float, ase.vibrations.VibrationsData, str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.run" title="Link to this definition">#</a></dt>
+<dd><p>Run a Thermochemistry step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The next node object in the flowchart.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>seamm.Node</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.set_id">
+<span class="sig-name descname"><span class="pre">set_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.set_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.set_id" title="Link to this definition">#</a></dt>
+<dd><p>Sequentially number the subnodes</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.set_subids">
+<span class="sig-name descname"><span class="pre">set_subids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry.html#Thermochemistry.set_subids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.set_subids" title="Link to this definition">#</a></dt>
+<dd><p>Set the ids of the nodes in the subflowchart</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry.Thermochemistry.version">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">version</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry.Thermochemistry.version" title="Link to this definition">#</a></dt>
+<dd><p>The semantic version of this module.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.thermochemistry_parameters">
+<span id="thermochemistry-step-thermochemistry-parameters-module"></span><h2>thermochemistry_step.thermochemistry_parameters module<a class="headerlink" href="#module-thermochemistry_step.thermochemistry_parameters" title="Link to this heading">#</a></h2>
+<p>Control parameters for the Thermochemistry step in a SEAMM flowchart</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">thermochemistry_step.thermochemistry_parameters.</span></span><span class="sig-name descname"><span class="pre">ThermochemistryParameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry_parameters.html#ThermochemistryParameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Parameters</span></code></p>
+<p>The control parameters for Thermochemistry.</p>
+<p>You need to replace the “time” entry in dictionary below these comments with the
+definitions of parameters to control this step. The keys are parameters for the
+current plugin,the values are dictionaries as outlined below.</p>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"time"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"default"</span><span class="p">:</span> <span class="mf">100.0</span><span class="p">,</span>
+        <span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"float"</span><span class="p">,</span>
+        <span class="s2">"default_units"</span><span class="p">:</span> <span class="s2">"ps"</span><span class="p">,</span>
+        <span class="s2">"enumeration"</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(),</span>
+        <span class="s2">"format_string"</span><span class="p">:</span> <span class="s2">".1f"</span><span class="p">,</span>
+        <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"Simulation time:"</span><span class="p">,</span>
+        <span class="s2">"help_text"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"The time to simulate in the dynamics run."</span><span class="p">)</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<dl>
+<dt>parameters<span class="classifier">{str: {str: str}}</span></dt><dd><p>A dictionary containing the parameters for the current step.
+Each key of the dictionary is a dictionary that contains the
+the following keys:</p>
+</dd>
+<dt>parameters[“default”] :</dt><dd><p>The default value of the parameter, used to reset it.</p>
+</dd>
+<dt>parameters[“kind”]<span class="classifier">enum()</span></dt><dd><p>Specifies the kind of a variable. One of  “integer”, “float”, “string”,
+“boolean”, or “enum”</p>
+<p>While the “kind” of a variable might be a numeric value, it may still have
+enumerated custom values meaningful to the user. For instance, if the parameter
+is a convergence criterion for an optimizer, custom values like “normal”,
+“precise”, etc, might be adequate. In addition, any parameter can be set to a
+variable of expression, indicated by having “$” as the first character in the
+field. For example, $OPTIMIZER_CONV.</p>
+</dd>
+<dt>parameters[“default_units”]<span class="classifier">str</span></dt><dd><p>The default units, used for resetting the value.</p>
+</dd>
+<dt>parameters[“enumeration”]<span class="classifier">tuple</span></dt><dd><p>A tuple of enumerated values.</p>
+</dd>
+<dt>parameters[“format_string”]<span class="classifier">str</span></dt><dd><p>A format string for “pretty” output.</p>
+</dd>
+<dt>parameters[“description”]<span class="classifier">str</span></dt><dd><p>A short string used as a prompt in the GUI.</p>
+</dd>
+<dt>parameters[“help_text”]<span class="classifier">str</span></dt><dd><p>A longer string to display as help for the user.</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Thermochemistry</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">TkThermochemistry</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">Thermochemistry</span></code>, <a class="reference internal" href="#thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters" title="thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ThermochemistryParameters</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">ThermochemistryStep</span></code></p>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters.parameters">
+<span class="sig-name descname"><span class="pre">parameters</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'#</span> <span class="pre">imaginary</span> <span class="pre">modes':</span> <span class="pre">{'default':</span> <span class="pre">'perceive',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Number</span> <span class="pre">of</span> <span class="pre">imaginary</span> <span class="pre">modes:',</span> <span class="pre">'enumeration':</span> <span class="pre">('perceive',</span> <span class="pre">'transition</span> <span class="pre">state'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">number</span> <span class="pre">of</span> <span class="pre">imaginary</span> <span class="pre">modes</span> <span class="pre">to</span> <span class="pre">ignore.',</span> <span class="pre">'kind':</span> <span class="pre">'integer'},</span> <span class="pre">'ATcT</span> <span class="pre">directory':</span> <span class="pre">{'default':</span> <span class="pre">'default',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'ATcT</span> <span class="pre">directory:',</span> <span class="pre">'enumeration':</span> <span class="pre">('default',),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">&quot;Where</span> <span class="pre">the</span> <span class="pre">ATcT</span> <span class="pre">versions</span> <span class="pre">are</span> <span class="pre">kept:</span> <span class="pre">the</span> <span class="pre">installation's</span> <span class="pre">Parameters/thermochemistry/ATcT</span> <span class="pre">by</span> <span class="pre">default.&quot;,</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'ATcT</span> <span class="pre">uncertainty</span> <span class="pre">threshold':</span> <span class="pre">{'default':</span> <span class="pre">0.5,</span> <span class="pre">'default_units':</span> <span class="pre">'kJ/mol',</span> <span class="pre">'description':</span> <span class="pre">'ATcT</span> <span class="pre">uncertainty</span> <span class="pre">threshold:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'.2f',</span> <span class="pre">'help_text':</span> <span class="pre">'Use</span> <span class="pre">the</span> <span class="pre">ATcT</span> <span class="pre">value</span> <span class="pre">when</span> <span class="pre">its</span> <span class="pre">95</span> <span class="pre">%</span> <span class="pre">uncertainty</span> <span class="pre">is</span> <span class="pre">at</span> <span class="pre">or</span> <span class="pre">below</span> <span class="pre">this.',</span> <span class="pre">'kind':</span> <span class="pre">'float'},</span> <span class="pre">'ATcT</span> <span class="pre">version':</span> <span class="pre">{'default':</span> <span class="pre">'latest',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'ATcT</span> <span class="pre">version:',</span> <span class="pre">'enumeration':</span> <span class="pre">('latest',),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">version</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">Thermochemical</span> <span class="pre">Network</span> <span class="pre">to</span> <span class="pre">use.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'P':</span> <span class="pre">{'default':</span> <span class="pre">'1.0',</span> <span class="pre">'default_units':</span> <span class="pre">'bar',</span> <span class="pre">'description':</span> <span class="pre">'Pressures:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">pressures</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">thermodynamic</span> <span class="pre">functions.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'T':</span> <span class="pre">{'default':</span> <span class="pre">'200,</span> <span class="pre">250,</span> <span class="pre">298.15,</span> <span class="pre">300:1000:50',</span> <span class="pre">'default_units':</span> <span class="pre">'K',</span> <span class="pre">'description':</span> <span class="pre">'Temperatures:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">temperatures</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">thermodynamic</span> <span class="pre">functions.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'ZPE</span> <span class="pre">property':</span> <span class="pre">{'default':</span> <span class="pre">'ZPE#*#*',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'ZPE</span> <span class="pre">property:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">stored</span> <span class="pre">property</span> <span class="pre">holding</span> <span class="pre">the</span> <span class="pre">zero-point</span> <span class="pre">energy.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'approach':</span> <span class="pre">{'default':</span> <span class="pre">'Harmonic</span> <span class="pre">approximation',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Approach:',</span> <span class="pre">'enumeration':</span> <span class="pre">('Harmonic</span> <span class="pre">approximation',</span> <span class="pre">'Isodesmic</span> <span class="pre">(CBH)</span> <span class="pre">with</span> <span class="pre">ATcT</span> <span class="pre">references'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">approach</span> <span class="pre">or</span> <span class="pre">method</span> <span class="pre">for</span> <span class="pre">determining</span> <span class="pre">the</span> <span class="pre">thermochemistry.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'cbh</span> <span class="pre">energies':</span> <span class="pre">{'default':</span> <span class="pre">'finite-difference</span> <span class="pre">harmonic',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Species</span> <span class="pre">energies:',</span> <span class="pre">'enumeration':</span> <span class="pre">('finite-difference</span> <span class="pre">harmonic',</span> <span class="pre">'existing</span> <span class="pre">results</span> <span class="pre">(run</span> <span class="pre">nothing)'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Compute</span> <span class="pre">every</span> <span class="pre">species</span> <span class="pre">with</span> <span class="pre">the</span> <span class="pre">engine</span> <span class="pre">(optimization,</span> <span class="pre">then</span> <span class="pre">the</span> <span class="pre">Hessian</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">harmonic</span> <span class="pre">thermochemistry),</span> <span class="pre">or</span> <span class="pre">read</span> <span class="pre">energies</span> <span class="pre">already</span> <span class="pre">stored</span> <span class="pre">as</span> <span class="pre">properties</span> <span class="pre">on</span> <span class="pre">the</span> <span class="pre">systems</span> <span class="pre">named</span> <span class="pre">CBH:&lt;SMILES&gt;.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'cbh</span> <span class="pre">rungs':</span> <span class="pre">{'default':</span> <span class="pre">'all</span> <span class="pre">usable',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'CBH</span> <span class="pre">rungs:',</span> <span class="pre">'enumeration':</span> <span class="pre">('all</span> <span class="pre">usable',</span> <span class="pre">'0',</span> <span class="pre">'1',</span> <span class="pre">'2',</span> <span class="pre">'3',</span> <span class="pre">'4',</span> <span class="pre">'1,</span> <span class="pre">2',</span> <span class="pre">'2,</span> <span class="pre">3'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">rungs</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">connectivity-based</span> <span class="pre">hierarchy</span> <span class="pre">to</span> <span class="pre">use:</span> <span class="pre">every</span> <span class="pre">rung</span> <span class="pre">whose</span> <span class="pre">reference</span> <span class="pre">species</span> <span class="pre">are</span> <span class="pre">all</span> <span class="pre">in</span> <span class="pre">ATcT,</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">list.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'compare</span> <span class="pre">with</span> <span class="pre">ATcT':</span> <span class="pre">{'default':</span> <span class="pre">'yes',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Compare</span> <span class="pre">with</span> <span class="pre">ATcT:',</span> <span class="pre">'enumeration':</span> <span class="pre">('yes',</span> <span class="pre">'no'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Report</span> <span class="pre">the</span> <span class="pre">difference</span> <span class="pre">if</span> <span class="pre">the</span> <span class="pre">target</span> <span class="pre">itself</span> <span class="pre">is</span> <span class="pre">in</span> <span class="pre">ATcT.',</span> <span class="pre">'kind':</span> <span class="pre">'boolean'},</span> <span class="pre">'conformer</span> <span class="pre">embeddings':</span> <span class="pre">{'default':</span> <span class="pre">20,</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Number</span> <span class="pre">of</span> <span class="pre">embeddings:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'How</span> <span class="pre">many</span> <span class="pre">RDKit</span> <span class="pre">embeddings</span> <span class="pre">to</span> <span class="pre">rank</span> <span class="pre">by</span> <span class="pre">MMFF94.',</span> <span class="pre">'kind':</span> <span class="pre">'integer'},</span> <span class="pre">'covariances':</span> <span class="pre">{'default':</span> <span class="pre">'cached</span> <span class="pre">only',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'ATcT</span> <span class="pre">covariances:',</span> <span class="pre">'enumeration':</span> <span class="pre">('cached</span> <span class="pre">only',</span> <span class="pre">'fetch</span> <span class="pre">if</span> <span class="pre">needed'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Use</span> <span class="pre">only</span> <span class="pre">the</span> <span class="pre">covariance</span> <span class="pre">blocks</span> <span class="pre">already</span> <span class="pre">cached,</span> <span class="pre">or</span> <span class="pre">fetch</span> <span class="pre">missing</span> <span class="pre">ones</span> <span class="pre">from</span> <span class="pre">atct.anl.gov</span> <span class="pre">(not</span> <span class="pre">on</span> <span class="pre">a</span> <span class="pre">compute</span> <span class="pre">node</span> <span class="pre">without</span> <span class="pre">network).',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'energy</span> <span class="pre">property':</span> <span class="pre">{'default':</span> <span class="pre">'total</span> <span class="pre">energy#*#*',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Energy</span> <span class="pre">property:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">&quot;The</span> <span class="pre">stored</span> <span class="pre">property</span> <span class="pre">holding</span> <span class="pre">each</span> <span class="pre">species'</span> <span class="pre">energy</span> <span class="pre">(a</span> <span class="pre">glob</span> <span class="pre">pattern</span> <span class="pre">matching</span> <span class="pre">exactly</span> <span class="pre">one</span> <span class="pre">property).&quot;,</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'engine':</span> <span class="pre">{'default':</span> <span class="pre">'Model</span> <span class="pre">Chemistry',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Energies</span> <span class="pre">and</span> <span class="pre">gradients</span> <span class="pre">from:',</span> <span class="pre">'enumeration':</span> <span class="pre">('Model</span> <span class="pre">Chemistry',</span> <span class="pre">'subflowchart'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">&quot;The</span> <span class="pre">flowchart's</span> <span class="pre">Model</span> <span class="pre">Chemistry,</span> <span class="pre">run</span> <span class="pre">as</span> <span class="pre">a</span> <span class="pre">warm</span> <span class="pre">engine</span> <span class="pre">over</span> <span class="pre">MDI</span> <span class="pre">(the</span> <span class="pre">analytic</span> <span class="pre">Hessian</span> <span class="pre">when</span> <span class="pre">the</span> <span class="pre">program</span> <span class="pre">has</span> <span class="pre">one,</span> <span class="pre">else</span> <span class="pre">finite</span> <span class="pre">differences</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">gradients),</span> <span class="pre">or</span> <span class="pre">this</span> <span class="pre">step's</span> <span class="pre">subflowchart,</span> <span class="pre">run</span> <span class="pre">once</span> <span class="pre">per</span> <span class="pre">displaced</span> <span class="pre">structure.&quot;,</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'enthalpy</span> <span class="pre">property':</span> <span class="pre">{'default':</span> <span class="pre">'H(298.15</span> <span class="pre">K)#*#*',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Enthalpy</span> <span class="pre">property:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">&quot;The</span> <span class="pre">stored</span> <span class="pre">property</span> <span class="pre">holding</span> <span class="pre">the</span> <span class="pre">absolute</span> <span class="pre">enthalpy</span> <span class="pre">at</span> <span class="pre">298.15</span> <span class="pre">K</span> <span class="pre">(its</span> <span class="pre">level</span> <span class="pre">of</span> <span class="pre">theory</span> <span class="pre">may</span> <span class="pre">differ</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">energy's).&quot;,</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'fragment</span> <span class="pre">convergence':</span> <span class="pre">{'default':</span> <span class="pre">0.005,</span> <span class="pre">'default_units':</span> <span class="pre">'eV/Å',</span> <span class="pre">'description':</span> <span class="pre">'Optimization</span> <span class="pre">convergence:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'.3f',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">maximum</span> <span class="pre">force</span> <span class="pre">for</span> <span class="pre">a</span> <span class="pre">converged</span> <span class="pre">optimization.',</span> <span class="pre">'kind':</span> <span class="pre">'float'},</span> <span class="pre">'fragment</span> <span class="pre">max</span> <span class="pre">steps':</span> <span class="pre">{'default':</span> <span class="pre">200,</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Maximum</span> <span class="pre">optimization</span> <span class="pre">steps:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">maximum</span> <span class="pre">number</span> <span class="pre">of</span> <span class="pre">optimization</span> <span class="pre">steps</span> <span class="pre">per</span> <span class="pre">species.',</span> <span class="pre">'kind':</span> <span class="pre">'integer'},</span> <span class="pre">'fragment</span> <span class="pre">store':</span> <span class="pre">{'default':</span> <span class="pre">'use</span> <span class="pre">if</span> <span class="pre">available',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Fragment</span> <span class="pre">store:',</span> <span class="pre">'enumeration':</span> <span class="pre">('use</span> <span class="pre">if</span> <span class="pre">available',</span> <span class="pre">'ignore'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Use</span> <span class="pre">the</span> <span class="pre">energies</span> <span class="pre">of</span> <span class="pre">species</span> <span class="pre">already</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">fragment-energy</span> <span class="pre">store</span> <span class="pre">(seamm-thermochemistry-fragments)</span> <span class="pre">at</span> <span class="pre">this</span> <span class="pre">model</span> <span class="pre">chemistry</span> <span class="pre">instead</span> <span class="pre">of</span> <span class="pre">computing</span> <span class="pre">them,</span> <span class="pre">or</span> <span class="pre">ignore</span> <span class="pre">the</span> <span class="pre">store.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'fragment</span> <span class="pre">store</span> <span class="pre">file':</span> <span class="pre">{'default':</span> <span class="pre">'default',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Fragment</span> <span class="pre">store</span> <span class="pre">file:',</span> <span class="pre">'enumeration':</span> <span class="pre">('default',),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">store:</span> <span class="pre">fragments.db</span> <span class="pre">next</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">ATcT</span> <span class="pre">cache</span> <span class="pre">by</span> <span class="pre">default.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'hessian</span> <span class="pre">route':</span> <span class="pre">{'default':</span> <span class="pre">'automatic',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Energies</span> <span class="pre">and</span> <span class="pre">Hessian</span> <span class="pre">via:',</span> <span class="pre">'enumeration':</span> <span class="pre">('automatic',</span> <span class="pre">'warm</span> <span class="pre">engine</span> <span class="pre">over</span> <span class="pre">MDI',</span> <span class="pre">'separate</span> <span class="pre">tasks'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'How</span> <span class="pre">the</span> <span class="pre">Model</span> <span class="pre">Chemistry</span> <span class="pre">is</span> <span class="pre">driven:</span> <span class="pre">automatically</span> <span class="pre">(the</span> <span class="pre">engine</span> <span class="pre">when</span> <span class="pre">the</span> <span class="pre">program</span> <span class="pre">has</span> <span class="pre">an</span> <span class="pre">analytic</span> <span class="pre">Hessian</span> <span class="pre">or</span> <span class="pre">no</span> <span class="pre">task</span> <span class="pre">route,</span> <span class="pre">else</span> <span class="pre">finite</span> <span class="pre">differences</span> <span class="pre">as</span> <span class="pre">separate</span> <span class="pre">tasks</span> <span class="pre">where</span> <span class="pre">the</span> <span class="pre">job</span> <span class="pre">runs</span> <span class="pre">them);</span> <span class="pre">the</span> <span class="pre">warm</span> <span class="pre">MDI</span> <span class="pre">engine,</span> <span class="pre">which</span> <span class="pre">also</span> <span class="pre">allows</span> <span class="pre">the</span> <span class="pre">optimization</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">structure;</span> <span class="pre">or</span> <span class="pre">separate</span> <span class="pre">tasks.</span> <span class="pre">The</span> <span class="pre">CBH</span> <span class="pre">approach</span> <span class="pre">uses</span> <span class="pre">the</span> <span class="pre">engine</span> <span class="pre">by</span> <span class="pre">default,</span> <span class="pre">since</span> <span class="pre">it</span> <span class="pre">optimizes</span> <span class="pre">each</span> <span class="pre">species.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'initial</span> <span class="pre">conformer':</span> <span class="pre">{'default':</span> <span class="pre">'lowest</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">embeddings</span> <span class="pre">(MMFF)',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Fragments</span> <span class="pre">start</span> <span class="pre">from:',</span> <span class="pre">'enumeration':</span> <span class="pre">('lowest</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">embeddings</span> <span class="pre">(MMFF)',</span> <span class="pre">'single</span> <span class="pre">embedding'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">starting</span> <span class="pre">structure</span> <span class="pre">of</span> <span class="pre">each</span> <span class="pre">fragment</span> <span class="pre">built</span> <span class="pre">from</span> <span class="pre">its</span> <span class="pre">SMILES:</span> <span class="pre">the</span> <span class="pre">lowest</span> <span class="pre">MMFF94</span> <span class="pre">conformer</span> <span class="pre">of</span> <span class="pre">several</span> <span class="pre">RDKit</span> <span class="pre">embeddings</span> <span class="pre">(all-anti</span> <span class="pre">chains,</span> <span class="pre">as</span> <span class="pre">CBH-ANL</span> <span class="pre">starts</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">lowest</span> <span class="pre">rotamer),</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">single</span> <span class="pre">embedding.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'ladder':</span> <span class="pre">{'default':</span> <span class="pre">'',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Ladder:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">name</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">laddered</span> <span class="pre">reference</span> <span class="pre">set.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'low-level</span> <span class="pre">energy</span> <span class="pre">property':</span> <span class="pre">{'default':</span> <span class="pre">'',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">&quot;Energy</span> <span class="pre">at</span> <span class="pre">the</span> <span class="pre">enthalpy's</span> <span class="pre">level:&quot;,</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'If</span> <span class="pre">the</span> <span class="pre">enthalpy</span> <span class="pre">comes</span> <span class="pre">from</span> <span class="pre">a</span> <span class="pre">different</span> <span class="pre">level</span> <span class="pre">of</span> <span class="pre">theory</span> <span class="pre">than</span> <span class="pre">the</span> <span class="pre">energy,</span> <span class="pre">the</span> <span class="pre">energy</span> <span class="pre">at</span> <span class="pre">that</span> <span class="pre">level,</span> <span class="pre">so</span> <span class="pre">that</span> <span class="pre">H</span> <span class="pre">-</span> <span class="pre">E</span> <span class="pre">can</span> <span class="pre">be</span> <span class="pre">formed.</span> <span class="pre">Blank:</span> <span class="pre">the</span> <span class="pre">same</span> <span class="pre">as</span> <span class="pre">the</span> <span class="pre">energy</span> <span class="pre">property.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'on</span> <span class="pre">error':</span> <span class="pre">{'default':</span> <span class="pre">'keep</span> <span class="pre">all</span> <span class="pre">subdirectories',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'On</span> <span class="pre">error:',</span> <span class="pre">'enumeration':</span> <span class="pre">('keep</span> <span class="pre">last</span> <span class="pre">subdirectory',</span> <span class="pre">'keep</span> <span class="pre">all</span> <span class="pre">subdirectories',</span> <span class="pre">'delete</span> <span class="pre">all</span> <span class="pre">subdirectories'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Which</span> <span class="pre">subdirectories</span> <span class="pre">to</span> <span class="pre">keep</span> <span class="pre">if</span> <span class="pre">there</span> <span class="pre">is</span> <span class="pre">an</span> <span class="pre">error.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'on</span> <span class="pre">success':</span> <span class="pre">{'default':</span> <span class="pre">'keep</span> <span class="pre">last</span> <span class="pre">subdirectory',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'On</span> <span class="pre">success:',</span> <span class="pre">'enumeration':</span> <span class="pre">('keep</span> <span class="pre">last</span> <span class="pre">subdirectory',</span> <span class="pre">'keep</span> <span class="pre">all</span> <span class="pre">subdirectories',</span> <span class="pre">'delete</span> <span class="pre">all</span> <span class="pre">subdirectories'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Which</span> <span class="pre">subdirectories</span> <span class="pre">to</span> <span class="pre">keep.',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'optimize</span> <span class="pre">fragments':</span> <span class="pre">{'default':</span> <span class="pre">'yes',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Optimize</span> <span class="pre">the</span> <span class="pre">structures:',</span> <span class="pre">'enumeration':</span> <span class="pre">('yes',</span> <span class="pre">'no'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Whether</span> <span class="pre">to</span> <span class="pre">optimize</span> <span class="pre">each</span> <span class="pre">species</span> <span class="pre">(ASE</span> <span class="pre">BFGS</span> <span class="pre">over</span> <span class="pre">the</span> <span class="pre">engine)</span> <span class="pre">before</span> <span class="pre">the</span> <span class="pre">Hessian.',</span> <span class="pre">'kind':</span> <span class="pre">'boolean'},</span> <span class="pre">'print</span> <span class="pre">frequencies':</span> <span class="pre">{'default':</span> <span class="pre">'all',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Maximum</span> <span class="pre">frequencies</span> <span class="pre">to</span> <span class="pre">print:',</span> <span class="pre">'enumeration':</span> <span class="pre">('all',</span> <span class="pre">'none'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Whether</span> <span class="pre">to</span> <span class="pre">print</span> <span class="pre">the</span> <span class="pre">frequencies</span> <span class="pre">of</span> <span class="pre">vibration.',</span> <span class="pre">'kind':</span> <span class="pre">'integer'},</span> <span class="pre">'protect':</span> <span class="pre">{'default':</span> <span class="pre">'default',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Keep</span> <span class="pre">whole:',</span> <span class="pre">'enumeration':</span> <span class="pre">('default',</span> <span class="pre">'none',</span> <span class="pre">'aromatic</span> <span class="pre">rings',</span> <span class="pre">'aromatic</span> <span class="pre">+</span> <span class="pre">small</span> <span class="pre">rings',</span> <span class="pre">'all</span> <span class="pre">rings'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Groups</span> <span class="pre">kept</span> <span class="pre">as</span> <span class="pre">single</span> <span class="pre">units</span> <span class="pre">when</span> <span class="pre">building</span> <span class="pre">the</span> <span class="pre">reactions.</span> <span class="pre">The</span> <span class="pre">default</span> <span class="pre">keeps</span> <span class="pre">aromatic</span> <span class="pre">ring</span> <span class="pre">systems,</span> <span class="pre">3-</span> <span class="pre">and</span> <span class="pre">4-membered</span> <span class="pre">rings</span> <span class="pre">and</span> <span class="pre">charge-separated</span> <span class="pre">or</span> <span class="pre">hypervalent</span> <span class="pre">groups</span> <span class="pre">(nitro,</span> <span class="pre">sulfonyl,</span> <span class="pre">...).',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'reference</span> <span class="pre">values':</span> <span class="pre">{'default':</span> <span class="pre">'ATcT',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Reference</span> <span class="pre">values:',</span> <span class="pre">'enumeration':</span> <span class="pre">('ATcT',</span> <span class="pre">'laddered',</span> <span class="pre">'ATcT</span> <span class="pre">below</span> <span class="pre">the</span> <span class="pre">threshold,</span> <span class="pre">else</span> <span class="pre">laddered'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">&quot;Where</span> <span class="pre">the</span> <span class="pre">reference</span> <span class="pre">species'</span> <span class="pre">enthalpies</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">come</span> <span class="pre">from:</span> <span class="pre">ATcT</span> <span class="pre">for</span> <span class="pre">every</span> <span class="pre">species;</span> <span class="pre">a</span> <span class="pre">laddered</span> <span class="pre">reference</span> <span class="pre">set</span> <span class="pre">(CBH-ANL:</span> <span class="pre">ATcT</span> <span class="pre">only</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">CBH-0</span> <span class="pre">species,</span> <span class="pre">the</span> <span class="pre">rest</span> <span class="pre">from</span> <span class="pre">their</span> <span class="pre">own</span> <span class="pre">lower-rung</span> <span class="pre">reactions</span> <span class="pre">at</span> <span class="pre">a</span> <span class="pre">high</span> <span class="pre">level,</span> <span class="pre">built</span> <span class="pre">with</span> <span class="pre">seamm-thermochemistry-ladder);</span> <span class="pre">or</span> <span class="pre">ATcT</span> <span class="pre">where</span> <span class="pre">its</span> <span class="pre">95</span> <span class="pre">%</span> <span class="pre">uncertainty</span> <span class="pre">is</span> <span class="pre">below</span> <span class="pre">the</span> <span class="pre">threshold</span> <span class="pre">and</span> <span class="pre">the</span> <span class="pre">ladder</span> <span class="pre">otherwise.&quot;,</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'results':</span> <span class="pre">{'default':</span> <span class="pre">{},</span> <span class="pre">'default_units':</span> <span class="pre">None,</span> <span class="pre">'description':</span> <span class="pre">'results',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">results</span> <span class="pre">to</span> <span class="pre">save</span> <span class="pre">to</span> <span class="pre">variables</span> <span class="pre">or</span> <span class="pre">in</span> <span class="pre">tables.',</span> <span class="pre">'kind':</span> <span class="pre">'dictionary'},</span> <span class="pre">'spin</span> <span class="pre">multiplicity':</span> <span class="pre">{'default':</span> <span class="pre">'from</span> <span class="pre">system',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Spin</span> <span class="pre">multiplicity:',</span> <span class="pre">'enumeration':</span> <span class="pre">('from</span> <span class="pre">system',</span> <span class="pre">'singlet',</span> <span class="pre">'doublet',</span> <span class="pre">'triplet',</span> <span class="pre">'quartet',</span> <span class="pre">'quintet',</span> <span class="pre">'sextet',</span> <span class="pre">'septet',</span> <span class="pre">'octet'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">spin</span> <span class="pre">multiplicity</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">system</span> <span class="pre">as</span> <span class="pre">word</span> <span class="pre">or</span> <span class="pre">integer.',</span> <span class="pre">'kind':</span> <span class="pre">'string'},</span> <span class="pre">'step</span> <span class="pre">size':</span> <span class="pre">{'default':</span> <span class="pre">0.01,</span> <span class="pre">'default_units':</span> <span class="pre">'Å',</span> <span class="pre">'description':</span> <span class="pre">'Step</span> <span class="pre">size:',</span> <span class="pre">'enumeration':</span> <span class="pre">(),</span> <span class="pre">'format_string':</span> <span class="pre">'.g',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">size</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">step</span> <span class="pre">for</span> <span class="pre">finite</span> <span class="pre">differences</span> <span class="pre">(not</span> <span class="pre">used</span> <span class="pre">when</span> <span class="pre">the</span> <span class="pre">program</span> <span class="pre">provides</span> <span class="pre">the</span> <span class="pre">analytic</span> <span class="pre">Hessian).',</span> <span class="pre">'kind':</span> <span class="pre">'float'},</span> <span class="pre">'symmetry</span> <span class="pre">number':</span> <span class="pre">{'default':</span> <span class="pre">'from</span> <span class="pre">system',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Symmetry</span> <span class="pre">number:',</span> <span class="pre">'enumeration':</span> <span class="pre">('from</span> <span class="pre">system',),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'The</span> <span class="pre">symmetry</span> <span class="pre">number</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">system.',</span> <span class="pre">'kind':</span> <span class="pre">'integer'},</span> <span class="pre">'target</span> <span class="pre">conformer':</span> <span class="pre">{'default':</span> <span class="pre">'as</span> <span class="pre">given',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Target</span> <span class="pre">starts</span> <span class="pre">from:',</span> <span class="pre">'enumeration':</span> <span class="pre">('as</span> <span class="pre">given',</span> <span class="pre">'lowest</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">embeddings</span> <span class="pre">(MMFF)'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">'Keep</span> <span class="pre">the</span> <span class="pre">target</span> <span class="pre">structure</span> <span class="pre">as</span> <span class="pre">given,</span> <span class="pre">or</span> <span class="pre">rebuild</span> <span class="pre">it</span> <span class="pre">from</span> <span class="pre">its</span> <span class="pre">SMILES</span> <span class="pre">as</span> <span class="pre">the</span> <span class="pre">lowest</span> <span class="pre">MMFF94</span> <span class="pre">conformer</span> <span class="pre">of</span> <span class="pre">several</span> <span class="pre">embeddings</span> <span class="pre">before</span> <span class="pre">the</span> <span class="pre">optimization</span> <span class="pre">(a</span> <span class="pre">single</span> <span class="pre">embedding</span> <span class="pre">of</span> <span class="pre">a</span> <span class="pre">long</span> <span class="pre">chain</span> <span class="pre">is</span> <span class="pre">often</span> <span class="pre">gauche).',</span> <span class="pre">'kind':</span> <span class="pre">'enum'},</span> <span class="pre">'thermal</span> <span class="pre">corrections':</span> <span class="pre">{'default':</span> <span class="pre">'harmonic',</span> <span class="pre">'default_units':</span> <span class="pre">'',</span> <span class="pre">'description':</span> <span class="pre">'Thermal</span> <span class="pre">corrections:',</span> <span class="pre">'enumeration':</span> <span class="pre">('harmonic',</span> <span class="pre">'none</span> <span class="pre">(the</span> <span class="pre">energy</span> <span class="pre">is</span> <span class="pre">the</span> <span class="pre">enthalpy,</span> <span class="pre">e.g.</span> <span class="pre">MOPAC)'),</span> <span class="pre">'format_string':</span> <span class="pre">'',</span> <span class="pre">'help_text':</span> <span class="pre">&quot;Harmonic</span> <span class="pre">thermal</span> <span class="pre">corrections,</span> <span class="pre">or</span> <span class="pre">none</span> <span class="pre">when</span> <span class="pre">the</span> <span class="pre">engine's</span> <span class="pre">energy</span> <span class="pre">is</span> <span class="pre">already</span> <span class="pre">an</span> <span class="pre">enthalpy</span> <span class="pre">of</span> <span class="pre">formation</span> <span class="pre">at</span> <span class="pre">298.15</span> <span class="pre">K</span> <span class="pre">(MOPAC</span> <span class="pre">and</span> <span class="pre">other</span> <span class="pre">NDDO</span> <span class="pre">methods).&quot;,</span> <span class="pre">'kind':</span> <span class="pre">'enum'}}</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters.parameters" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.thermochemistry_step">
+<span id="thermochemistry-step-thermochemistry-step-module"></span><h2>thermochemistry_step.thermochemistry_step module<a class="headerlink" href="#module-thermochemistry_step.thermochemistry_step" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_step.ThermochemistryStep">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">thermochemistry_step.thermochemistry_step.</span></span><span class="sig-name descname"><span class="pre">ThermochemistryStep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flowchart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gui</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry_step.html#ThermochemistryStep"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Helper class needed for the stevedore integration.</p>
+<p>This must provide a <cite>description()</cite> method that returns a dict containing a
+description of this node, and <cite>create_node()</cite> and <cite>create_tk_node()</cite> methods
+for creating the graphical and non-graphical nodes.</p>
+<p>The dictionary for the description is the class variable just below these
+comments. The felds are as follows:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>my_description<span class="classifier">{str, str}</span></dt><dd><p>A human-readable description of this step. It can be
+several lines long, and needs to be clear to non-expert users.
+It contains the following keys: description, group, name.</p>
+</dd>
+<dt>my_description[“description”]<span class="classifier">tuple</span></dt><dd><p>A description of the Thermochemistry step. It must be
+clear to non-experts.</p>
+</dd>
+<dt>my_description[“group”]<span class="classifier">str</span></dt><dd><p>Which group in the menus to put this step. If the group does
+not exist it will be created. Common groups are “Building”,
+“Control”, “Custom”, “Data”, and “Simulations”.</p>
+</dd>
+<dt>my_description[“name”]<span class="classifier">str</span></dt><dd><p>The name of this step, to be displayed in the menus.</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_step.ThermochemistryStep.create_node">
+<span class="sig-name descname"><span class="pre">create_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flowchart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry_step.html#ThermochemistryStep.create_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.create_node" title="Link to this definition">#</a></dt>
+<dd><p>Create and return the new node object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>flowchart</strong> (<em>seamm.Node</em>) – A non-graphical SEAMM node</p></li>
+<li><p><strong>**kwargs</strong> (<em>keyword arguments</em>) – Various keyword arguments such as title, namespace or
+extension representing the title displayed in the flowchart,
+the namespace for the plugins of a subflowchart and
+the extension, respectively.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#thermochemistry_step.thermochemistry.Thermochemistry" title="thermochemistry_step.thermochemistry.Thermochemistry">Thermochemistry</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_step.ThermochemistryStep.create_tk_node">
+<span class="sig-name descname"><span class="pre">create_tk_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">canvas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry_step.html#ThermochemistryStep.create_tk_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.create_tk_node" title="Link to this definition">#</a></dt>
+<dd><p>Create and return the graphical Tk node object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>canvas</strong> (<em>tk.Canvas</em>) – The Tk Canvas widget</p></li>
+<li><p><strong>**kwargs</strong> (<em>keyword arguments</em>) – Various keyword arguments such as tk_flowchart, node, x, y, w, h
+representing a graphical flowchart object, a non-graphical node for
+a step, and dimensions of the graphical node.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry" title="thermochemistry_step.tk_thermochemistry.TkThermochemistry">TkThermochemistry</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_step.ThermochemistryStep.description">
+<span class="sig-name descname"><span class="pre">description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/thermochemistry_step.html#ThermochemistryStep.description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.description" title="Link to this definition">#</a></dt>
+<dd><p>Return a description of what this step does.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>description</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict(str, str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.thermochemistry_step.ThermochemistryStep.my_description">
+<span class="sig-name descname"><span class="pre">my_description</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'description':</span> <span class="pre">'An</span> <span class="pre">step</span> <span class="pre">for</span> <span class="pre">predicting</span> <span class="pre">thermochemistry',</span> <span class="pre">'group':</span> <span class="pre">'Properties',</span> <span class="pre">'name':</span> <span class="pre">'Thermochemistry'}</span></span><a class="headerlink" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.my_description" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step.tk_thermochemistry">
+<span id="thermochemistry-step-tk-thermochemistry-module"></span><h2>thermochemistry_step.tk_thermochemistry module<a class="headerlink" href="#module-thermochemistry_step.tk_thermochemistry" title="Link to this heading">#</a></h2>
+<p>The graphical part of a Thermochemistry step</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">thermochemistry_step.tk_thermochemistry.</span></span><span class="sig-name descname"><span class="pre">TkThermochemistry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tk_flowchart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">namespace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'org.molssi.seamm.tk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">canvas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/tk_thermochemistry.html#TkThermochemistry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TkNode</span></code></p>
+<p>The graphical part of a Thermochemistry step in a flowchart.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.tk_flowchart">
+<span class="sig-name descname"><span class="pre">tk_flowchart</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.tk_flowchart" title="Link to this definition">#</a></dt>
+<dd><p>The flowchart that we belong to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TkFlowchart = None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.node">
+<span class="sig-name descname"><span class="pre">node</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.node" title="Link to this definition">#</a></dt>
+<dd><p>The corresponding node of the non-graphical flowchart</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Node = None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.canvas">
+<span class="sig-name descname"><span class="pre">canvas</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.canvas" title="Link to this definition">#</a></dt>
+<dd><p>The Tk Canvas to draw on</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tkCanvas = None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.dialog">
+<span class="sig-name descname"><span class="pre">dialog</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.dialog" title="Link to this definition">#</a></dt>
+<dd><p>The Pmw dialog object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dialog</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.x">
+<span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.x" title="Link to this definition">#</a></dt>
+<dd><p>The x-coordinate of the center of the picture of the node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int = None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.y" title="Link to this definition">#</a></dt>
+<dd><p>The y-coordinate of the center of the picture of the node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int = None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.w">
+<span class="sig-name descname"><span class="pre">w</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.w" title="Link to this definition">#</a></dt>
+<dd><p>The width in pixels of the picture of the node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int = 200</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.h">
+<span class="sig-name descname"><span class="pre">h</span></span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.h" title="Link to this definition">#</a></dt>
+<dd><p>The height in pixels of the picture of the node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int = 50</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.self">
+<span class="sig-name descname"><span class="pre">self</span></span><span class="sig-paren">[</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span></em><span class="sig-paren">]</span><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.self" title="Link to this definition">#</a></dt>
+<dd><p>A dictionary of tk widgets built using the information
+contained in Thermochemistry_parameters.py</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Thermochemistry</span></code>, <a class="reference internal" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry" title="thermochemistry_step.tk_thermochemistry.TkThermochemistry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TkThermochemistry</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">ThermochemistryParameters</span></code></p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.create_dialog">
+<span class="sig-name descname"><span class="pre">create_dialog</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/tk_thermochemistry.html#TkThermochemistry.create_dialog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.create_dialog" title="Link to this definition">#</a></dt>
+<dd><p>Create the dialog. A set of widgets will be chosen by default
+based on what is specified in the Thermochemistry_parameters
+module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>None</strong></p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_dialog" title="thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_dialog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TkThermochemistry.reset_dialog</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.edit">
+<span class="sig-name descname"><span class="pre">edit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/tk_thermochemistry.html#TkThermochemistry.edit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.edit" title="Link to this definition">#</a></dt>
+<dd><p>Re-lay out the dialog when it is opened, so the reminder tracks
+the flowchart.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_dialog">
+<span class="sig-name descname"><span class="pre">reset_dialog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/tk_thermochemistry.html#TkThermochemistry.reset_dialog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_dialog" title="Link to this definition">#</a></dt>
+<dd><p>Layout the widgets in the dialog.</p>
+<p>The widgets are chosen by default from the information in
+Thermochemistry parameters.</p>
+<p>This function simply lays them out row by row with
+aligned labels. You may wish a more complicated layout that
+is controlled by values of some of the control parameters.
+If so, edit or override this method</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>widget</strong> (<em>Tk Widget = None</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.create_dialog" title="thermochemistry_step.tk_thermochemistry.TkThermochemistry.create_dialog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TkThermochemistry.create_dialog</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_thermochemistry_frame">
+<span class="sig-name descname"><span class="pre">reset_thermochemistry_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/tk_thermochemistry.html#TkThermochemistry.reset_thermochemistry_frame"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_thermochemistry_frame" title="Link to this definition">#</a></dt>
+<dd><p>Layout the widgets in the thermochemistry frame
+as needed for the current state</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="thermochemistry_step.tk_thermochemistry.TkThermochemistry.right_click">
+<span class="sig-name descname"><span class="pre">right_click</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/thermochemistry_step/tk_thermochemistry.html#TkThermochemistry.right_click"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.right_click" title="Link to this definition">#</a></dt>
+<dd><p>Handles the right click event on the node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<em>Tk Event</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.edit" title="thermochemistry_step.tk_thermochemistry.TkThermochemistry.edit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TkThermochemistry.edit</span></code></a></p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-thermochemistry_step">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-thermochemistry_step" title="Link to this heading">#</a></h2>
+<p>thermochemistry_step
+A SEAMM plug-in for Thermochemistry</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.cbh_approach">thermochemistry_step.cbh_approach module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.cbh_approach.CBHApproach"><code class="docutils literal notranslate"><span class="pre">CBHApproach</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.cbh_approach.CBHApproach.describe_cbh"><code class="docutils literal notranslate"><span class="pre">CBHApproach.describe_cbh()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.cbh_approach.CBHApproach.run_cbh"><code class="docutils literal notranslate"><span class="pre">CBHApproach.run_cbh()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.cbh_approach.cbh_charge"><code class="docutils literal notranslate"><span class="pre">cbh_charge()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.cbh_approach.cbh_multiplicity"><code class="docutils literal notranslate"><span class="pre">cbh_multiplicity()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.hessian">thermochemistry_step.hessian module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.ModelChemistryHessian"><code class="docutils literal notranslate"><span class="pre">ModelChemistryHessian</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.ModelChemistryHessian.energy_and_hessian"><code class="docutils literal notranslate"><span class="pre">ModelChemistryHessian.energy_and_hessian()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.ModelChemistryHessian.model_chemistry"><code class="docutils literal notranslate"><span class="pre">ModelChemistryHessian.model_chemistry()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.ModelChemistryHessian.model_chemistry_energy"><code class="docutils literal notranslate"><span class="pre">ModelChemistryHessian.model_chemistry_energy()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.ModelChemistryHessian.optimize_and_energy"><code class="docutils literal notranslate"><span class="pre">ModelChemistryHessian.optimize_and_energy()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.ModelChemistryHessian.optimize_and_hessian"><code class="docutils literal notranslate"><span class="pre">ModelChemistryHessian.optimize_and_hessian()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.module_environment"><code class="docutils literal notranslate"><span class="pre">module_environment()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.modules_to_load"><code class="docutils literal notranslate"><span class="pre">modules_to_load()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.parse_cpu_ids"><code class="docutils literal notranslate"><span class="pre">parse_cpu_ids()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.physical_cores_allowed"><code class="docutils literal notranslate"><span class="pre">physical_cores_allowed()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.hessian.slurm_allocated_cpus"><code class="docutils literal notranslate"><span class="pre">slurm_allocated_cpus()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.metadata">thermochemistry_step.metadata module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.metadata.metadata"><code class="docutils literal notranslate"><span class="pre">metadata</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.symmetry">thermochemistry_step.symmetry module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.symmetry.rotational_symmetry_number"><code class="docutils literal notranslate"><span class="pre">rotational_symmetry_number()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.thermochemistry">thermochemistry_step.thermochemistry module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry"><code class="docutils literal notranslate"><span class="pre">Thermochemistry</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.parser"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.parser</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.options"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.options</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.subflowchart"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.subflowchart</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.parameters"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.parameters</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.analyze"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.analyze()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.ase_calculator"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.ase_calculator()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.create_parser"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.create_parser()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.description_text"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.description_text()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.git_revision"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.git_revision</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.harmonic_thermochemistry"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.harmonic_thermochemistry()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.model_chemistry_vibrations"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.model_chemistry_vibrations()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.run"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.run()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.set_id"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.set_id()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.set_subids"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.set_subids()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry.Thermochemistry.version"><code class="docutils literal notranslate"><span class="pre">Thermochemistry.version</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.thermochemistry_parameters">thermochemistry_step.thermochemistry_parameters module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters"><code class="docutils literal notranslate"><span class="pre">ThermochemistryParameters</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_parameters.ThermochemistryParameters.parameters"><code class="docutils literal notranslate"><span class="pre">ThermochemistryParameters.parameters</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.thermochemistry_step">thermochemistry_step.thermochemistry_step module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep"><code class="docutils literal notranslate"><span class="pre">ThermochemistryStep</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.create_node"><code class="docutils literal notranslate"><span class="pre">ThermochemistryStep.create_node()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.create_tk_node"><code class="docutils literal notranslate"><span class="pre">ThermochemistryStep.create_tk_node()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.description"><code class="docutils literal notranslate"><span class="pre">ThermochemistryStep.description()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.thermochemistry_step.ThermochemistryStep.my_description"><code class="docutils literal notranslate"><span class="pre">ThermochemistryStep.my_description</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step.tk_thermochemistry">thermochemistry_step.tk_thermochemistry module</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.tk_flowchart"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.tk_flowchart</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.node"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.node</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.canvas"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.canvas</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.dialog"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.dialog</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.x"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.x</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.y"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.y</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.w"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.w</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.h"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.h</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.self"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.self</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.create_dialog"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.create_dialog()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.edit"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.edit()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_dialog"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.reset_dialog()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.reset_thermochemistry_frame"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.reset_thermochemistry_frame()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#thermochemistry_step.tk_thermochemistry.TkThermochemistry.right_click"><code class="docutils literal notranslate"><span class="pre">TkThermochemistry.right_click()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-thermochemistry_step">Module contents</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/developer/thermochemistry_step.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.23.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

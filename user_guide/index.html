@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>User Guide &#8212; SEAMM Thermochemistry Plug-in 2026.10.30 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c224919a" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
+
+    <script src="../_static/documentation_options.js?v=fcc0a42c"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/index';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Developer Documentation" href="../developer_guide/index.html" />
+    <link rel="prev" title="Getting Started" href="../getting_started/index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="2026.10.30" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/SEAMM logo.png" class="logo__image only-light" alt=""/>
+    <img src="../_static/SEAMM Inverted 288x181.png" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">Thermochemistry</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting_started/index.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#" aria-current="page">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../developer_guide/index.html">
+    Developer Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../api/index.html">
+    API Documentation
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../authors.html">
+    Development Team
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../history.html">
+    History
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-external" href="https://molssi-seamm.github.io">
+    Main SEAMM documentation
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-external" href="https://molssi-seamm.github.io">
+    SEAMM Documentation
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-external" href="https://molssi.org">
+    MolSSI
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/molssi-seamm/geometry_analysis_step" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://twitter.com/MolSSI_NSF" title="Twitter" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-twitter fa-lg" aria-hidden="true"></i><span class="visually-hidden">Twitter</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting_started/index.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#" aria-current="page">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../developer_guide/index.html">
+    Developer Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../api/index.html">
+    API Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../authors.html">
+    Development Team
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../history.html">
+    History
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://molssi-seamm.github.io">
+    Main SEAMM documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://molssi-seamm.github.io">
+    SEAMM Documentation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://molssi.org">
+    MolSSI
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/molssi-seamm/geometry_analysis_step" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://twitter.com/MolSSI_NSF" title="Twitter" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-twitter fa-lg" aria-hidden="true"></i><span class="visually-hidden">Twitter</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">User Guide</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="user-guide">
+<span id="id1"></span><h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading">#</a></h1>
+<p>The Thermochemistry step has two approaches. The <strong>harmonic approximation</strong>
+calculates the vibrational frequencies of a molecule from its Hessian, and from
+them the ideal-gas, rigid-rotor, harmonic-oscillator thermodynamic functions at
+the requested temperatures and pressures. The <strong>isodesmic (CBH) approach with
+ATcT references</strong> gives the enthalpy of formation of a molecule at 0 K and
+298.15 K from the connectivity-based hierarchy of error-cancelling reactions,
+with the reference species taken from the Active Thermochemical Tables.</p>
+<section id="how-it-works">
+<h2>How it works<a class="headerlink" href="#how-it-works" title="Link to this heading">#</a></h2>
+<p>The step needs the energy and the Hessian (second derivatives) of the
+structure. By default they come from the flowchart’s <strong>Model Chemistry</strong>: put a
+Model Chemistry step before this one to choose the program and method (MOPAC
+PM6-ORG, xTB, an ORCA DFT model, an MLFF model, …). The program runs as a
+warm engine over MDI. When it provides an analytic Hessian, as ORCA does for
+Hartree-Fock and most density functionals, that is used; otherwise the Hessian
+is built from central finite differences of the gradients over the same
+connection, or as separate calculations where the job runs its tasks. The step
+reports which route it took. The engine is started with the environment the
+program’s own runs get: for a program installed with environment modules
+(<code class="docutils literal notranslate"><span class="pre">installation</span> <span class="pre">=</span> <span class="pre">modules</span></code> in its <code class="docutils literal notranslate"><span class="pre">.ini</span></code> file, as on many clusters) its
+modules are loaded first.</p>
+<p>The alternative, “Energies and gradients from: subflowchart”, keeps a
+subflowchart inside the step holding the engine (a MOPAC, ORCA, Gaussian, Psi4,
+LAMMPS or MLFF energy step, for example). The subflowchart runs once for the
+undisplaced structure and once for each displacement of each atom in ±x, ±y and
+±z (6N+1 runs). The engine step must pass its energy and gradients back as JSON:
+in its <em>Results</em> tab, store <code class="docutils literal notranslate"><span class="pre">energy</span></code> and <code class="docutils literal notranslate"><span class="pre">gradients</span></code> as JSON. Without these
+the step stops with “There are no energy and gradients in properties.json”. Use
+this route for calculations an MDI engine cannot do. A flowchart made before
+the Model Chemistry route existed, with a subflowchart and no Model Chemistry,
+still runs as before.</p>
+<p>The frequencies come from the Hessian through ASE. The six (five for a linear
+molecule) nominally zero translations and rotations are reported so that the
+quality of the gradients can be judged, and imaginary modes are excluded from
+the thermodynamic functions: by default the step perceives how many there are,
+or you can declare the structure a transition state or give the number.</p>
+</section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt>Energies and gradients from</dt><dd><p>The flowchart’s Model Chemistry (default) or this step’s subflowchart.</p>
+</dd>
+<dt>Energies and Hessian via</dt><dd><p><code class="docutils literal notranslate"><span class="pre">automatic</span></code> (default for the harmonic approach): the warm MDI engine when
+the program has an analytic Hessian or no task route, else finite
+differences as separate tasks where the job runs them; <code class="docutils literal notranslate"><span class="pre">warm</span> <span class="pre">engine</span> <span class="pre">over</span>
+<span class="pre">MDI</span></code>; or <code class="docutils literal notranslate"><span class="pre">separate</span> <span class="pre">tasks</span></code>. The CBH approach uses the engine by default,
+since it optimizes each species over it.</p>
+</dd>
+<dt>Step size</dt><dd><p>The finite-difference displacement, 0.01 Å by default; not used when the
+program provides the analytic Hessian.</p>
+</dd>
+<dt>Number of imaginary modes</dt><dd><p><code class="docutils literal notranslate"><span class="pre">perceive</span></code> (default), <code class="docutils literal notranslate"><span class="pre">transition</span> <span class="pre">state</span></code> (one), or an integer.</p>
+</dd>
+<dt>Temperatures and pressures</dt><dd><p>Lists in the usual SEAMM form, e.g. <code class="docutils literal notranslate"><span class="pre">200,</span> <span class="pre">250,</span> <span class="pre">298.15,</span> <span class="pre">300:1000:50</span></code> K and
+<code class="docutils literal notranslate"><span class="pre">1.0</span></code> bar.</p>
+</dd>
+<dt>Spin multiplicity</dt><dd><p>Taken from the system by default. It contributes R ln(2S+1) to the entropy.</p>
+</dd>
+<dt>Symmetry number</dt><dd><p>The rotational symmetry number σ, which enters the entropy as -R ln σ. By
+default (<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">system</span></code>) it is perceived from the structure by testing
+rotation axes against the geometry; the step prints the number and the axes
+it found, e.g. “12 (4 C3, 3 C2 axes)” for methane. A geometry must be
+symmetric to within 0.1 Å for an axis to be found, which optimized structures
+are. Give the number explicitly if the structure is deliberately distorted.</p>
+</dd>
+</dl>
+</section>
+<section id="enthalpies-of-formation-the-cbh-approach">
+<h2>Enthalpies of formation: the CBH approach<a class="headerlink" href="#enthalpies-of-formation-the-cbh-approach" title="Link to this heading">#</a></h2>
+<p>Choose “Approach: Isodesmic (CBH) with ATcT references”. The step builds the
+connectivity-based hierarchy (CBH) reactions of the molecule from its bonds, so
+the structure must have bonds (built from SMILES, or read from an SDF or MOL
+file). CBH-0 breaks the molecule into hydrides of its atoms, CBH-1 into its
+bonds, CBH-2 keeps each atom with all its neighbours, CBH-3 each bond with its
+neighbours and CBH-4 each atom with two shells of neighbours: the higher the
+rung, the more of the chemical environment, and of the error of the method, is
+the same on both sides of the reaction. The reaction enthalpy is calculated with
+the engine for the target and every reference species, and the enthalpy of
+formation of the target follows from it and the ATcT values of the reference
+species, with the 95 % uncertainty of the ATcT part (using the ATcT covariances
+when they are cached). If the target itself is in ATcT the difference is
+reported too.</p>
+<p>Radicals and ions are handled: every fragment containing the radical or
+charged atom keeps that spin or charge, and the ATcT entry is selected with
+the same charge and multiplicity. The reactions follow from the SMILES of the
+structure, so the system’s charge and spin multiplicity must agree with it;
+the step stops if they do not. Build a radical from its SMILES
+(<code class="docutils literal notranslate"><span class="pre">[CH2]C</span></code> for the ethyl radical), which sets both.</p>
+<p>The ATcT tables are not distributed with SEAMM: install a version first with
+<code class="docutils literal notranslate"><span class="pre">seamm-thermochemistry-atct</span> <span class="pre">download</span></code> (see the seamm_thermochemistry
+documentation). A rung is usable only when all its reference species are in
+ATcT, and the step reports the rungs it could not use and why; the result
+stored is the highest usable rung, and every rung goes into the table <code class="docutils literal notranslate"><span class="pre">CBH</span></code>.</p>
+<dl class="simple">
+<dt>CBH rungs</dt><dd><p><code class="docutils literal notranslate"><span class="pre">all</span> <span class="pre">usable</span></code> (default), or a list such as <code class="docutils literal notranslate"><span class="pre">1,</span> <span class="pre">2</span></code>.</p>
+</dd>
+<dt>Keep whole</dt><dd><p>Groups kept as single units when the reactions are built, so that they are
+never broken: by default aromatic ring systems, 3- and 4-membered rings and
+charge-separated or hypervalent groups (nitro, sulfonyl, phosphoryl, PF6-,
+…). <code class="docutils literal notranslate"><span class="pre">none</span></code> builds the plain hierarchy.</p>
+</dd>
+<dt>Species energies</dt><dd><p><code class="docutils literal notranslate"><span class="pre">finite-difference</span> <span class="pre">harmonic</span></code> (default): each species is built from its
+SMILES as a system named <code class="docutils literal notranslate"><span class="pre">CBH:&lt;SMILES&gt;</span></code>, optimized with the engine and
+its Hessian calculated, giving H(0 K) = E + ZPE and H(298.15 K). The
+optimization convergence and maximum steps, and the finite-difference step
+size, are as for the harmonic approach. Or <code class="docutils literal notranslate"><span class="pre">existing</span> <span class="pre">results</span> <span class="pre">(run</span>
+<span class="pre">nothing)</span></code>: the energies are read from properties already stored on those
+systems, named by the three property patterns (energy, ZPE and enthalpy;
+each glob must match exactly one property), for example from an earlier
+job that computed the fragments at a higher level.</p>
+</dd>
+<dt>Fragments start from, Target starts from</dt><dd><p>Each fragment built from its SMILES starts, by default, from the lowest
+MMFF94 conformer of 20 RDKit embeddings (an n-alkane all-anti, ethanol
+anti), as CBH-ANL starts every species from its lowest rotamer; a single
+embedding of a long chain is often gauche. The target is kept as given
+unless told to be rebuilt the same way. The chosen chain dihedrals are
+printed.</p>
+</dd>
+<dt>Thermal corrections</dt><dd><p><code class="docutils literal notranslate"><span class="pre">harmonic</span></code> (default), or <code class="docutils literal notranslate"><span class="pre">none</span></code> when the engine’s energy is already an
+enthalpy of formation at 298.15 K, as for MOPAC and other NDDO methods:
+then no Hessian is calculated and only the 298.15 K result is available.
+Note that with NDDO methods CBH-0 is of no use, since their H2 is far from
+experiment.</p>
+</dd>
+<dt>Reference values</dt><dd><p><code class="docutils literal notranslate"><span class="pre">ATcT</span></code> for every reference species; <code class="docutils literal notranslate"><span class="pre">laddered</span></code>: a CBH-ANL reference
+set built with <code class="docutils literal notranslate"><span class="pre">seamm-thermochemistry-ladder</span></code> (ATcT only for the CBH-0
+species, every other species from its own lower-rung reaction at a high
+level), named in <em>Ladder</em>; or <code class="docutils literal notranslate"><span class="pre">ATcT</span> <span class="pre">below</span> <span class="pre">the</span> <span class="pre">threshold,</span> <span class="pre">else</span> <span class="pre">laddered</span></code>.
+With a ladder the uncertainty is the ATcT part through the ladder’s
+coefficients on the anchors (cᵀΣc with the covariance) plus the ladder’s
+measured method term, reported separately. Validate laddered results at
+0 K: ATcT’s 298.15 K values are conformer averages.</p>
+</dd>
+<dt>Fragment store</dt><dd><p>Species already in the fragment-energy store at this model chemistry
+(<code class="docutils literal notranslate"><span class="pre">seamm-thermochemistry-fragments</span> <span class="pre">harvest</span></code> promotes them there from
+finished jobs) are taken from it instead of being computed, and serve as
+the fallback in “existing results” mode. The species table says where
+each value came from; a record without a settings fingerprint is
+“unverified” and the output says so. When the engine provides them (ORCA),
+the settings fingerprints of each species’ calculations are stored with its
+energies, so the harvest files verified records.</p>
+</dd>
+<dt>ATcT version, directory, covariances</dt><dd><p>The version of the Thermochemical Network (<code class="docutils literal notranslate"><span class="pre">latest</span></code> cached by default),
+where the versions are kept, and whether to fetch missing covariance blocks
+from atct.anl.gov (<code class="docutils literal notranslate"><span class="pre">cached</span> <span class="pre">only</span></code> by default: a compute node usually has
+no network, and the site may refuse the request; cache the blocks first
+with <code class="docutils literal notranslate"><span class="pre">seamm-thermochemistry-atct</span> <span class="pre">covariance</span></code>).</p>
+</dd>
+</dl>
+<p>The results that can be stored are the enthalpy of formation at 0 K and at
+298.15 K, its 95 % reference uncertainty, the rung and the reaction used, the
+ATcT version and, when the target is in ATcT, its values. They are also stored
+as the properties <code class="docutils literal notranslate"><span class="pre">DfH(0</span> <span class="pre">K)</span></code>, <code class="docutils literal notranslate"><span class="pre">DfH(298.15</span> <span class="pre">K)</span></code> and <code class="docutils literal notranslate"><span class="pre">DfH</span> <span class="pre">uncertainty</span> <span class="pre">(95%)</span></code>
+of the configuration.</p>
+<p>Every species the step computes, the target and each fragment, is written as
+it was computed (optimized, if optimization is on) to <code class="docutils literal notranslate"><span class="pre">&lt;SMILES&gt;.sdf</span></code> in the
+step’s directory, and all of them together to <code class="docutils literal notranslate"><span class="pre">species.sdf</span></code>, with the SMILES,
+the role (target or fragment), the model chemistry, E, ZPE, H(0 K),
+H(298.15 K) and the number of imaginary modes as SDF data fields. Open them to
+check that each conformation is the one intended; the output also lists the
+heavy-atom dihedrals of the final structure next to those of the starting one.
+The files also hold the properties stored on the structure, and can be read
+back with Read Structure, for example to restart a species from its computed
+geometry. Slashes in a SMILES (double-bond stereo) become <code class="docutils literal notranslate"><span class="pre">_</span></code> and <code class="docutils literal notranslate"><span class="pre">-</span></code> in the file
+name. Species taken from the fragment store or from existing results are not
+written, since their structures are not computed here.</p>
+</section>
+<section id="results">
+<h2>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h2>
+<p>The step prints the ZPE, the electronic energy E of the undisplaced structure,
+H(0 K) = E + ZPE, and a table of the thermal corrections U-E, H-E and G-E (each
+including the ZPE, in kJ/mol) and the entropy S (J/mol/K) at every temperature
+and pressure.</p>
+<p>The results that can be stored in variables, tables or as properties of the
+configuration are the frequencies, the symmetry number, the number of saddle
+modes and the transition-state frequency, the ZPE, the total (electronic) energy,
+H(0 K), and U, H, S and G. The last four are lists over the pressures and then
+the temperatures, in the same order as the stored <code class="docutils literal notranslate"><span class="pre">P</span></code> and <code class="docutils literal notranslate"><span class="pre">T</span></code> lists. The
+properties are named with the Model Chemistry’s level, for example
+<code class="docutils literal notranslate"><span class="pre">H#Thermochemistry#MOPAC:SQM&#64;PM6-ORG</span></code> or
+<code class="docutils literal notranslate"><span class="pre">S#Thermochemistry#ORCA:DFT&#64;B3LYP/bse:def2-TZVP</span></code>, or with the subflowchart
+engine’s model, e.g. <code class="docutils literal notranslate"><span class="pre">H#Thermochemistry#PM6-ORG</span></code>.</p>
+</section>
+<section id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="../search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../getting_started/index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Getting Started</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../developer_guide/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Developer Documentation</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-it-works">How it works</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#parameters">Parameters</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#enthalpies-of-formation-the-cbh-approach">Enthalpies of formation: the CBH approach</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/user_guide/index.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.23.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
