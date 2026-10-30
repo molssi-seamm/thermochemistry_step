@@ -923,7 +923,11 @@ class CBHApproach:
         body = text.rstrip()
         if body.endswith("$$$$"):
             body = body[: -len("$$$$")].rstrip()
-        body += "\n" + "".join(f"> <{k}>\n{v}\n\n" for k, v in fields.items())
+        # A data item ends with a blank line. Stripping removed the one after the
+        # last of SEAMM's own items (its stored properties), so put it back, or a
+        # reader joins that value with the next field.
+        body += "\n" if body.endswith("M  END") else "\n\n"
+        body += "".join(f"> <{k}>\n{v}\n\n" for k, v in fields.items())
         body += "$$$$\n"
         try:
             directory.mkdir(parents=True, exist_ok=True)

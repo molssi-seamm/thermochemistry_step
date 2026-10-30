@@ -1,6 +1,18 @@
 =======
 History
 =======
+2026.10.30 -- Bugfix: the species SDF files can be read back
+    * The ``<SMILES>.sdf`` and ``species.sdf`` files of the Isodesmic (CBH) approach
+      lacked the blank line that ends the last of the structure's stored properties, so
+      a reader joined that value with the next data field and Read Structure could not
+      read the file ("could not convert string to float"). The files are now valid SDF
+      and can be read back, for example to restart a species from its computed
+      geometry. Files written by 2026.10.29.2 can be repaired by adding a blank line
+      before ``> <SMILES>``.
+    * In the output, each species' header now comes before the line saying which
+      starting conformer was used; before, the target's conformer line was printed
+      above its header.
+
 2026.10.29.2 -- The structure of every computed CBH species is written to SDF files
     * Each species the Isodesmic (CBH) approach computes, the target and every fragment,
       is written as computed (optimized) to ``<SMILES>.sdf`` in the step's directory,
