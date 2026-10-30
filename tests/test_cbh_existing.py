@@ -720,6 +720,33 @@ def test_species_sdf(node, tmp_path, monkeypatch):
     assert (tmp_path / "step" / "C_C=C_C.sdf").exists()
 
 
+def test_species_sdf_after_stored_properties(node, tmp_path, monkeypatch):
+    """With properties stored on the configuration, SEAMM's own SDF data items come
+    first; the step's fields must still be separate items that a reader can parse
+    (the blank line ending the last stored item was once stripped, so a reader joined
+    the energy with '> <SMILES>' and the file could not be read back)."""
+    pytest.importorskip("openbabel")
+    Chem = pytest.importorskip("rdkit.Chem")
+    monkeypatch.setattr(node, "_species_directory", lambda: tmp_path / "step")
+    configuration = None
+    for system in node._test_db.systems:
+        if system.name == "CBH:CC":
+            configuration = system.configuration
+    properties = configuration.properties
+    name = "total energy#Thermochemistry#TEST"
+    if not properties.exists(name):
+        properties.add(name, "float", units="E_h", description="test")
+    properties.put(name, -79.5)
+    node._write_species_sdf(configuration, "CC", {"E": -1.0, "imaginary": 0})
+    path = tmp_path / "step" / "CC.sdf"
+    molecules = [m for m in Chem.SDMolSupplier(str(path), removeHs=False)]
+    assert len(molecules) == 1 and molecules[0] is not None
+    fields = molecules[0].GetPropsAsDict()
+    assert float(fields["SEAMM|total energy#Thermochemistry#TEST|float|E_h"]) == -79.5
+    assert fields["SMILES"] == "CC"
+    assert str(fields["imaginary modes"]) == "0"
+
+
 def test_species_sdf_never_fails_a_species(node, tmp_path, monkeypatch, caplog):
     """The SDF writer is diagnostic output: an error in it is logged, not raised."""
     monkeypatch.setattr(node, "_species_directory", lambda: tmp_path / "step")

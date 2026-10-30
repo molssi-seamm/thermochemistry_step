@@ -185,7 +185,9 @@ the role (target or fragment), the model chemistry, E, ZPE, H(0 K),
 H(298.15 K) and the number of imaginary modes as SDF data fields. Open them to
 check that each conformation is the one intended; the output also lists the
 heavy-atom dihedrals of the final structure next to those of the starting one.
-Slashes in a SMILES (double-bond stereo) become ``_`` and ``-`` in the file
+The files also hold the properties stored on the structure, and can be read
+back with Read Structure, for example to restart a species from its computed
+geometry. Slashes in a SMILES (double-bond stereo) become ``_`` and ``-`` in the file
 name. Species taken from the fragment store or from existing results are not
 written, since their structures are not computed here.
 

@@ -378,14 +378,13 @@ class CBHApproach:
                     )
                     sources[can] = "properties"
         else:
-            if str(_P.get("target conformer", "as given")).startswith("lowest"):
-                self._embed_lowest(
-                    target_configuration,
-                    smiles,
-                    int(_P.get("conformer embeddings", 20)),
-                )
             energies[target] = self._compute_species(
-                _P, target, smiles, target_system, target_configuration
+                _P,
+                target,
+                smiles,
+                target_system,
+                target_configuration,
+                embed=str(_P.get("target conformer", "as given")).startswith("lowest"),
             )
             sources[target] = "computed"
             for can, generated in fragments.items():
@@ -788,9 +787,19 @@ class CBHApproach:
                 return system.configuration
         return None
 
-    def _compute_species(self, _P, can, generated, system=None, configuration=None):
-        """Create (if needed) and compute one species with the subflowchart."""
+    def _compute_species(
+        self, _P, can, generated, system=None, configuration=None, embed=False
+    ):
+        """Create (if needed) and compute one species with the subflowchart.
+        `embed`: start a given configuration from its lowest MMFF conformer."""
+        printer.important(
+            __(f"\nSpecies {can}:", indent=4 * " ", wrap=False, dedent=False)
+        )
         system_db = self.get_variable("_system_db")
+        if configuration is not None and embed:
+            self._embed_lowest(
+                configuration, generated, int(_P.get("conformer embeddings", 20))
+            )
         if configuration is None:
             configuration = self._find_fragment(system_db, can)
             if configuration is None:
@@ -815,9 +824,6 @@ class CBHApproach:
 
         label = can.replace("/", "_").replace("\\", "_")
         self._subdirectory = f"species_{label}"
-        printer.important(
-            __(f"\nSpecies {can}:", indent=4 * " ", wrap=False, dedent=False)
-        )
         try:
             if getattr(self, "_engine_mode", "subflowchart") == "Model Chemistry":
                 result = self._compute_species_mc(_P, can, configuration)
@@ -917,7 +923,11 @@ class CBHApproach:
         body = text.rstrip()
         if body.endswith("$$$$"):
             body = body[: -len("$$$$")].rstrip()
-        body += "\n" + "".join(f"> <{k}>\n{v}\n\n" for k, v in fields.items())
+        # A data item ends with a blank line. Stripping removed the one after the
+        # last of SEAMM's own items (its stored properties), so put it back, or a
+        # reader joins that value with the next field.
+        body += "\n" if body.endswith("M  END") else "\n\n"
+        body += "".join(f"> <{k}>\n{v}\n\n" for k, v in fields.items())
         body += "$$$$\n"
         try:
             directory.mkdir(parents=True, exist_ok=True)
