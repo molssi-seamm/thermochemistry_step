@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.11.5 -- Internal: the Hessian driver moved to seamm_exec; the CBH ring rules documented
+    * The code that drives the Model Chemistry for energies, optimizations and Hessians
+      moved to seamm_exec (2026.11.5), where the Normal Mode Sampling and Vibrational
+      Analysis steps share it. Nothing changes in how this step runs.
+    * The user guide now says which rings the CBH reactions keep whole (aromatic ring
+      systems, rings of up to 4 atoms, charge-separated groups) and which they open
+      (non-aromatic 5- and 6-membered rings), with the evidence for that default.
+
 2026.10.30 -- Bugfix: the species SDF files can be read back
     * The ``<SMILES>.sdf`` and ``species.sdf`` files of the Isodesmic (CBH) approach
       lacked the blank line that ends the last of the structure's stored properties, so

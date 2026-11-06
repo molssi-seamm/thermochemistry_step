@@ -119,6 +119,17 @@ Keep whole
     charge-separated or hypervalent groups (nitro, sulfonyl, phosphoryl, PF6-,
     ...). ``none`` builds the plain hierarchy.
 
+    Aromatic ring systems of any size and with any heteroatoms are kept whole,
+    fused rings merged into one unit; non-aromatic 5- and 6-membered rings
+    (cyclopentane, cyclohexane, THF, EC, FEC, ...) are opened like chains. This
+    default is the most accurate: on 14 molecules whose reactions differ either
+    way, the mean absolute error against reference values was 0.9 kJ/mol kept
+    whole against 2.0 opened with F12 energies, 2.2-2.3 against 2.9-3.5 with
+    revDSD, and 6.0 against 10.8 with PBE0-D4. Opening a 3-membered ring leaves
+    its strain to the method (methylcyclopropane: 0.1 against 5.0 kJ/mol with
+    F12), and opening benzene into polyene fragments at CBH-3 is 3 to 6 kJ/mol
+    off in every method tried.
+
 Species energies
     ``finite-difference harmonic`` (default): each species is built from its
     SMILES as a system named ``CBH:<SMILES>``, optimized with the engine and
@@ -187,8 +198,8 @@ check that each conformation is the one intended; the output also lists the
 heavy-atom dihedrals of the final structure next to those of the starting one.
 The files also hold the properties stored on the structure, and can be read
 back with Read Structure, for example to restart a species from its computed
-geometry. Slashes in a SMILES (double-bond stereo) become ``_`` and ``-`` in the file
-name. Species taken from the fragment store or from existing results are not
+geometry. Slashes in a SMILES (double-bond stereo) become ``_`` and ``-`` in the
+file name. Species taken from the fragment store or from existing results are not
 written, since their structures are not computed here.
 
 Results

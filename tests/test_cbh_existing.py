@@ -349,53 +349,30 @@ def test_cbh_drives_the_engine_by_default(node):
     assert node._hessian_route == "separate tasks"
 
 
-def test_route_honours_the_choice(node, monkeypatch):
-    """_route uses the engine when asked, even for a model that prefers batch
-    and has no analytic Hessian; tasks when asked; automatic as before."""
-    import types
+def test_mixin_delegates_to_the_shared_driver(node, monkeypatch):
+    """The Hessian logic lives in seamm_exec.hessian (tested there); the
+    mixin passes the step's route, name and hint, and keeps the fingerprints."""
+    import seamm_exec.hessian as H
 
-    class Provider:
-        def get_task(self):  # has a task route
-            pass
+    seen = {}
 
-        def analyze_task(self):
-            pass
+    def fake(self, configuration, delta_bohr=0.01, optimize=True, *a, **k):
+        seen.update(route=self.route, who=self.who, hint=self.hint, opt=optimize)
+        self.fingerprints = {"energy": {"fingerprint": "sha256:y"}}
+        return -1.0, None, "analytic"
 
-        def get_mdi_engine_command(self, *a, **k):
-            return ["engine"]
-
-    class Evaluator:
-        def __init__(self, *a, **k):
-            self.provider = Provider()
-            self.target = None
-            self.path = "batch"
-
-    import seamm_exec
-
-    monkeypatch.setattr(seamm_exec, "Evaluator", Evaluator)
-    mc = {
-        "level": "ORCA:DFT@B2PLYP/cc-pVTZ",
-        "step": "ORCA",
-        "method": "B2PLYP",
-        "options": {
-            "mdi_capable": True,
-            "analytic_hessian": False,
-            "prefers_batch": True,
-        },
-    }
-    monkeypatch.setattr(node, "model_chemistry", lambda: mc)
-    node.flowchart = types.SimpleNamespace(
-        plugin_manager=types.SimpleNamespace(get=lambda name: Provider()),
-        executor=None,
-    )
-    monkeypatch.setattr(node, "_code_is_here", lambda step: True)
-    c = node._test_db.system.configuration
-    node._hessian_route = "automatic"
-    assert node._route(c)[1] is None  # tasks: no analytic Hessian, batch path
+    monkeypatch.setattr(H.HessianDriver, "optimize_and_hessian", fake)
+    monkeypatch.setattr(node, "model_chemistry", lambda: {"level": "x"})
     node._hessian_route = "warm engine over MDI"
-    assert node._route(c)[1] is not None  # the engine
-    node._hessian_route = "separate tasks"
-    assert node._route(c)[1] is None
+    c = node._test_db.system.configuration
+    assert node.energy_and_hessian(c) == (-1.0, None, "analytic")
+    assert seen == {
+        "route": "warm engine over MDI",
+        "who": "Thermochemistry",
+        "hint": "or put the calculation in this step's subflowchart",
+        "opt": False,
+    }
+    assert node._fingerprints["energy"]["fingerprint"] == "sha256:y"
 
 
 def test_embed_lowest_gives_all_anti(node):
@@ -414,278 +391,6 @@ def test_embed_lowest_gives_all_anti(node):
     # the two C-C-C-C dihedrals are anti
     dihedrals = [int(x) for x in text.split("order) ")[1].rstrip("°").split()]
     assert len(dihedrals) == 2 and min(dihedrals) > 165
-
-
-def test_engine_ncores(node, monkeypatch):
-    import os
-
-    import thermochemistry_step.hessian as H
-
-    # No physical-core cap here: the test machine's topology is not the point
-    monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: None)
-
-    n_here = (
-        len(os.sched_getaffinity(0))
-        if hasattr(os, "sched_getaffinity")
-        else os.cpu_count()
-    )
-    node.global_options = {"ncores": "available"}
-    assert node._engine_ncores() == max(1, n_here)
-    node.global_options = {"ncores": "2"}
-    assert node._engine_ncores() == min(2, n_here)
-    node.global_options = {"ncores": "nonsense"}
-    assert node._engine_ncores() == max(1, n_here)
-
-
-def test_engine_environment(node, tmp_path, monkeypatch):
-    """The engine gets the program's environment (ORCA: its OpenMPI runtime
-    with its mpirun first on the PATH, no core binding), restored after."""
-    import os
-    import types
-
-    pytest.importorskip("orca_step")  # the ORCA branch needs its mpi_env
-    lib = tmp_path / "orca-mpi" / "lib"
-    lib.mkdir(parents=True)
-    (tmp_path / "orca-mpi" / "bin").mkdir()
-
-    class FakeORCA:
-        __module__ = "orca_step.fake"
-
-        @staticmethod
-        def get_executor_config(executor, options):
-            return {"library-path": str(lib)}
-
-    node._engine_step = FakeORCA()
-    node.flowchart = types.SimpleNamespace(executor=None)
-    node.global_options = {}
-    monkeypatch.delenv("OMPI_MCA_hwloc_base_binding_policy", raising=False)
-    before = dict(os.environ)
-    with node._engine_environment(16) as env:
-        assert os.environ["OMPI_MCA_hwloc_base_binding_policy"] == "none"
-        assert os.environ["LD_LIBRARY_PATH"].startswith(str(lib))
-        assert os.environ["PATH"].startswith(str(tmp_path / "orca-mpi" / "bin"))
-        assert env["OMPI_MCA_pml"] == "ob1"
-    assert dict(os.environ) == before
-
-    # A step with its own hook
-    class Hooked:
-        __module__ = "other_step"
-
-        @staticmethod
-        def mdi_engine_environment(executor, options, ncores):
-            return {"MY_VAR": str(ncores)}
-
-    node._engine_step = Hooked()
-    with node._engine_environment(4):
-        assert os.environ["MY_VAR"] == "4"
-    assert "MY_VAR" not in os.environ
-
-
-def test_engine_route_keeps_fd_on_engine(node, monkeypatch):
-    """With the warm-engine route the finite differences run over the engine
-    even when the program prefers batch (tasks), and the fingerprints are
-    captured."""
-    import numpy as np
-    import types
-
-    calls = {}
-
-    class Eng:
-        def __init__(self, *a, **k):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *a):
-            return False
-
-        def set_coordinates(self, *a, **k):
-            pass
-
-        def energy(self, units="kJ/mol"):
-            return -1.0
-
-        def supports(self, cmd):
-            return False
-
-        def fingerprints(self):
-            return {"energy": {"fingerprint": "sha256:x"}, "hessian": None}
-
-    import seamm_mdi
-
-    monkeypatch.setattr(seamm_mdi, "MDIEngine", Eng)
-    evaluator = types.SimpleNamespace(path="batch", provider=None, target=None)
-    monkeypatch.setattr(
-        node,
-        "_route",
-        lambda c: (evaluator, lambda h, p: ["x"], [6, 1, 1, 1, 1], np.zeros((5, 3))),
-    )
-    monkeypatch.setattr(
-        node, "model_chemistry", lambda: {"level": "ORCA:x", "step": "ORCA"}
-    )
-    monkeypatch.setattr(node, "_engine_ncores", lambda: 1)
-    monkeypatch.setattr(
-        node, "_engine_environment", lambda n: __import__("contextlib").nullcontext()
-    )
-    monkeypatch.setattr(
-        node, "_fd_hessian", lambda *a, **k: calls.setdefault("fd", np.zeros((15, 15)))
-    )
-    monkeypatch.setattr(
-        node,
-        "_fd_hessian_tasks",
-        lambda *a, **k: calls.setdefault("tasks", (0, None, "tasks")),
-    )
-    c = node._test_db.system.configuration
-    node._id = ("1",)  # for the step's indent
-    node._hessian_route = "warm engine over MDI"
-    E0, H, how = node.optimize_and_hessian(c, optimize=False)
-    assert how == "finite differences over MDI" and "tasks" not in calls
-    assert node._fingerprints["energy"]["fingerprint"] == "sha256:x"
-    calls.clear()
-    node._hessian_route = "automatic"
-    E0, H, how = node.optimize_and_hessian(c, optimize=False)
-    assert how == "tasks" and "fd" not in calls
-
-
-def test_slurm_allocated_cpus(monkeypatch):
-    from thermochemistry_step.hessian import parse_cpu_ids, slurm_allocated_cpus
-
-    assert parse_cpu_ids("CPU_IDs=16-31") == set(range(16, 32))
-    assert parse_cpu_ids("0-3,8,10-11") == {0, 1, 2, 3, 8, 10, 11}
-    text = (
-        "JobId=13023 JobName=seamm\n"
-        "     Nodes=ChemAI CPU_IDs=16-31 Mem=49152 GRES=\n"
-    )
-    assert slurm_allocated_cpus({"SLURM_JOB_ID": "13023"}, run=lambda j: text) == set(
-        range(16, 32)
-    )
-    assert slurm_allocated_cpus({}, run=lambda j: text) is None
-    assert slurm_allocated_cpus({"SLURM_JOB_ID": "1"}, run=lambda j: "no ids") is None
-
-
-def test_physical_cores_allowed(tmp_path):
-    from thermochemistry_step.hessian import physical_cores_allowed
-
-    # 4 CPUs on 2 cores (hyperthread siblings 0/2 and 1/3)
-    for cpu, core in ((0, 0), (1, 1), (2, 0), (3, 1)):
-        d = tmp_path / f"cpu{cpu}" / "topology"
-        d.mkdir(parents=True)
-        (d / "core_id").write_text(f"{core}\n")
-        (d / "physical_package_id").write_text("0\n")
-    assert physical_cores_allowed({0, 1, 2, 3}, sysfs=str(tmp_path)) == 2
-    assert physical_cores_allowed({0, 1}, sysfs=str(tmp_path)) == 2
-    assert physical_cores_allowed({0, 2}, sysfs=str(tmp_path)) == 1
-    assert physical_cores_allowed({7}, sysfs=str(tmp_path)) is None
-
-
-def test_engine_ncores_uses_physical_cores(node, monkeypatch):
-    """16 allowed hardware threads on 8 cores give 8 engine ranks."""
-    import thermochemistry_step.hessian as H
-
-    monkeypatch.setenv("SLURM_CPUS_ON_NODE", "16")
-    monkeypatch.setattr(H, "physical_cores_allowed", lambda *a, **k: 8)
-    node.global_options = {"ncores": "available"}
-    assert node._engine_ncores() == 8
-
-
-def test_ncores_passed_only_when_accepted():
-    from thermochemistry_step.hessian import _accepts_keyword
-
-    def orca(
-        executor,
-        options,
-        method,
-        port,
-        hostname,
-        charge,
-        multiplicity,
-        n_atoms,
-        ncores=1,
-    ):
-        pass
-
-    def mopac(
-        executor,
-        options,
-        method,
-        port,
-        hostname,
-        charge,
-        multiplicity,
-        n_atoms,
-        extra_args=None,
-    ):
-        pass
-
-    def anything(executor, options, **kwargs):
-        pass
-
-    assert _accepts_keyword(orca, "ncores")
-    assert not _accepts_keyword(mopac, "ncores")
-    assert _accepts_keyword(anything, "ncores")
-
-
-def _fake_module_shell(tmp_path, body='export SEAMM_TEST_MODULE="$2"'):
-    """A 'shell' whose module function sets a variable, standing in for Lmod."""
-    shell = tmp_path / f"fake_shell_{abs(hash(body))}"
-    shell.write_text("#!/bin/bash\n" f"module() {{ {body}; }}\n" 'eval "$2"\n')
-    shell.chmod(0o755)
-    return str(shell)
-
-
-def test_module_environment(tmp_path):
-    """A module installation's environment: the variables `module load`
-    changes, by Local.exec's module rule; a clear error when it fails."""
-    from thermochemistry_step.hessian import module_environment, modules_to_load
-
-    assert module_environment({"installation": "local", "code": "orca"}) == {}
-    assert module_environment({"installation": "modules", "modules": ""}) == {}
-    config = {
-        "installation": "modules",
-        "modules": " ORCA ",
-        "gpu_modules": "ORCA-gpu",
-        "shell": _fake_module_shell(tmp_path),
-    }
-    assert modules_to_load(config) == "ORCA"
-    assert modules_to_load(config, {"NGPUS": 1}) == "ORCA-gpu"
-    assert modules_to_load({**config, "gpu_modules": ""}, {"NGPUS": 1}) == "ORCA"
-    env = module_environment(config, environ={"PATH": "/usr/bin:/bin", "KEEP": "1"})
-    assert env == {"SEAMM_TEST_MODULE": "ORCA"}
-    env = module_environment(config, {"NGPUS": 2}, environ={"PATH": "/usr/bin:/bin"})
-    assert env == {"SEAMM_TEST_MODULE": "ORCA-gpu"}
-    # A failing load names the module
-    config["shell"] = _fake_module_shell(
-        tmp_path, body="echo 'Lmod has detected the following error' >&2; return 1"
-    )
-    with pytest.raises(RuntimeError, match=r"'module load ORCA' failed.*Lmod"):
-        module_environment(config)
-
-
-def test_engine_environment_loads_modules(node, tmp_path, monkeypatch):
-    """The engine of a module-installed program gets the module's environment
-    (ORCA on TinkerCliffs could not load its libraries without it), restored
-    afterwards."""
-    import os
-    import types
-
-    shell = _fake_module_shell(tmp_path)
-
-    class FakeModuleProgram:
-        __module__ = "other_step"
-
-        @staticmethod
-        def get_executor_config(executor, options):
-            return {"installation": "modules", "modules": "ORCA", "shell": shell}
-
-    node._engine_step = FakeModuleProgram()
-    node.flowchart = types.SimpleNamespace(executor=None)
-    node.global_options = {}
-    monkeypatch.delenv("SEAMM_TEST_MODULE", raising=False)
-    with node._engine_environment(4) as env:
-        assert os.environ["SEAMM_TEST_MODULE"] == "ORCA"
-        assert env["SEAMM_TEST_MODULE"] == "ORCA"
-    assert "SEAMM_TEST_MODULE" not in os.environ
 
 
 def test_species_sdf(node, tmp_path, monkeypatch):
