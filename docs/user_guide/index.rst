@@ -141,6 +141,30 @@ Species energies
     each glob must match exactly one property), for example from an earlier
     job that computed the fragments at a higher level.
 
+Energies at
+    ``the geometry level`` (default): the Model Chemistry gives the energies as
+    well as the geometries, frequencies, ZPE and thermal corrections. Or another
+    model chemistry, for example ``ORCA:DFT@REVDSD-PBEP86-D4_2021/def2-TZVPP`` or
+    ``ORCA:QC@CCSD(T)-F12/cc-pVTZ-F12``: its single point on each species'
+    geometry replaces the energy, and each species' enthalpy becomes
+
+        H(T) = E(energy level) + [H(T) - E](geometry level)
+
+    so that a costly energy is used where it matters, on cheaper geometries and
+    frequencies. The target's single point runs first; the fragments' then run
+    as one batch of separate calculations, which can go to a cluster queue and
+    can use methods that have no gradients (F12, for instance). This needs the
+    computed species with harmonic thermal corrections. The species table shows
+    both energies, and the results record both levels.
+
+    With the fragment store in use, a fragment whose geometry and frequencies
+    at the geometry level are in the store is not recomputed, and one whose
+    energy at the energy level, with the same settings, is stored on that
+    geometry is not run again. The energy-level energies, their settings
+    fingerprints and the geometry each ran on are stored on the species, so
+    that ``seamm-thermochemistry-fragments harvest`` files them in the store's
+    geometry and energy tables.
+
 Fragments start from, Target starts from
     Each fragment built from its SMILES starts, by default, from the lowest
     MMFF94 conformer of 20 RDKit embeddings (an n-alkane all-anti, ethanol

@@ -1,6 +1,17 @@
 =======
 History
 =======
+2026.11.8 -- Energies at another level than the geometries
+    * The isodesmic (CBH) approach can take the species' energies from a second model
+      chemistry ("Energies at"), e.g. revDSD-PBEP86-D4/def2-TZVPP or
+      CCSD(T)-F12/cc-pVTZ-F12, on the geometries and with the frequencies of the
+      Model Chemistry: H(T) = E(energy level) + [H(T) - E](geometry level). The
+      single points run as separate calculations, the fragments' as one batch, so
+      they can go to a cluster queue and can use methods without gradients.
+    * With the fragment store, stored geometries and energies are reused, and the
+      new energies, frequencies, symmetry numbers and moments of inertia are stored
+      on the species for the store's harvest.
+
 2026.11.5 -- Internal: the Hessian driver moved to seamm_exec; the CBH ring rules documented
     * The code that drives the Model Chemistry for energies, optimizations and Hessians
       moved to seamm_exec (2026.11.5), where the Normal Mode Sampling and Vibrational

@@ -355,7 +355,30 @@ class CBHApproach:
             printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
         energies = {}
         sources = {}
+        configurations = {target: target_configuration}
         store = self._fragment_store(_P)
+        energy_mc = self._energy_level(_P)
+        if energy_mc is not None:
+            if mode == "existing results (run nothing)":
+                raise RuntimeError(
+                    "Energies at another level than the geometries need the species "
+                    "computed: choose 'finite-difference harmonic' for the species' "
+                    "energies, or leave 'Energies at' as the geometry level."
+                )
+            if _P["thermal corrections"] != "harmonic":
+                raise RuntimeError(
+                    "Energies at another level than the geometries need harmonic "
+                    "thermal corrections at the geometry level."
+                )
+            printer.important(
+                __(
+                    f"The energies are at {energy_mc['level']}, on the geometries "
+                    f"and with the frequencies of {self.model}.\n",
+                    indent=4 * " ",
+                    wrap=False,
+                    dedent=False,
+                )
+            )
         if mode == "existing results (run nothing)":
             energies[target] = self._energies_from_properties(
                 _P, target_configuration, target
@@ -388,6 +411,27 @@ class CBHApproach:
             )
             sources[target] = "computed"
             for can, generated in fragments.items():
+                if energy_mc is not None:
+                    found = self._geometry_from_store(store, can)
+                    if found is not None:
+                        energies[can], geometry, sources[can] = found
+                        configurations[can] = self._configuration_from_geometry(
+                            system_db, can, geometry
+                        )
+                        printer.important(
+                            __(
+                                f"\nSpecies {can}: geometry and frequencies from the "
+                                f"fragment store ({sources[can]}).",
+                                indent=4 * " ",
+                                wrap=False,
+                                dedent=False,
+                            )
+                        )
+                        continue
+                    energies[can] = self._compute_species(_P, can, generated)
+                    sources[can] = "computed"
+                    configurations[can] = self._find_fragment(system_db, can)
+                    continue
                 stored = self._energies_from_store(_P, store, can)
                 if stored is not None:
                     energies[can], sources[can] = stored
@@ -403,6 +447,17 @@ class CBHApproach:
                     continue
                 energies[can] = self._compute_species(_P, can, generated)
                 sources[can] = "computed"
+            # The energy level's single points on the geometries
+            if energy_mc is not None:
+                self._energy_level_energies(
+                    energy_mc,
+                    store,
+                    target,
+                    [target] + list(fragments),
+                    configurations,
+                    energies,
+                    sources,
+                )
             # Back to the target
             system_db.system = target_system
             target_system.configuration = target_configuration
@@ -512,6 +567,7 @@ class CBHApproach:
                     can if can != target else f"{can} (target)",
                     sources.get(can, ""),
                     f"{e['E']:.3f}" if "E" in e else "",
+                    (f"{e['E geometry level']:.3f}" if "E geometry level" in e else ""),
                     f"{e['ZPE']:.3f}" if "ZPE" in e else "",
                     f"{e['H298'] - e['E']:.3f}" if "E" in e and "H298" in e else "",
                     (
@@ -543,6 +599,7 @@ class CBHApproach:
                 "Species",
                 "Source",
                 "E",
+                "E (geometry level)",
                 "ZPE",
                 "H(298.15 K) - E",
                 "Reference",
@@ -555,6 +612,7 @@ class CBHApproach:
             colalign=(
                 "left",
                 "left",
+                "decimal",
                 "decimal",
                 "decimal",
                 "decimal",
@@ -639,6 +697,10 @@ class CBHApproach:
 
         # The results: the highest usable rung
         best = results[usable[-1]]
+        data["CBH energy level"] = (
+            energy_mc["level"] if energy_mc is not None else self.model
+        )
+        data["CBH geometry level"] = self.model
         data["CBH rung"] = best["rung"]
         data["CBH reaction"] = best["reaction"]
         if "DfH 0 K" in best:
@@ -754,6 +816,204 @@ class CBHApproach:
                 result["H0"] = record["E"] + record["ZPE"]
         source = "store" if record.get("verified") else "store (unverified)"
         return result, source
+
+    def _energy_level(self, _P):
+        """The ``_model_chemistry`` wrapper of the energy level, or None when the
+        energies are at the geometry level."""
+        import seamm
+
+        text = str(_P.get("energy model chemistry", "") or "").strip()
+        if text in ("", "the geometry level") or text == self.model:
+            return None
+        try:
+            from model_chemistry_step.model_chemistry import (
+                availability_problem,
+                discover_model_chemistries,
+                match_model_chemistry,
+                resolve_level,
+            )
+        except ImportError:  # pragma: no cover
+            raise RuntimeError(
+                "Energies at another model chemistry need the Model Chemistry step "
+                "(model-chemistry-step) installed."
+            )
+        text = resolve_level(text, dict(seamm.flowchart_variables._data))
+        available = discover_model_chemistries(periodic_only=False)
+        mc = available.get(text) or match_model_chemistry(text, available)
+        if mc is None:
+            raise ValueError(availability_problem(text, available, periodic=False))
+        return mc
+
+    def _geometry_from_store(self, store, can):
+        """A species' geometry, ZPE and H(298.15 K) at the geometry level from the
+        fragment store's geometry table (the lowest conformer at that level), as
+        ({"E", "ZPE", "H0", "H298"}, geometry row, source), or None."""
+        if store is None:
+            return None
+        rows = store.geometries(
+            can,
+            charge=cbh_charge(can),
+            multiplicity=cbh_multiplicity(can),
+            frequency_fingerprint=getattr(self, "_frequency_fingerprint", None),
+            model_chemistry=self.model,
+        )
+        rows = [
+            r
+            for r in rows
+            if r["E"] is not None
+            and r["ZPE"] is not None
+            and r["H"] is not None
+            and r.get("T") in (None, T_REF)
+        ]
+        if not rows:
+            return None
+        g = min(rows, key=lambda r: r["E"] + r["ZPE"])
+        result = {"E": g["E"], "ZPE": g["ZPE"], "H0": g["E"] + g["ZPE"], "H298": g["H"]}
+        source = "store" if g["verified"] else "store (unverified)"
+        return result, g, source
+
+    def _configuration_from_geometry(self, system_db, can, geometry):
+        """The system CBH:<can> with the stored geometry as a new configuration."""
+        system = None
+        for candidate in system_db.get_systems():
+            if candidate.name == f"CBH:{can}":
+                system = candidate
+                break
+        if system is None:
+            system = system_db.create_system(name=f"CBH:{can}", make_current=True)
+        configuration = system.create_configuration(
+            name="from the fragment store", make_current=True
+        )
+        xyz = np.asarray(geometry["coordinates"], dtype=float)
+        configuration.atoms.append(
+            symbol=geometry["symbols"], x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2]
+        )
+        configuration.charge = cbh_charge(can)
+        configuration.spin_multiplicity = cbh_multiplicity(can)
+        return configuration
+
+    def _energy_level_energies(
+        self, mc, store, target, order, configurations, energies, sources
+    ):
+        """The energy level's single points on the species' geometries.
+
+        The target's runs first, which gives the energy level's settings
+        fingerprint; then the fragments' energies come from the fragment store's
+        energy table where it has them on the same geometry and level, and the
+        rest run as one batch. Each species' energies become E(energy level) and
+        [H - E](geometry level); the energy, its settings fingerprint and the
+        calculation record are stored as properties on the configuration for the
+        store's harvest."""
+        import seamm_exec
+        from seamm_thermochemistry.geometry_store import hash_geometry
+
+        level = mc["level"]
+        directory = self._species_directory()
+        directory = directory / "energy_level" if directory is not None else None
+        keys = {can: f"species_{i}" for i, can in enumerate(order)}
+        by_key = {v: k for k, v in keys.items()}
+
+        def run(cans):
+            if not cans:
+                return {}
+            out = {}
+            with seamm_exec.Evaluator(
+                self,
+                mc,
+                properties=("energy",),
+                directory=directory,
+                name="Thermochemistry_energies",
+            ) as evaluator:
+                for can in cans:
+                    evaluator.submit(configurations[can], key=keys[can])
+                for result in evaluator.results():
+                    out[by_key[result.key]] = result
+            for can, result in out.items():
+                if not result.ok or result.energy is None:
+                    raise RuntimeError(
+                        f"The {level} energy of {can} failed: {result.reason}"
+                    )
+            return out
+
+        def record_of(result):
+            record = (result.data or {}).get("calculation")
+            return record if isinstance(record, dict) else None
+
+        high = {}
+        fingerprint = None
+        for can, result in run([target]).items():
+            high[can] = (result.energy, record_of(result), "computed")
+            record = record_of(result)
+            fingerprint = record.get("fingerprint") if record else None
+        to_run = []
+        for can in order:
+            if can in high:
+                continue
+            row = None
+            if store is not None:
+                configuration = configurations[can]
+                row = store.energy(
+                    hash_geometry(
+                        configuration.atoms.symbols,
+                        configuration.atoms.get_coordinates(fractionals=False),
+                        configuration.atoms.atomic_numbers,
+                    ),
+                    energy_fingerprint=fingerprint,
+                    model_chemistry=level,
+                )
+            if row is not None:
+                how = "store" if row["verified"] else "store (unverified)"
+                high[can] = (row["E"], None, how)
+            else:
+                to_run.append(can)
+        for can, result in run(to_run).items():
+            high[can] = (result.energy, record_of(result), "computed")
+
+        for can in order:
+            E, record, how = high[can]
+            low = energies[can]
+            combined = {"E": E, "E geometry level": low["E"]}
+            if "ZPE" in low:
+                combined["ZPE"] = low["ZPE"]
+                combined["H0"] = E + low["ZPE"]
+            if "H298" in low:
+                combined["H298"] = E + (low["H298"] - low["E"])
+            if "imaginary" in low:
+                combined["imaginary"] = low["imaginary"]
+            energies[can] = combined
+            sources[can] = f"{sources.get(can, '')}; energy {how}".lstrip("; ")
+            if how == "computed":
+                self._store_energy_level(configurations[can], level, E, record)
+        printer.important(
+            __(
+                f"\n{level} energies: "
+                + ", ".join(f"{can} {high[can][2]}" for can in order)
+                + ".",
+                indent=4 * " ",
+                wrap=True,
+                dedent=False,
+            )
+        )
+
+    @staticmethod
+    def _store_energy_level(configuration, level, E, record):
+        """The energy-level energy (E_h), its settings fingerprint and the
+        calculation record as properties ``...#Thermochemistry#<level>``."""
+        properties = configuration.properties
+        values = [
+            ("total energy", Q_(E, "kJ/mol").m_as("E_h"), "float", "E_h"),
+        ]
+        if record:
+            if record.get("fingerprint"):
+                values.append(
+                    ("settings fingerprint", record["fingerprint"], "str", None)
+                )
+            values.append(("calculation", record, "json", None))
+        for base, value, kind, units in values:
+            name = f"{base}#Thermochemistry#{level}"
+            if not properties.exists(name):
+                properties.add(name, kind, units=units, description=base)
+            properties.put(name, value)
 
     @staticmethod
     def _target_smiles(configuration, charge, multiplicity):
@@ -1015,6 +1275,9 @@ class CBHApproach:
             self._settings_fingerprint = energy["fingerprint"]
         kinds = [("", energy)]
         if how is not None:
+            frequency = records.get("hessian") if how == "analytic" else energy
+            if frequency and frequency.get("fingerprint"):
+                self._frequency_fingerprint = frequency["fingerprint"]
             kinds.append(
                 ("frequency ", records.get("hessian") if how == "analytic" else energy)
             )
@@ -1082,6 +1345,26 @@ class CBHApproach:
         ):
             if not properties.exists(name):
                 properties.add(name, "float", units=units, description=description)
+            properties.put(name, value)
+        # For the fragment store's geometry rows: the frequencies (imaginary ones
+        # negative), the rotational symmetry number and the moments of inertia
+        extras = [
+            ("frequencies", data.get("vibrational frequencies"), "json", "cm^-1"),
+            ("symmetry number", data.get("symmetry number"), "int", None),
+        ]
+        try:
+            moments = self.ase_atoms(configuration).get_moments_of_inertia().tolist()
+            extras.append(("moments of inertia", moments, "json", "amu*Å^2"))
+        except Exception:  # pragma: no cover
+            pass
+        for base, value, kind, units in extras:
+            if value is None:
+                continue
+            name = f"{base}#Thermochemistry#{model}"
+            if kind == "json":
+                value = [float(v) for v in value]
+            if not properties.exists(name):
+                properties.add(name, kind, units=units, description=base)
             properties.put(name, value)
 
     def _energies_from_properties(self, _P, configuration, can):

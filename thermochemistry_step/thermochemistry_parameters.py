@@ -163,6 +163,22 @@ class ThermochemistryParameters(seamm.Parameters):
                 "NDDO methods)."
             ),
         },
+        "energy model chemistry": {
+            "default": "the geometry level",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": ("the geometry level",),
+            "format_string": "",
+            "description": "Energies at:",
+            "help_text": (
+                "The level of theory of the species' energies: the geometry level "
+                "(the Model Chemistry, which also gives the geometries, frequencies, "
+                "ZPE and thermal corrections), or another model chemistry, e.g. "
+                "ORCA:DFT@REVDSD-PBEP86-D4_2021/def2-TZVPP, whose single points on "
+                "those geometries replace the energies. Each species' enthalpy is "
+                "then E(energy level) + [H - E](geometry level)."
+            ),
+        },
         "initial conformer": {
             "default": "lowest of the embeddings (MMFF)",
             "kind": "enum",

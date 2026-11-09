@@ -304,7 +304,8 @@ class TkThermochemistry(seamm.TkNode):
           names of the stored properties, and the ZPE and enthalpy ones only
           with harmonic thermal corrections; for computed energies the
           optimization settings, and the finite-difference step only with
-          harmonic corrections;
+          harmonic corrections, and the level of the energies (the geometry
+          level or another model chemistry) only with harmonic corrections;
         * the ATcT settings.
         """
         mode = self["cbh energies"].get()
@@ -323,6 +324,8 @@ class TkThermochemistry(seamm.TkNode):
                     "low-level energy property",
                 ]
         else:
+            if harmonic:
+                keys.append("energy model chemistry")
             keys += ["initial conformer", "target conformer"]
             if self["initial conformer"].get().startswith("lowest") or self[
                 "target conformer"
