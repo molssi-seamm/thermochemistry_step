@@ -20,5 +20,6 @@ DfH(0 K)#Thermochemistry#{model},float,kJ/mol,"The {model} standard enthalpy of 
 DfH(298.15 K)#Thermochemistry#{model},float,kJ/mol,"The {model} standard enthalpy of formation at 298.15 K from CBH reactions with ATcT references",https://en.wikipedia.org/wiki/Standard_enthalpy_of_formation
 DfH uncertainty (95%)#Thermochemistry#{model},float,kJ/mol,"The 95% confidence limit of the ATcT reference contribution to the {model} enthalpy of formation",
 CBH rung#Thermochemistry#{model},int,,The CBH rung used for the {model} enthalpy of formation,
+CBH rung spread#Thermochemistry#{model},float,kJ/mol,"The range of the {model} enthalpy of formation at 298.15 K over the CBH rungs from CBH-1 up",
 CBH reaction#Thermochemistry#{model},str,,The CBH reaction used for the {model} enthalpy of formation,
 H(298.15 K)#Thermochemistry#{model},float,kJ/mol,"The {model} absolute enthalpy at 298.15 K and 1 bar, E + ZPE + thermal correction",

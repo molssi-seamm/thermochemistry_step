@@ -109,9 +109,46 @@ The ATcT tables are not distributed with SEAMM: install a version first with
 documentation). A rung is usable only when all its reference species are in
 ATcT, and the step reports the rungs it could not use and why; the result
 stored is the highest usable rung, and every rung goes into the table ``CBH``.
+The spread of the enthalpies of formation over the rungs from CBH-1 up is
+reported and stored as an indicator of the uncertainty: a large spread points
+to trouble with the method or with the reference values.
+
+Preset
+    The levels of theory and rungs, chosen together:
+
+    =========  ==========================  ==============================  ==========
+    Preset     Geometries and frequencies  Energies                        Rungs
+    =========  ==========================  ==============================  ==========
+    quick      r2SCAN-3c                   r2SCAN-3c                       up to CBH-2
+    default    r2SCAN-3c                   revDSD-PBEP86-D4/def2-TZVPP     up to CBH-2
+    custom     the Model Chemistry         as set below                    as set below
+    =========  ==========================  ==============================  ==========
+
+    The presets compute every species with ORCA, so they need no Model Chemistry step
+    before this one, and scale the ZPEs by 0.9899. Each uses the highest rung
+    available, at most CBH-2: CBH-3 is no more accurate (its error is dominated by
+    the reference values), and *Include CBH-3* adds it only to the spread between
+    the rungs. One r2SCAN-3c geometry and frequency calculation serves every
+    preset, so a species stored in the fragment store at one preset is not
+    recomputed for another; only its energy is.
+
+    On 46 molecules against ATcT or vetted reference values at CBH-2, ``default``
+    has an RMS error of about 2.1 kJ/mol and ``quick`` about 2.2, but where CBH-2
+    is not available ``quick`` is much weaker: several kJ/mol at CBH-1, and 7 kJ/mol
+    MAE on small aromatics, whose rings are kept whole so that CBH-2 is trivial.
+    ``quick`` therefore warns when the highest rung is below CBH-2, and suggests
+    ``default``. (A ``high`` preset, CCSD(T)-F12/cc-pVTZ-F12 energies, about
+    1 kJ/mol, is to follow.)
+
+ZPE scale factor
+    ``from the table`` (default): the factor for the geometry level, with its
+    source, which the output and the results give (r2SCAN-3c 0.9899, fitted to
+    small molecules; PBE0/def2-TZVP 0.975, a value for another basis;
+    B2PLYP-D3/cc-pVTZ 0.9863). A level not in the table is not scaled, with a
+    warning. Or a number.
 
 CBH rungs
-    ``all usable`` (default), or a list such as ``1, 2``.
+    ``all usable`` (default for ``custom``), or a list such as ``1, 2``.
 
 Keep whole
     Groups kept as single units when the reactions are built, so that they are

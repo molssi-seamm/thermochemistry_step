@@ -68,9 +68,35 @@ def test_dialog_layouts(tk_node):
         tk_node.reset_dialog()
 
 
+def test_cbh_preset_layout(tk_node):
+    """A preset (the default one) sets the rungs, the levels and computed species:
+    those controls and the engine are hidden; 'custom' shows them again."""
+    tk_node.create_dialog()
+    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
+    tk_node.reset_dialog()
+    assert tk_node["preset"].get() == "default"
+    assert _mapped(tk_node["preset"]) and _mapped(tk_node["include CBH-3"])
+    assert _mapped(tk_node["ZPE scale factor"]) and _mapped(tk_node["protect"])
+    for key in (
+        "engine",
+        "cbh rungs",
+        "cbh energies",
+        "thermal corrections",
+        "energy model chemistry",
+    ):
+        assert not _mapped(tk_node[key]), key
+    assert _mapped(tk_node["step size"]) and _mapped(tk_node["initial conformer"])
+    tk_node["preset"].set("custom")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["engine"]) and _mapped(tk_node["cbh rungs"])
+    assert _mapped(tk_node["energy model chemistry"])
+    assert not _mapped(tk_node["include CBH-3"])
+
+
 def test_cbh_layout(tk_node):
     tk_node.create_dialog()
     tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
+    tk_node["preset"].set("custom")
     tk_node.reset_dialog()
     # Computed energies, harmonic: the optimization and step size, no T or P,
     # no property names

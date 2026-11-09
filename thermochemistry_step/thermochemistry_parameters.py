@@ -100,6 +100,50 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Approach:",
             "help_text": "The approach or method for determining the thermochemistry.",
         },
+        "preset": {
+            "default": "default",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("quick", "default", "custom"),
+            "format_string": "",
+            "description": "Preset:",
+            "help_text": (
+                "The levels of theory of the isodesmic (CBH) approach. Both presets "
+                "optimize every species and compute its frequencies with r2SCAN-3c "
+                "(ZPE x 0.9899) and use the highest CBH rung available up to CBH-2: "
+                "'quick' takes the energies from r2SCAN-3c too, 'default' from "
+                "revDSD-PBEP86-D4/def2-TZVPP single points (about 2 kJ/mol RMS "
+                "against ATcT at CBH-2). 'custom' uses the flowchart's Model "
+                "Chemistry and the settings below."
+            ),
+        },
+        "include CBH-3": {
+            "default": "no",
+            "kind": "boolean",
+            "default_units": "",
+            "enumeration": ("yes", "no"),
+            "format_string": "",
+            "description": "Include CBH-3:",
+            "help_text": (
+                "With a preset, also compute CBH-3 where it is available. It is "
+                "no more accurate than CBH-2, but it adds to the spread between the "
+                "rungs, which indicates the uncertainty."
+            ),
+        },
+        "ZPE scale factor": {
+            "default": "from the table",
+            "kind": "string",
+            "default_units": "",
+            "enumeration": ("from the table", "1.0"),
+            "format_string": "",
+            "description": "ZPE scale factor:",
+            "help_text": (
+                "The factor the harmonic zero-point energies are scaled by: from the "
+                "table of factors for the geometry level (r2SCAN-3c 0.9899, "
+                "PBE0/def2-TZVP 0.975, B2PLYP-D3/cc-pVTZ 0.9863; 1 with a warning "
+                "for a level not in it), or a number."
+            ),
+        },
         "cbh rungs": {
             "default": "all usable",
             "kind": "string",
