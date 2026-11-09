@@ -715,9 +715,16 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
 
         step_size = _P["step size"].m_as("Å")
 
+        # A preset of the CBH approach brings its own model chemistry
+        self._preset_mc = None
+        if _P["approach"].startswith("Isodesmic"):
+            self._preset_mc = self.preset_model_chemistry(_P)
+
         # Where the energies and gradients come from. An old flowchart with a
         # subflowchart and no Model Chemistry keeps working.
         engine = _P.get("engine", "Model Chemistry")
+        if self._preset_mc is not None:
+            engine = "Model Chemistry"
         if engine == "Model Chemistry" and self.model_chemistry() is None:
             if self.subflowchart.get_node("1").next() is not None:
                 printer.important(

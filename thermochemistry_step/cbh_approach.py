@@ -52,6 +52,16 @@ printer = printing.getPrinter("Thermochemistry")
 
 T_REF = 298.15
 
+#: The presets of the CBH approach (thermo's defaults, adopted 2026-11-08): the
+#: geometry/frequency level and the energy level (None: the geometry level)
+PRESETS = {
+    "quick": {"geometry": "ORCA:CMP@R2SCAN-3C", "energy": None},
+    "default": {
+        "geometry": "ORCA:CMP@R2SCAN-3C",
+        "energy": "ORCA:DFT@REVDSD-PBEP86-D4_2021/def2-TZVPP",
+    },
+}
+
 _PROTECT = {
     "default": "default",
     "none": "none",
@@ -121,6 +131,8 @@ class CBHApproach:
         )
         from seamm_thermochemistry.atct import canonical_smiles
 
+        _P = self.apply_preset(_P)
+        preset = _P.get("preset", "custom")
         system_db = self.get_variable("_system_db")
         target_system, target_configuration = self.get_system_configuration()
         directory = self._species_directory()
@@ -137,7 +149,16 @@ class CBHApproach:
         smiles = self._target_smiles(target_configuration, charge, multiplicity)
         target = canonical_smiles(smiles)
 
-        text = f"The target is {smiles}"
+        text = ""
+        if preset in PRESETS:
+            levels = PRESETS[preset]
+            text += (
+                f"The '{preset}' preset: geometries and frequencies with "
+                f"{levels['geometry']}, energies with "
+                f"{levels['energy'] or levels['geometry']}, the highest CBH rung "
+                f"available up to CBH-{max(self._preset_rungs(_P))}.\n"
+            )
+        text += f"The target is {smiles}"
         if charge != 0 or multiplicity != 1:
             text += f" with charge {charge} and multiplicity {multiplicity}"
         text += ".\n"
@@ -463,6 +484,23 @@ class CBHApproach:
             target_system.configuration = target_configuration
             self._working_configuration = target_configuration
 
+        # The ZPE scale factor
+        zpe_scale, zpe_source, zpe_flag = self._zpe_scale(_P)
+        if zpe_scale != 1.0 or zpe_flag:
+            text = f"The ZPEs are scaled by {zpe_scale} ({zpe_source})"
+            text += f"; note: {zpe_flag}." if zpe_flag else "."
+            printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+        if zpe_scale != 1.0:
+            for e in energies.values():
+                if "ZPE" not in e:
+                    continue
+                shift = (zpe_scale - 1.0) * e["ZPE"]
+                e["ZPE scaled"] = zpe_scale * e["ZPE"]
+                if "H0" in e:
+                    e["H0"] += shift
+                if "H298" in e:
+                    e["H298"] += shift
+
         # Combine
         data = {}
         rows = []
@@ -695,8 +733,41 @@ class CBHApproach:
             )
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
 
+        # The spread between the rungs (CBH-1 up), an indicator of the uncertainty
+        spread, spread_rungs = rung_spread(results, usable)
+        if spread is not None:
+            printer.important(
+                __(
+                    "\nThe spread of ΔfH°(298.15 K) over CBH-"
+                    + ", CBH-".join(str(r) for r in spread_rungs)
+                    + f" is {spread:.2f} kJ/mol. A large spread points to trouble "
+                    "with the method or the reference values.",
+                    indent=4 * " ",
+                    wrap=True,
+                    dedent=False,
+                )
+            )
+
         # The results: the highest usable rung
         best = results[usable[-1]]
+        if preset == "quick" and best["rung"] < 2:
+            printer.important(
+                __(
+                    f"\nWarning: the highest rung available is CBH-{best['rung']}, "
+                    "where r2SCAN-3c is weak (several kJ/mol at CBH-1; aromatic "
+                    "rings and small rings are kept whole, so small aromatics stop "
+                    "below CBH-2). Use the 'default' preset for this molecule.",
+                    indent=4 * " ",
+                    wrap=True,
+                    dedent=False,
+                )
+            )
+        data["ZPE scale factor"] = zpe_scale
+        data["ZPE scale factor source"] = zpe_source + (
+            f" ({zpe_flag})" if zpe_flag else ""
+        )
+        if spread is not None:
+            data["CBH rung spread"] = spread
         data["CBH energy level"] = (
             energy_mc["level"] if energy_mc is not None else self.model
         )
@@ -817,14 +888,74 @@ class CBHApproach:
         source = "store" if record.get("verified") else "store (unverified)"
         return result, source
 
+    @staticmethod
+    def _preset_rungs(_P):
+        """The rungs a preset uses: up to CBH-2, or CBH-3 too."""
+        rungs = [0, 1, 2]
+        if _yes(_P.get("include CBH-3", "no")):
+            rungs.append(3)
+        return rungs
+
+    def apply_preset(self, _P):
+        """The parameters with the preset's settings in place: the rungs, harmonic
+        thermal corrections, computed species and the energy level. 'custom'
+        changes nothing. The geometry level is the preset's model chemistry
+        (see :meth:`preset_model_chemistry`)."""
+        preset = _P.get("preset", "custom")
+        if preset not in PRESETS:
+            return _P
+        P = dict(_P)
+        P["cbh rungs"] = ", ".join(str(r) for r in self._preset_rungs(_P))
+        P["thermal corrections"] = "harmonic"
+        P["cbh energies"] = "finite-difference harmonic"
+        P["energy model chemistry"] = PRESETS[preset]["energy"] or "the geometry level"
+        return P
+
+    def preset_model_chemistry(self, _P):
+        """The ``_model_chemistry`` wrapper of the preset's geometry level, or None
+        for 'custom'."""
+        preset = _P.get("preset", "custom")
+        if preset not in PRESETS:
+            return None
+        return self._resolve_model_chemistry(PRESETS[preset]["geometry"])
+
+    def _zpe_scale(self, _P):
+        """(factor, source, caution) for the ZPEs: a number given, or the table's
+        factor for the geometry level, or 1 with a caution if it has none."""
+        value = str(_P.get("ZPE scale factor", "from the table") or "").strip()
+        if value and value != "from the table":
+            try:
+                return float(value), "as given", ""
+            except ValueError:
+                raise ValueError(
+                    f"The ZPE scale factor must be 'from the table' or a number, "
+                    f"not '{value}'."
+                )
+        from seamm_thermochemistry import zpe_scale_factor
+
+        factor = zpe_scale_factor(self.model)
+        if factor is None:
+            return (
+                1.0,
+                "no factor in the table",
+                f"the table has no ZPE scale factor for {self.model}, so the ZPEs "
+                "are not scaled",
+            )
+        return factor.factor, factor.source, factor.flag
+
     def _energy_level(self, _P):
         """The ``_model_chemistry`` wrapper of the energy level, or None when the
         energies are at the geometry level."""
-        import seamm
-
         text = str(_P.get("energy model chemistry", "") or "").strip()
         if text in ("", "the geometry level") or text == self.model:
             return None
+        return self._resolve_model_chemistry(text)
+
+    @staticmethod
+    def _resolve_model_chemistry(text):
+        """The ``_model_chemistry`` wrapper for a model chemistry string."""
+        import seamm
+
         try:
             from model_chemistry_step.model_chemistry import (
                 availability_problem,
@@ -834,8 +965,8 @@ class CBHApproach:
             )
         except ImportError:  # pragma: no cover
             raise RuntimeError(
-                "Energies at another model chemistry need the Model Chemistry step "
-                "(model-chemistry-step) installed."
+                "The presets and energies at another model chemistry need the "
+                "Model Chemistry step (model-chemistry-step) installed."
             )
         text = resolve_level(text, dict(seamm.flowchart_variables._data))
         available = discover_model_chemistries(periodic_only=False)
@@ -1447,6 +1578,16 @@ class CBHApproach:
             level=1,
             note="The ATcT values used as references.",
         )
+
+
+def rung_spread(results, usable):
+    """(spread, rungs): the range of ΔfH°(298.15 K) over the usable rungs from
+    CBH-1 up, and those rungs; (None, rungs) with fewer than two."""
+    rungs = [r for r in usable if r >= 1 and "DfH 298.15 K" in results[r]]
+    if len(rungs) < 2:
+        return None, rungs
+    values = [results[r]["DfH 298.15 K"] for r in rungs]
+    return max(values) - min(values), rungs
 
 
 def _yes(value):

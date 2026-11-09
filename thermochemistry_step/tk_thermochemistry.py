@@ -173,6 +173,8 @@ class TkThermochemistry(seamm.TkNode):
         for key in (
             "engine",
             "approach",
+            "preset",
+            "include CBH-3",
             "cbh energies",
             "thermal corrections",
             "optimize fragments",
@@ -241,23 +243,28 @@ class TkThermochemistry(seamm.TkNode):
         for slave in frame.grid_slaves():
             slave.grid_forget()
 
-        # Main controls
+        # Main controls. A preset of the CBH approach brings its own model
+        # chemistry, so then there is no engine to choose.
+        preset = self["preset"].get()
+        cbh = approach.startswith("Isodesmic")
+        uses_preset = cbh and preset != "custom"
         row = 0
         widgets = []
-        for key in ("engine", "approach"):
+        keys = ("approach",) if uses_preset else ("engine", "approach")
+        for key in keys:
             self[key].grid(row=row, column=0, columnspan=2, sticky=tk.W)
             widgets.append(self[key])
             row += 1
 
         # The subflowchart tab applies only to the subflowchart engine
-        engine = self["engine"].get()
+        engine = "Model Chemistry" if uses_preset else self["engine"].get()
         notebook = self["notebook"]
         flowchart_frame = self["flowchart frame"]
         if engine == "subflowchart":
             notebook.add(flowchart_frame, text="Flowchart", sticky=tk.NSEW)
         else:
             notebook.hide(flowchart_frame)
-            if not self._upstream_has_model_chemistry():
+            if not uses_preset and not self._upstream_has_model_chemistry():
                 self["model chemistry note"].grid(
                     row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 6)
                 )
@@ -308,13 +315,27 @@ class TkThermochemistry(seamm.TkNode):
           level or another model chemistry) only with harmonic corrections;
         * the ATcT settings.
         """
+        preset = self["preset"].get()
         mode = self["cbh energies"].get()
         thermal = self["thermal corrections"].get()
         harmonic = thermal.startswith("harmonic") or thermal.startswith("$")
         optimize = self["optimize fragments"].get()
         optimize = optimize.startswith("$") or optimize == "yes"
 
-        keys = ["cbh rungs", "protect", "cbh energies", "thermal corrections"]
+        if preset != "custom":
+            # The preset sets the rungs, the levels and computes the species
+            mode, harmonic = "finite-difference harmonic", True
+            keys = ["preset", "include CBH-3", "protect", "ZPE scale factor"]
+        else:
+            keys = [
+                "preset",
+                "cbh rungs",
+                "protect",
+                "cbh energies",
+                "thermal corrections",
+            ]
+            if harmonic:
+                keys.append("ZPE scale factor")
         if mode.startswith("existing"):
             keys.append("energy property")
             if harmonic:
@@ -324,7 +345,7 @@ class TkThermochemistry(seamm.TkNode):
                     "low-level energy property",
                 ]
         else:
-            if harmonic:
+            if harmonic and preset == "custom":
                 keys.append("energy model chemistry")
             keys += ["initial conformer", "target conformer"]
             if self["initial conformer"].get().startswith("lowest") or self[

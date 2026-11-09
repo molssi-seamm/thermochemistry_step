@@ -37,7 +37,11 @@ class ModelChemistryHessian:
     """
 
     def model_chemistry(self):
-        """The ``_model_chemistry`` wrapper published upstream, or None."""
+        """The ``_model_chemistry`` wrapper: a preset's own (see the CBH
+        approach's presets), else the one published upstream, or None."""
+        preset = getattr(self, "_preset_mc", None)
+        if preset is not None:
+            return preset
         if not self.variable_exists("_model_chemistry"):
             return None
         return self.get_variable("_model_chemistry")

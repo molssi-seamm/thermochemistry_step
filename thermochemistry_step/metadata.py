@@ -245,6 +245,44 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH energy level": {
+        "description": "The model chemistry of the species' energies",
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH geometry level": {
+        "description": (
+            "The model chemistry of the geometries, frequencies, ZPE and thermal "
+            "corrections"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "ZPE scale factor": {
+        "description": "The factor the harmonic ZPEs were scaled by",
+        "dimensionality": "scalar",
+        "type": "float",
+        "format": ".4f",
+    },
+    "ZPE scale factor source": {
+        "description": "Where the ZPE scale factor comes from, and any caution",
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH rung spread": {
+        "description": (
+            "The range of the enthalpy of formation at 298.15 K over the CBH rungs "
+            "from CBH-1 up, an indicator of its uncertainty"
+        ),
+        "dimensionality": "scalar",
+        "property": "CBH rung spread#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
     "ATcT version": {
         "description": "The ATcT Thermochemical Network version used",
         "dimensionality": "scalar",

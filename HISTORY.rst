@@ -1,6 +1,21 @@
 =======
 History
 =======
+2026.11.8.1 -- Presets for the isodesmic approach; scaled ZPEs; the rung spread
+    * The isodesmic (CBH) approach has presets: 'quick' (r2SCAN-3c), and 'default'
+      (r2SCAN-3c geometries and frequencies, revDSD-PBEP86-D4/def2-TZVPP energies), the
+      new default, both with ZPEs scaled by 0.9899 and the highest rung available up to
+      CBH-2 (CBH-3 on request). They need no Model Chemistry step. 'custom' keeps the
+      earlier behaviour. A flowchart that uses the CBH approach and was saved before
+      this version gets the 'default' preset; choose 'custom' to keep its Model
+      Chemistry.
+    * The ZPEs are scaled by the factor for the geometry level from a table with its
+      source (r2SCAN-3c, PBE0/def2-TZVP, B2PLYP-D3/cc-pVTZ), or by a given factor; the
+      factor and its source are printed and stored.
+    * The spread of the enthalpy of formation over the rungs from CBH-1 up is reported
+      and stored as an indicator of the uncertainty, and 'quick' warns when the
+      highest rung is below CBH-2.
+
 2026.11.8 -- Energies at another level than the geometries
     * The isodesmic (CBH) approach can take the species' energies from a second model
       chemistry ("Energies at"), e.g. revDSD-PBEP86-D4/def2-TZVPP or
