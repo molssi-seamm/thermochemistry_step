@@ -182,3 +182,57 @@ def test_stored_geometry_and_energy_are_reused(split, tmp_path):
     assert "CF" not in split._computed
     assert all("CBH:CF" not in call for call in FakeEvaluator.calls)
     assert FakeEvaluator.calls[0] == ["CBH:CCF"]
+
+
+def test_species_only(split, monkeypatch):
+    """Only the target is computed and sent to the energy level, with the
+    properties the harvest reads; no reactions and no ATcT (an ATcT that raises
+    is never touched)."""
+    import seamm_thermochemistry
+
+    def no_atct(*args, **kwargs):
+        raise AssertionError("ATcT must not be used")
+
+    monkeypatch.setattr(seamm_thermochemistry, "ATcT", no_atct)
+    P = _computed(
+        split, **{"cbh calculation": "the species only (for the fragment store)"}
+    )
+    data = split.run_cbh(P)
+    assert split._computed == ["CCF"]
+    # The target alone, once
+    assert len(FakeEvaluator.calls) == 1 and len(FakeEvaluator.calls[0]) == 1
+    assert data == {"CBH energy level": "High:F12", "CBH geometry level": LOW}
+    assert "DfH 298K" not in data
+    _, configuration = split.get_system_configuration()
+    p = configuration.properties
+    name = "settings fingerprint#Thermochemistry#High:F12"
+    assert p.get(name)[name]["value"] == "fp:high"
+    name = "total energy#Thermochemistry#High:F12"
+    assert p.get(name)[name]["value"] == pytest.approx(
+        ENERGIES["CCF"] / 2625.4996394799
+    )
+
+
+def test_species_only_refuses_existing_results(split):
+    with pytest.raises(RuntimeError, match="computes the species"):
+        split.run_cbh(
+            _computed(
+                split,
+                **{
+                    "cbh calculation": "the species only (for the fragment store)",
+                    "cbh energies": "existing results (run nothing)",
+                },
+            )
+        )
+
+
+def test_species_only_description(split):
+    from thermochemistry_step.cbh_approach import PRESETS
+
+    text = split.describe_cbh(
+        {
+            "cbh calculation": "the species only (for the fragment store)",
+            "preset": "default",
+        }
+    )
+    assert "No CBH reactions" in text and PRESETS["default"]["energy"] in text

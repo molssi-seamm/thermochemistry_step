@@ -173,6 +173,7 @@ class TkThermochemistry(seamm.TkNode):
         for key in (
             "engine",
             "approach",
+            "cbh calculation",
             "preset",
             "include CBH-3",
             "cbh energies",
@@ -322,12 +323,38 @@ class TkThermochemistry(seamm.TkNode):
         optimize = self["optimize fragments"].get()
         optimize = optimize.startswith("$") or optimize == "yes"
 
+        if self["cbh calculation"].get().startswith("the species only"):
+            # Only the target, computed as a species: no reactions, no ATcT
+            keys = ["cbh calculation", "preset"]
+            if preset == "custom":
+                keys.append("thermal corrections")
+                if harmonic:
+                    keys.append("energy model chemistry")
+            keys.append("target conformer")
+            if self["target conformer"].get().startswith("lowest"):
+                keys.append("conformer embeddings")
+            keys.append("optimize fragments")
+            if optimize:
+                keys += ["fragment convergence", "fragment max steps"]
+            keys.append("hessian route")
+            if harmonic or preset != "custom":
+                keys += ["step size", "print frequencies"]
+            keys.append("fragment store")
+            if self["fragment store"].get() != "ignore":
+                keys.append("fragment store file")
+            for key in keys:
+                self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
+                widgets.append(self[key])
+                row += 1
+            return row
+
+        keys = ["cbh calculation"]
         if preset != "custom":
             # The preset sets the rungs, the levels and computes the species
             mode, harmonic = "finite-difference harmonic", True
-            keys = ["preset", "include CBH-3", "protect", "ZPE scale factor"]
+            keys += ["preset", "include CBH-3", "protect", "ZPE scale factor"]
         else:
-            keys = [
+            keys += [
                 "preset",
                 "cbh rungs",
                 "protect",
