@@ -1,6 +1,26 @@
 =======
 History
 =======
+2026.11.11 -- Fragments reused within a job and looked up by their own fingerprints
+    * A fragment already computed in the same job, e.g. by an earlier iteration of
+      a Loop over many targets, is now taken from the job's database instead of
+      being optimized and its Hessian computed again, when its settings
+      fingerprints are the expected ones and it has no imaginary mode. Its energy
+      at the energy level is reused too, if it ran on the same geometry. A serial
+      Loop over 177 compounds (SEAMM job 5684) had computed some 500 fragments a
+      second time or more (H2 114 times, CH4 74).
+    * Each species is looked up, in the job and in the fragment store, with the
+      fingerprints its own calculation would have. The target's were used for
+      all, but ORCA uses exact exchange (NoCOSX) for atoms and for Na, Mg, Zn, B
+      and P: the ordinary fragments of a boron or phosphorus target were never
+      found in the store, and were computed again in every such job.
+    * Bugfix: after computing a fragment the step looked the following ones up
+      with that fragment's fingerprints rather than the target's, so after a
+      boron fragment every later lookup in the iteration missed.
+    * If a computed fingerprint is not the one predicted for the species, the
+      output says so. The species is still used.
+    * Needs seamm-thermochemistry, seamm-exec and orca-step 2026.11.11.
+
 2026.11.10 -- The species only, for the fragment store
     * The isodesmic (CBH) approach can compute only the structure itself
       ("Calculate: the species only (for the fragment store)"), exactly as a
