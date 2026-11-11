@@ -185,7 +185,16 @@ class CBHApproach:
         text += f"The target is {smiles}"
         if charge != 0 or multiplicity != 1:
             text += f" with charge {charge} and multiplicity {multiplicity}"
-        text += ".\n"
+        text += "."
+        # The structure's multiplicity is used; say so where the ground state
+        # differs (a singlet carbene built as a triplet, or O2 as a singlet)
+        ground = cbh_multiplicity(smiles)
+        if ground != multiplicity:
+            text += (
+                f" Its spin multiplicity, {multiplicity}, is the structure's; the "
+                f"ground state of {target} is {ground}."
+            )
+        text += "\n"
 
         # The rungs
         rungs = _P["cbh rungs"]
@@ -227,8 +236,8 @@ class CBHApproach:
         )
 
         def lookup(can):
-            _, q, radicals, _ = cbh._composition(can)
-            return tables.lookup(can, charge=q, multiplicity=radicals + 1)
+            _, q, _, _ = cbh._composition(can)
+            return tables.lookup(can, charge=q, multiplicity=cbh_multiplicity(can))
 
         # The reference policy: ATcT, a ladder, or ATcT below a threshold
         policy = _P.get("reference values", "ATcT")
@@ -379,6 +388,18 @@ class CBHApproach:
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
 
         if not usable:
+            # A target that is itself a reference species (methane, benzene, the
+            # methyl radical, CO): its rungs are trivial or need other species
+            # that ATcT lacks, but its own value is the answer
+            if target_entry is None:
+                try:
+                    target_entry = tables.lookup(
+                        target, charge=charge, multiplicity=multiplicity
+                    )
+                except (MissingEntry, AmbiguousEntry):
+                    target_entry = None
+            if target_entry is not None:
+                return self._reference_species_result(target, target_entry, tables)
             raise RuntimeError(
                 "No CBH rung has all its reference species in ATcT "
                 f"(ver. {tables.version}); see the reactions above."
@@ -839,6 +860,36 @@ class CBHApproach:
         }
 
         # Citations
+        self._cite_cbh(tables)
+        return data
+
+    def _reference_species_result(self, target, entry, tables):
+        """The result for a target that is itself a reference species: its ATcT
+        value, with nothing computed."""
+        dfh0, dfh298 = entry["dfH0_0K"], entry["dfH0_298K"]
+        u = 0.0 if entry["exact"] else (entry["uncertainty_298K"] or 0.0)
+        label = f"target is a reference species (ATcT {entry['id']})"
+        text = (
+            f"\nNo rung gives a reaction for {target}, but the target is itself a "
+            f"reference species, ATcT {entry['id']} (ver. {tables.version}): "
+        )
+        if dfh0 is not None:
+            text += f"ΔfH°(0 K) = {dfh0:.2f} and "
+        text += f"ΔfH°(298.15 K) = {dfh298:.2f} "
+        text += "(exact)" if entry["exact"] else f"± {u:.2f}"
+        text += " kJ/mol. That value is the result; no species were computed."
+        printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+        data = {
+            "CBH reaction": label,
+            "DfH 298K": dfh298,
+            "DfH uncertainty": u,
+            "ATcT version": tables.version,
+            "ATcT DfH 298K": dfh298,
+            "ATcT DfH uncertainty": entry["uncertainty_298K"],
+        }
+        if dfh0 is not None:
+            data["DfH 0K"] = dfh0
+            data["ATcT DfH 0K"] = dfh0
         self._cite_cbh(tables)
         return data
 
@@ -2203,9 +2254,12 @@ def cbh_charge(smiles):
 
 
 def cbh_multiplicity(smiles):
-    from seamm_thermochemistry.cbh import _composition
+    """The spin multiplicity of a CBH species: its ground state, from the tables of
+    singlets and triplets that a SMILES does not show (SiCl2 and BH are singlets,
+    O2 and OCCO triplets), else its unpaired electrons + 1."""
+    from seamm_thermochemistry import cbh
 
-    return _composition(smiles)[2] + 1
+    return cbh.ground_state_multiplicity(smiles)
 
 
 def _unused():  # pragma: no cover

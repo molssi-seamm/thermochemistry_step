@@ -102,13 +102,22 @@ charged atom keeps that spin or charge, and the ATcT entry is selected with
 the same charge and multiplicity. The reactions follow from the SMILES of the
 structure, so the system's charge and spin multiplicity must agree with it;
 the step stops if they do not. Build a radical from its SMILES
-(``[CH2]C`` for the ethyl radical), which sets both.
+(``[CH2]C`` for the ethyl radical), which sets both. A fragment takes the spin
+multiplicity of its ground state: its unpaired electrons + 1, except the
+singlets that a SMILES writes with two unpaired electrons (SiH\ :sub:`2`,
+SiCl\ :sub:`2`, CF\ :sub:`2`, BH, ...) and the triplets it writes closed-shell
+(O\ :sub:`2`, OCCO, cyclic C\ :sub:`3`, ...; seamm_thermochemistry's
+``cbh.ground_state_multiplicity``). The target keeps its structure's
+multiplicity, and the step says so when that is not the ground state.
 
 The ATcT tables are not distributed with SEAMM: install a version first with
 ``seamm-thermochemistry-atct download`` (see the seamm_thermochemistry
 documentation). A rung is usable only when all its reference species are in
 ATcT, and the step reports the rungs it could not use and why; the result
 stored is the highest usable rung, and every rung goes into the table ``CBH``.
+When no rung is usable but the target is itself in ATcT (methane, benzene, the
+methyl radical, CO: every rung reproduces the target), its ATcT value is the
+result, labelled "target is a reference species", and nothing is computed.
 The spread of the enthalpies of formation over the rungs from CBH-1 up is
 reported and stored as an indicator of the uncertainty: a large spread points
 to trouble with the method or with the reference values.
