@@ -429,3 +429,39 @@ def test_species_sdf_never_fails_a_species(node, tmp_path, monkeypatch, caplog):
     )
     assert result == {"E": "n/a"}
     assert "Could not write the structure of CC" in caplog.text
+
+
+def test_target_is_a_reference_species(node, monkeypatch):
+    """Methane: every rung is trivial, but methane is in ATcT, so its value is the
+    result and nothing is computed (31 PPE1694 targets, 2026-11-11 review)."""
+    from seamm_thermochemistry import ATcT
+
+    methane = None
+    for system in node._test_db.get_systems():
+        if system.name == "CBH:C":
+            methane = (system, system.configuration)
+    monkeypatch.setattr(node, "get_system_configuration", lambda *a, **k: methane)
+    data = node.run_cbh(_parameters(node))
+    entry = ATcT(version="9.999", base=str(node._test_base)).lookup("C")
+    assert data["CBH reaction"].startswith("target is a reference species")
+    assert data["DfH 298K"] == pytest.approx(entry["dfH0_298K"])
+    assert data["ATcT DfH 298K"] == pytest.approx(entry["dfH0_298K"])
+    assert "CBH rung" not in data
+
+
+def test_ground_state_multiplicities():
+    """Fragments take their ground state: the singlet silylenes, dihalocarbenes
+    and BH, and the triplets O2 and OCCO that a SMILES does not show."""
+    from thermochemistry_step.cbh_approach import cbh_multiplicity
+
+    for smiles, m in (
+        ("Cl[Si]Cl", 1),
+        ("[BH]", 1),
+        ("F[C]F", 1),
+        ("O=O", 3),
+        ("O=C=C=O", 3),
+        ("[CH2]", 3),
+        ("[NH]", 3),
+        ("[CH3]", 2),
+    ):
+        assert cbh_multiplicity(smiles) == m, smiles

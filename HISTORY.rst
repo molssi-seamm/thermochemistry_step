@@ -1,6 +1,18 @@
 =======
 History
 =======
+2026.11.11.3 -- CBH: reference species as targets; ground-state multiplicities
+    * A target that is itself an ATcT species (methane, benzene, pyridine, the methyl
+      radical, CO, ...), for which no rung gives a usable reaction, returns its ATcT
+      value, labelled "target is a reference species", instead of stopping with "No
+      CBH rung has all its reference species in ATcT". Nothing is computed.
+    * The fragments, and their ATcT lookups, take the spin multiplicity of their
+      ground state: the singlet SiH2, SiCl2, CF2, CCl2, BH, ... that a SMILES writes
+      as triplets, and the triplet O2, S2, SO, OCCO and cyclic C3 that it writes
+      closed-shell. The target keeps its structure's multiplicity, and the step says
+      so when that is not the ground state.
+    * Needs seamm-thermochemistry 2026.11.11.7 or later.
+
 2026.11.11.2 -- The official fragment store is read too
     * The species are looked up in the installation's own (local) fragment store
       first, then in SEAMM's official store when it is installed. The species table
