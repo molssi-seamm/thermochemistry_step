@@ -1,6 +1,15 @@
 =======
 History
 =======
+2026.11.11.2 -- The official fragment store is read too
+    * The species are looked up in the installation's own (local) fragment store
+      first, then in SEAMM's official store when it is installed. The species table
+      says which store a value came from, and names both when an energy and its
+      geometry come from different stores; disagreements between the two are
+      noted in the output. The lowest conformer of either store is used, a tie
+      going to the local one. Only the local store is ever written.
+    * Needs seamm-thermochemistry 2026.11.11.2.
+
 2026.11.11.1 -- The species computed are added to the fragment store
     * "Fragment store" has the choices "use and add what is computed" (the new
       default), "use only" (formerly "use if available") and "ignore". With the

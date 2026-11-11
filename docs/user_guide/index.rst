@@ -251,7 +251,14 @@ Fragment store
     imaginary mode). They are added only when the store is on a local disk of
     the machine running the job. Otherwise the job is marked, and is harvested
     into the store when it returns to its JobServer (or by hand with
-    ``seamm-thermochemistry-fragments harvest``). The species table says where
+    ``seamm-thermochemistry-fragments harvest``).
+
+    The store is read in two layers: the installation's own (local) store
+    first, then SEAMM's official one when it is installed. The species table
+    says "store (official <version>)" for a value from the official store, and
+    names both when an energy and its geometry come from different stores; the
+    output notes any value on which the two disagree. Only the local store is
+    ever written. *Fragment store file* names the local store. The species table says where
     each value came from; a record without a settings fingerprint is
     "unverified" and the output says so. When the engine provides them (ORCA),
     the settings fingerprints of each species' calculations are stored with its

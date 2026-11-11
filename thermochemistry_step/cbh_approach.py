@@ -518,6 +518,7 @@ class CBHApproach:
                     energies,
                     sources,
                 )
+            self._report_store_notes(store)
             # Add what was computed here to the fragment store (write-back)
             computed = {}
             for can in [target] + list(fragments):
@@ -910,6 +911,7 @@ class CBHApproach:
                 energies,
                 sources,
             )
+        self._report_store_notes(store)
         self._write_back(_P, {target: configuration})
         system_db = self.get_variable("_system_db")
         system_db.system = system
@@ -1112,15 +1114,45 @@ class CBHApproach:
         """The fragment store to read, or None if ignored or unreadable."""
         if _P.get("fragment store", "ignore") not in self._STORE_READ:
             return None
-        from seamm_thermochemistry import FragmentStore
-
         path = _P.get("fragment store file", "default")
         path = None if path in ("default", "") else os.path.expanduser(path)
+        self._store_layer = {}
         try:
-            return FragmentStore(path)
+            # The local store, then the official one (seamm-thermochemistry's
+            # two layers); an older seamm-thermochemistry has only the local one
+            try:
+                from seamm_thermochemistry import LayeredStore
+            except ImportError:  # pragma: no cover
+                from seamm_thermochemistry import FragmentStore
+
+                return FragmentStore(path)
+            return LayeredStore(path)
         except Exception as e:  # pragma: no cover
             logger.warning(f"The fragment store could not be opened: {e}")
             return None
+
+    @staticmethod
+    def _store_source(store, row):
+        """How a value from the store is labelled: "store", with the layer when
+        it is the official one, and "unverified" when it has no fingerprint."""
+        layer = row.get("layer", "local")
+        text = "store"
+        details = []
+        if layer != "local" and hasattr(store, "layer_name"):
+            details.append(store.layer_name(layer))
+        if not row.get("verified", True):
+            details.append("unverified")
+        return text + (f" ({', '.join(details)})" if details else "")
+
+    def _report_store_notes(self, store):
+        """Print what the two-layer store noticed (an official value superseding
+        an old local one, local and official values that differ)."""
+        notes = getattr(store, "notes", None)
+        if not notes:
+            return
+        text = "\nFragment store: " + "\n    ".join(notes)
+        printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
+        notes.clear()
 
     def _energies_from_store(self, _P, store, can):
         """The energies of a species from the store at this model chemistry,
@@ -1155,8 +1187,7 @@ class CBHApproach:
             if record.get("ZPE") is not None:
                 result["ZPE"] = record["ZPE"]
                 result["H0"] = record["E"] + record["ZPE"]
-        source = "store" if record.get("verified") else "store (unverified)"
-        return result, source
+        return result, self._store_source(store, record)
 
     @staticmethod
     def _preset_rungs(_P):
@@ -1270,10 +1301,14 @@ class CBHApproach:
         ]
         if not rows:
             return None
-        g = min(rows, key=lambda r: r["E"] + r["ZPE"])
+        # The lowest conformer of both layers, a tie going to the local one
+        lowest = getattr(store, "lowest", None)
+        g = lowest(rows) if lowest else min(rows, key=lambda r: r["E"] + r["ZPE"])
         result = {"E": g["E"], "ZPE": g["ZPE"], "H0": g["E"] + g["ZPE"], "H298": g["H"]}
-        source = "store" if g["verified"] else "store (unverified)"
-        return result, g, source
+        if not hasattr(self, "_store_layer"):
+            self._store_layer = {}
+        self._store_layer[can] = g.get("layer", "local")
+        return result, g, self._store_source(store, g)
 
     def _configuration_from_geometry(self, system_db, can, geometry):
         """The system CBH:<can> with the stored geometry as a new configuration."""
@@ -1373,6 +1408,8 @@ class CBHApproach:
                 continue
             row = None
             if store is not None:
+                geometry_layer = getattr(self, "_store_layer", {}).get(can, "local")
+                kwargs = {"prefer": geometry_layer} if hasattr(store, "lowest") else {}
                 row = store.energy(
                     hash_geometry(
                         configuration.atoms.symbols,
@@ -1381,9 +1418,18 @@ class CBHApproach:
                     ),
                     energy_fingerprint=fingerprints,
                     model_chemistry=level,
+                    **kwargs,
                 )
             if row is not None:
-                how = "store" if row["verified"] else "store (unverified)"
+                how = self._store_source(store, row)
+                if row.get("layer", "local") != geometry_layer and hasattr(
+                    store, "layer_name"
+                ):
+                    # R5: the same geometry, energies from the other layer
+                    how += (
+                        f"; geometry {store.layer_name(geometry_layer)}, energy "
+                        f"{store.layer_name(row['layer'])}"
+                    )
                 high[can] = (row["E"], None, how)
             else:
                 to_run.append(can)
