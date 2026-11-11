@@ -52,10 +52,34 @@ def test_large_saturated_closed_shell_is_dlpno():
         ("CCCCCCCC(=O)OC", 1, "pi system"),
         ("FC(F)(F)C(F)(F)CCCCC", 1, "fluorinated carbons"),
         ("[CH2]CCCCCCC", 2, "open-shell"),
-        ("CCCCCCCCS", 1, "the number of cc-pVTZ-F12 basis functions of element 16"),
+        ("CCCCCCCCS", 1, "it contains S"),
     ],
 )
 def test_no_high_result(smiles, multiplicity, why):
     level, reason = choose(smiles, multiplicity)
     assert level is None
     assert why in reason
+
+
+def test_propyl_acetate_falls_back_and_hexane_is_dlpno():
+    """Both are over 546 (hexane 612, propyl acetate 600); the ester's C=O is a pi
+    system (rule 3), so propyl
+    acetate gets no 'high' result, while hexane goes to DLPNO."""
+    assert choose("CCCCCC")[0] == H.DLPNO
+    level, reason = choose("CCCOC(C)=O")
+    assert level is None and "600" in reason and "pi system" in reason
+
+
+def test_the_limit_is_a_parameter():
+    assert choose("CCCCCC")[0] == H.DLPNO
+    mol = Chem.AddHs(Chem.MolFromSmiles("CCCOC(C)=O"))
+    numbers = [a.GetAtomicNum() for a in mol.GetAtoms()]
+    level, reason = H.high_level("CCCOC(C)=O", 1, numbers, max_bf=720)
+    assert level == H.CANONICAL and "at most 720" in reason
+
+
+def test_second_row_counts_and_small_targets():
+    assert H.basis_functions([5, 9, 9, 9])[0] == 240  # BF3
+    assert choose("ClCCl")[0] == H.CANONICAL
+    assert choose("OP(=O)(O)O")[0] == H.CANONICAL
+    assert choose("[K+]")[0] is None

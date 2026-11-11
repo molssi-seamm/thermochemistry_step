@@ -289,17 +289,20 @@ def test_high_preset_chooses_canonical_f12_for_a_small_target(preset):
     assert data["CBH energy level"] == CANONICAL
     assert data["CBH geometry level"] == R2SCAN
     assert "canonical CCSD(T)-F12" in data["CBH high level"]
+    assert data["CBH high canonical limit"] == 546
     assert "CBH composite recipe" not in data
 
 
 def test_high_preset_falls_back_to_default_with_the_reason(preset, monkeypatch):
     from thermochemistry_step import high_level
 
-    monkeypatch.setattr(high_level, "CANONICAL_MAX_BF", 10)  # force 'too large'
     monkeypatch.setattr(
         high_level, "dlpno_problem", lambda smiles, multiplicity: "a test says so"
     )
-    data = preset.run_cbh(_preset(preset, "high"))
+    # The limit is a parameter: 10 basis functions makes every target too large
+    P = _preset(preset, "high", **{"maximum basis functions for canonical F12": 10})
+    data = preset.run_cbh(P)
+    assert data["CBH high canonical limit"] == 10
     assert data["CBH energy level"] == REVDSD
     assert "No 'high' result" in data["CBH high level"]
     assert "a test says so" in data["CBH high level"]

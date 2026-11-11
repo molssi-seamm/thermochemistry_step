@@ -84,6 +84,8 @@ HIGH_ENERGY = (
     "closed-shell target)"
 )
 PRESETS["high"]["energy"] = HIGH_ENERGY
+#: The default largest canonical CCSD(T)-F12 of the 'high' preset (96 GB nodes)
+CANONICAL_MAX_BF_DEFAULT = 546
 
 #: The owner and type of SEAMM's composite recipes as model chemistries.
 COMPOSITE_PREFIX = "SEAMM:CMP@"
@@ -246,6 +248,9 @@ class CBHApproach:
         smiles = self._target_smiles(target_configuration, charge, multiplicity)
         target = canonical_smiles(smiles)
         self._high_choice = None
+        self._high_max_bf = _P.get(
+            "maximum basis functions for canonical F12", CANONICAL_MAX_BF_DEFAULT
+        )
         self._high_target = (
             smiles,
             multiplicity,
@@ -954,6 +959,7 @@ class CBHApproach:
             data["CBH composite recipe fingerprint"] = composite["fingerprint"]
         if getattr(self, "_high_choice", None) is not None:
             data["CBH high level"] = self._high_choice["reason"]
+            data["CBH high canonical limit"] = int(self._high_max_bf)
         data["CBH rung"] = best["rung"]
         data["CBH reaction"] = best["reaction"]
         if "DfH 0 K" in best:
@@ -1524,7 +1530,8 @@ class CBHApproach:
         from .high_level import high_level
 
         smiles, multiplicity, atomic_numbers = self._high_target
-        level, reason = high_level(smiles, multiplicity, atomic_numbers)
+        max_bf = int(getattr(self, "_high_max_bf", None) or CANONICAL_MAX_BF_DEFAULT)
+        level, reason = high_level(smiles, multiplicity, atomic_numbers, max_bf=max_bf)
         if level is None:
             level = PRESETS["default"]["energy"]
             note = (

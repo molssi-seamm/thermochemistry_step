@@ -139,6 +139,21 @@ class ThermochemistryParameters(seamm.Parameters):
                 "below."
             ),
         },
+        "maximum basis functions for canonical F12": {
+            "default": 546,
+            "kind": "integer",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Largest canonical F12 (basis functions):",
+            "help_text": (
+                "For the 'high' preset: the largest target, in cc-pVTZ-F12 basis "
+                "functions, computed with canonical CCSD(T)-F12. 546 fits in 96 GB; "
+                "with 200 GB nodes about 700 is possible. Larger closed-shell "
+                "saturated targets use DLPNO-CCSD(T)-F12, and others get no 'high' "
+                "result."
+            ),
+        },
         "include CBH-3": {
             "default": "no",
             "kind": "boolean",

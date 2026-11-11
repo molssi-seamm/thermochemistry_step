@@ -25,11 +25,17 @@ DLPNO = "ORCA:QC@DLPNO-CCSD(T)-F12D(TightPNO,TCutPNO=1e-8)/cc-pVTZ-F12"
 #: The largest canonical CCSD(T)-F12 calculation (basis functions), rule 1
 CANONICAL_MAX_BF = 546
 
-#: ORCA 6.1.1's own cc-pVTZ-F12 basis functions per element (spherical), from ORCA's
-#: output ("Number of basis functions"): heptane is 7 x 60 + 16 x 18 = 708, as
-#: measured in job 5474. The Basis Set Exchange's version is smaller (53 for C), so
-#: ORCA's counts are used. Elements not measured give no 'high' result.
-NBF_CC_PVTZ_F12 = {1: 18, 6: 60, 7: 60, 8: 60, 9: 60}
+#: ORCA 6.1.1's own cc-pVTZ-F12 basis functions per element (spherical), measured
+#: from ORCA's output ("Number of basis functions") for each atom, 2026-11-11:
+#: heptane is 7 x 60 + 16 x 18 = 708, as in job 5474. The Basis Set Exchange's
+#: version is smaller (53 for C), so ORCA's counts are used. ORCA has cc-pVTZ-F12
+#: for H-Ar only; other elements give no 'high' result.
+NBF_CC_PVTZ_F12 = {
+    1: 18, 2: 19,
+    3: 60, 4: 60, 5: 60, 6: 60, 7: 60, 8: 60, 9: 60, 10: 60,
+    11: 96, 12: 93,
+    13: 90, 14: 90, 15: 90, 16: 90, 17: 90, 18: 90,
+}  # fmt: skip
 
 #: The elements DLPNO-F12 was validated for (rule 2)
 DLPNO_ELEMENTS = {1, 6, 7, 8, 9}
@@ -95,7 +101,7 @@ def dlpno_problem(smiles, multiplicity):
     return ""
 
 
-def high_level(smiles, multiplicity, atomic_numbers):
+def high_level(smiles, multiplicity, atomic_numbers, max_bf=CANONICAL_MAX_BF):
     """The 'high' energy level for a target, by the rules above.
 
     Parameters
@@ -105,6 +111,9 @@ def high_level(smiles, multiplicity, atomic_numbers):
     multiplicity : int
     atomic_numbers : [int]
         All the atoms, hydrogens included.
+    max_bf : int
+        The largest canonical CCSD(T)-F12 calculation, basis functions (546 for
+        96 GB nodes; more with more memory).
 
     Returns
     -------
@@ -115,22 +124,21 @@ def high_level(smiles, multiplicity, atomic_numbers):
     n, unknown = basis_functions(atomic_numbers)
     if n is None:
         return None, (
-            f"the number of cc-pVTZ-F12 basis functions of element {unknown} is not "
-            "known here, so the size rule cannot be applied"
+            f"ORCA has no cc-pVTZ-F12 basis for element {unknown} (it has H-Ar)"
         )
-    if n <= CANONICAL_MAX_BF:
+    if n <= max_bf:
         return CANONICAL, (
-            f"{n} cc-pVTZ-F12 basis functions (at most {CANONICAL_MAX_BF}): "
+            f"{n} cc-pVTZ-F12 basis functions (at most {max_bf}): "
             "canonical CCSD(T)-F12"
         )
     problem = dlpno_problem(smiles, multiplicity)
     if problem:
         return None, (
             f"{n} cc-pVTZ-F12 basis functions is too many for canonical CCSD(T)-F12 "
-            f"(at most {CANONICAL_MAX_BF}), and DLPNO-CCSD(T)-F12 is not used because "
+            f"(at most {max_bf}), and DLPNO-CCSD(T)-F12 is not used because "
             f"{problem}"
         )
     return DLPNO, (
-        f"{n} cc-pVTZ-F12 basis functions (over {CANONICAL_MAX_BF}), a closed-shell "
+        f"{n} cc-pVTZ-F12 basis functions (over {max_bf}), a closed-shell "
         "saturated molecule: DLPNO-CCSD(T)-F12 (TightPNO, TCutPNO 1e-8)"
     )

@@ -279,6 +279,15 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH high canonical limit": {
+        "description": (
+            "The largest canonical CCSD(T)-F12 the 'high' preset allowed (cc-pVTZ-F12 "
+            "basis functions)"
+        ),
+        "dimensionality": "scalar",
+        "type": "integer",
+        "format": "",
+    },
     "CBH composite recipe": {
         "description": (
             "The composite method (SEAMM:CMP@<recipe>) whose geometry and energy "
