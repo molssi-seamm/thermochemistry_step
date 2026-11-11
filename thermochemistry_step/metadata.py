@@ -231,6 +231,16 @@ metadata["results"] = {
         "units": "kJ/mol",
         "format": ".2f",
     },
+    "DfH uncertainty method": {
+        "description": (
+            "How the uncertainty was obtained: from the ATcT covariances, or in "
+            "quadrature without them, plus any ladder method term"
+        ),
+        "dimensionality": "scalar",
+        "property": "DfH uncertainty method#Thermochemistry#{model}",
+        "type": "string",
+        "format": "",
+    },
     "CBH rung": {
         "description": "The CBH rung the enthalpy of formation comes from",
         "dimensionality": "scalar",

@@ -1,6 +1,21 @@
 =======
 History
 =======
+2026.11.11.4 -- ATcT is downloaded when needed; covariances are fetched by default
+    * A calculation that finds no ATcT version installed downloads the current one
+      from atct.anl.gov (an installation made before the seamm-thermochemistry
+      installer set ATcT up), and says so; parallel jobs may do so at once. If the
+      download fails the error names the installer and the offline route. A
+      specific version that is not installed is never downloaded.
+    * The ATcT covariances default to "fetch if needed": a block that is not cached
+      is fetched and cached. After the first failed fetch (e.g. no network) the
+      step stops trying for the rest of the calculation, and those reactions'
+      uncertainties are in quadrature, labelled "quadrature (covariance fetch
+      failed)". Flowcharts saved earlier keep the setting they were saved with.
+    * The uncertainty method is a result too ("DfH uncertainty method"), as well as
+      a column of the CBH table.
+    * Needs seamm-thermochemistry 2026.11.11.11 or later.
+
 2026.11.11.3 -- CBH: reference species as targets; ground-state multiplicities
     * A target that is itself an ATcT species (methane, benzene, pyridine, the methyl
       radical, CO, ...), for which no rung gives a usable reaction, returns its ATcT

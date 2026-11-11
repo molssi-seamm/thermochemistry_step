@@ -93,9 +93,9 @@ rung, the more of the chemical environment, and of the error of the method, is
 the same on both sides of the reaction. The reaction enthalpy is calculated with
 the engine for the target and every reference species, and the enthalpy of
 formation of the target follows from it and the ATcT values of the reference
-species, with the 95 % uncertainty of the ATcT part (using the ATcT covariances
-when they are cached). If the target itself is in ATcT the difference is
-reported too.
+species, with the 95 % uncertainty of the ATcT part (using the ATcT
+covariances, fetched from atct.anl.gov when they are not cached). If the target
+itself is in ATcT the difference is reported too.
 
 Radicals and ions are handled: every fragment containing the radical or
 charged atom keeps that spin or charge, and the ATcT entry is selected with
@@ -110,9 +110,11 @@ SiCl\ :sub:`2`, CF\ :sub:`2`, BH, ...) and the triplets it writes closed-shell
 ``cbh.ground_state_multiplicity``). The target keeps its structure's
 multiplicity, and the step says so when that is not the ground state.
 
-The ATcT tables are not distributed with SEAMM: install a version first with
-``seamm-thermochemistry-atct download`` (see the seamm_thermochemistry
-documentation). A rung is usable only when all its reference species are in
+The ATcT tables are not distributed with SEAMM: the seamm-thermochemistry
+installer downloads the current version, and a calculation that finds none
+installed downloads it then (see the seamm_thermochemistry documentation; a
+newer version is added only on purpose, with ``seamm-thermochemistry-atct
+download``). A rung is usable only when all its reference species are in
 ATcT, and the step reports the rungs it could not use and why; the result
 stored is the highest usable rung, and every rung goes into the table ``CBH``.
 When no rung is usable but the target is itself in ATcT (methane, benzene, the
@@ -287,12 +289,16 @@ Fragment store
 ATcT version, directory, covariances
     The version of the Thermochemical Network (``latest`` cached by default),
     where the versions are kept, and whether to fetch missing covariance blocks
-    from atct.anl.gov (``cached only`` by default: a compute node usually has
-    no network, and the site may refuse the request; cache the blocks first
-    with ``seamm-thermochemistry-atct covariance``).
+    from atct.anl.gov (``fetch if needed``, the default) or use only those
+    cached (``cached only``). A block that is missing, or that cannot be fetched
+    (a compute node often has no network, and the site may refuse the request;
+    the step stops trying after the first failure), leaves the reference
+    uncertainty in quadrature, without the correlations. The result's
+    *uncertainty method* says which, and ``seamm-thermochemistry-atct
+    covariance`` caches the blocks ahead of time.
 
 The results that can be stored are the enthalpy of formation at 0 K and at
-298.15 K, its 95 % reference uncertainty, the rung and the reaction used, the
+298.15 K, its 95 % reference uncertainty and how it was obtained, the rung and the reaction used, the
 ATcT version and, when the target is in ATcT, its values. They are also stored
 as the properties ``DfH(0 K)``, ``DfH(298.15 K)`` and ``DfH uncertainty (95%)``
 of the configuration.
