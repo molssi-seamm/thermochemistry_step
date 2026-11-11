@@ -518,6 +518,16 @@ class CBHApproach:
                     energies,
                     sources,
                 )
+            # Add what was computed here to the fragment store (write-back)
+            computed = {}
+            for can in [target] + list(fragments):
+                if "computed" not in sources.get(can, ""):
+                    continue
+                configuration = configurations.get(can)
+                if configuration is None:
+                    configuration = self._find_fragment(system_db, can)
+                computed[can] = configuration
+            self._write_back(_P, computed)
             # Back to the target
             system_db.system = target_system
             target_system.configuration = target_configuration
@@ -900,6 +910,7 @@ class CBHApproach:
                 energies,
                 sources,
             )
+        self._write_back(_P, {target: configuration})
         system_db = self.get_variable("_system_db")
         system_db.system = system
         system.configuration = configuration
@@ -987,9 +998,119 @@ class CBHApproach:
             text.append(f"{abs(angle):.0f}")
         return ", heavy-atom dihedrals (in SMILES order) " + " ".join(text) + "°"
 
+    #: The "fragment store" choices that read the store ("use if available" is
+    #: the name of "use only" in flowcharts from before 2026.11.12)
+    _STORE_READ = ("use and add what is computed", "use only", "use if available")
+
+    def _job_root(self):
+        """The job's directory, or None outside a flowchart."""
+        try:
+            return Path(self.flowchart.root_directory)
+        except Exception:
+            return None
+
+    def _job_label(self):
+        """The job as the fragment store records it: '<job id>:<directory>'."""
+        root = self._job_root()
+        if root is None:
+            return None
+        job_id = None
+        try:
+            text = (root / "job_data.json").read_text()
+            if text.startswith("!"):  # SEAMM's header, "!MolSSI job_data 1.0"
+                text = text.split("\n", 1)[1] if "\n" in text else ""
+            job_id = json.loads(text).get("job id")
+        except Exception:
+            pass
+        return f"{job_id}:{root}" if job_id is not None else str(root)
+
+    def _write_back(self, _P, species):
+        """Add the species computed here ({SMILES: configuration}) to the
+        fragment store (write-back), with the guards of a running job's
+        results: a structure whose bonds are not its species', or with an
+        imaginary mode, is refused; a lower, distinct conformer is added as one.
+
+        Only with "use and add what is computed", and only when the store is on
+        a local disk of this machine; otherwise the job is marked to be
+        harvested when it comes back to its JobServer (or by hand with
+        ``seamm-thermochemistry-fragments harvest``). Never fails the step."""
+        if _P.get("fragment store", "ignore") != "use and add what is computed":
+            return
+        species = {k: v for k, v in species.items() if v is not None}
+        if not species:
+            return
+        try:
+            from seamm_thermochemistry import (
+                FragmentStore,
+                harvest_configuration,
+                hooks,
+                store_is_writable,
+            )
+            from seamm_thermochemistry.fragment_store import new_counts
+        except ImportError:  # pragma: no cover - an older seamm-thermochemistry
+            return
+        path = _P.get("fragment store file", "default")
+        path = None if path in ("default", "") else os.path.expanduser(path)
+        root = self._job_root()
+
+        def not_written(why):
+            if root is not None:
+                hooks.write_marker(root, list(species), why)
+            text = (
+                f"\nThe computed species were not added to the fragment store: {why}. "
+                "The job will be harvested into the store when it returns to its "
+                "JobServer, or harvest it with 'seamm-thermochemistry-fragments "
+                "harvest'."
+            )
+            printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+
+        writable, why = store_is_writable(path)
+        if not writable:
+            not_written(f"the store is {why}")
+            return
+        counts = new_counts()
+        job = self._job_label()
+        try:
+            with FragmentStore(path, create=True) as store:
+                for can, configuration in species.items():
+                    harvest_configuration(
+                        store,
+                        configuration,
+                        can,
+                        charge=cbh_charge(can),
+                        multiplicity=cbh_multiplicity(can),
+                        job=job,
+                        energy="total energy#Thermochemistry#*",
+                        zpe="ZPE#Thermochemistry#*",
+                        enthalpy="H(298.15 K)#Thermochemistry#*",
+                        fingerprint="settings fingerprint#Thermochemistry#*",
+                        frequency_fingerprint=(
+                            "frequency fingerprint#Thermochemistry#*"
+                        ),
+                        write_back=True,
+                        counts=counts,
+                    )
+                where = store.path
+        except Exception as e:
+            logger.warning(f"Writing the fragment store failed: {e}")
+            not_written(f"writing it failed ({e})")
+            return
+
+        def tally(table):
+            return ", ".join(f"{n} {k}" for k, n in sorted(counts[table].items()))
+
+        text = f"\nAdded to the fragment store ({where}): "
+        text += f"geometries: {tally('geometry') or 'none'}; "
+        text += f"energies: {tally('energy') or 'none'}."
+        for reason in counts["skipped"]:
+            if "no property matching" in reason:
+                continue  # a species with nothing computed at a level
+            text += f"\n    {reason}"
+        printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
+
     def _fragment_store(self, _P):
         """The fragment store to read, or None if ignored or unreadable."""
-        if _P.get("fragment store", "ignore") != "use if available":
+        if _P.get("fragment store", "ignore") not in self._STORE_READ:
             return None
         from seamm_thermochemistry import FragmentStore
 

@@ -1,6 +1,20 @@
 =======
 History
 =======
+2026.11.11.1 -- The species computed are added to the fragment store
+    * "Fragment store" has the choices "use and add what is computed" (the new
+      default), "use only" (formerly "use if available") and "ignore". With the
+      default, each species the isodesmic (CBH) approach computes -- the target, the
+      fragments, or the species alone -- is added to the fragment store as soon as
+      it is done, with its geometry, frequencies and energies, so that later
+      iterations of a Loop and later jobs reuse it. The output lists what was added
+      and what was refused: a structure whose bonds are no longer those of its
+      species, or one with an imaginary mode.
+    * The species are added only when the store is on a local disk of the machine
+      running the job. Otherwise the job is marked, and the JobServer harvests it
+      into the store when the job comes back to it.
+    * Needs seamm-thermochemistry 2026.11.11.1.
+
 2026.11.11 -- Fragments reused within a job and looked up by their own fingerprints
     * A fragment already computed in the same job, e.g. by an earlier iteration of
       a Loop over many targets, is now taken from the job's database instead of
