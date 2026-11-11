@@ -163,3 +163,44 @@ def test_cbh_layout(tk_node):
     tk_node.reset_dialog()
     assert not _mapped(tk_node["cbh rungs"])
     assert _mapped(tk_node["T"])
+
+
+def test_cbh_species_only_layout(tk_node):
+    """'The species only': no reactions, rungs, fragments' conformers or ATcT; the
+    target's start, the optimization, the Hessian and the store remain."""
+    tk_node.create_dialog()
+    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
+    tk_node["cbh calculation"].set("the species only (for the fragment store)")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["cbh calculation"]) and _mapped(tk_node["preset"])
+    for key in (
+        "include CBH-3",
+        "protect",
+        "ZPE scale factor",
+        "cbh rungs",
+        "cbh energies",
+        "initial conformer",
+        "reference values",
+        "ATcT version",
+        "ATcT directory",
+        "covariances",
+        "compare with ATcT",
+        "energy model chemistry",
+    ):
+        assert not _mapped(tk_node[key]), key
+    for key in (
+        "target conformer",
+        "optimize fragments",
+        "hessian route",
+        "step size",
+        "fragment store",
+    ):
+        assert _mapped(tk_node[key]), key
+    tk_node["preset"].set("custom")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["energy model chemistry"])
+    assert _mapped(tk_node["thermal corrections"])
+    assert not _mapped(tk_node["cbh rungs"])
+    tk_node["cbh calculation"].set("enthalpy of formation")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["cbh rungs"]) and _mapped(tk_node["cbh calculation"])

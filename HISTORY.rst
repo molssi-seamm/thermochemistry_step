@@ -1,6 +1,15 @@
 =======
 History
 =======
+2026.11.10 -- The species only, for the fragment store
+    * The isodesmic (CBH) approach can compute only the structure itself
+      ("Calculate: the species only (for the fragment store)"), exactly as a
+      fragment of a reaction: optimized with its Hessian at the geometry level,
+      its energy at the energy level, and the properties and settings
+      fingerprints that the fragment store's harvest reads. It runs no reactions
+      and needs no ATcT entry, so any species can be added to the store, e.g. to
+      recompute stored species at the settings the presets look up.
+
 2026.11.8.1 -- Presets for the isodesmic approach; scaled ZPEs; the rung spread
     * The isodesmic (CBH) approach has presets: 'quick' (r2SCAN-3c), and 'default'
       (r2SCAN-3c geometries and frequencies, revDSD-PBEP86-D4/def2-TZVPP energies), the

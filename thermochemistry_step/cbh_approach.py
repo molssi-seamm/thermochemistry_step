@@ -77,6 +77,23 @@ class CBHApproach:
 
     def describe_cbh(self, P):
         """The description of the CBH approach for the step's summary."""
+        if species_only(P):
+            preset = P.get("preset", "custom")
+            if preset in PRESETS:
+                levels = PRESETS[preset]
+                how = (
+                    f"with the '{preset}' preset: the geometry and frequencies with "
+                    f"{levels['geometry']}, the energy with "
+                    f"{levels['energy'] or levels['geometry']}"
+                )
+            else:
+                how = "with the flowchart's Model Chemistry"
+            return (
+                "Compute only the system itself as a CBH species, for the fragment "
+                f"store, {how}: optimized, its harmonic frequencies and its energies "
+                "stored with the settings fingerprints the store's harvest reads. "
+                "No CBH reactions are run and ATcT is not used."
+            )
         text = (
             "Calculate the enthalpy of formation of the system with the isodesmic "
             "reactions of the connectivity-based hierarchy (CBH), using the Active "
@@ -148,6 +165,11 @@ class CBHApproach:
         multiplicity = target_configuration.spin_multiplicity or 1
         smiles = self._target_smiles(target_configuration, charge, multiplicity)
         target = canonical_smiles(smiles)
+
+        if species_only(_P):
+            return self._run_species_only(
+                _P, smiles, target, target_system, target_configuration
+            )
 
         text = ""
         if preset in PRESETS:
@@ -791,6 +813,114 @@ class CBHApproach:
         # Citations
         self._cite_cbh(tables)
         return data
+
+    def _run_species_only(self, _P, smiles, target, system, configuration):
+        """Compute only the target, exactly as a CBH species: optimized and its
+        Hessian at the geometry level, then the energy level's single point,
+        with the properties and fingerprints the fragment store's harvest reads.
+        No reactions and no ATcT. Returns the data dictionary."""
+        preset = _P.get("preset", "custom")
+        if _P["cbh energies"] == "existing results (run nothing)":
+            raise RuntimeError(
+                "'The species only' computes the species: choose "
+                "'finite-difference harmonic' for the species' energies."
+            )
+        text = ""
+        if preset in PRESETS:
+            levels = PRESETS[preset]
+            text += (
+                f"The '{preset}' preset: the geometry and frequencies with "
+                f"{levels['geometry']}, the energy with "
+                f"{levels['energy'] or levels['geometry']}.\n"
+            )
+        text += f"Only the species {smiles} is computed, for the fragment store"
+        charge = configuration.charge
+        multiplicity = configuration.spin_multiplicity or 1
+        if charge != 0 or multiplicity != 1:
+            text += f" (charge {charge}, multiplicity {multiplicity})"
+        text += ": no CBH reactions and no ATcT.\n"
+        route = _P.get("hessian route", "automatic") or "automatic"
+        if route == "automatic":
+            route = "warm engine over MDI"
+        self._hessian_route = route
+        text += f"The Model Chemistry is driven as: {route}.\n"
+        printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
+
+        store = self._fragment_store(_P)
+        energy_mc = self._energy_level(_P)
+        if energy_mc is not None and _P["thermal corrections"] != "harmonic":
+            raise RuntimeError(
+                "Energies at another level than the geometries need harmonic "
+                "thermal corrections at the geometry level."
+            )
+        energies = {
+            target: self._compute_species(
+                _P,
+                target,
+                smiles,
+                system,
+                configuration,
+                embed=str(_P.get("target conformer", "as given")).startswith("lowest"),
+            )
+        }
+        sources = {target: "computed"}
+        if energy_mc is not None:
+            printer.important(
+                __(
+                    f"\nThe energy is at {energy_mc['level']}, on the geometry and "
+                    f"with the frequencies of {self.model}.",
+                    indent=4 * " ",
+                    wrap=False,
+                    dedent=False,
+                )
+            )
+            self._energy_level_energies(
+                energy_mc,
+                store,
+                target,
+                [target],
+                {target: configuration},
+                energies,
+                sources,
+            )
+        system_db = self.get_variable("_system_db")
+        system_db.system = system
+        system.configuration = configuration
+        self._working_configuration = configuration
+
+        e = energies[target]
+        row = [target, sources[target], f"{e['E']:.3f}" if "E" in e else ""]
+        row.append(f"{e['E geometry level']:.3f}" if "E geometry level" in e else "")
+        row.append(f"{e['ZPE']:.3f}" if "ZPE" in e else "")
+        row.append(f"{e['H298'] - e['E']:.3f}" if "E" in e and "H298" in e else "")
+        text = "\nThe species (energies in kJ/mol, ZPE unscaled):\n"
+        text += tabulate(
+            [row],
+            headers=[
+                "Species",
+                "Source",
+                "E",
+                "E (geometry level)",
+                "ZPE",
+                "H(298.15 K) - E",
+            ],
+            tablefmt="rounded_outline",
+            disable_numparse=True,
+            colalign=("left", "left", "decimal", "decimal", "decimal", "decimal"),
+        )
+        if e.get("imaginary"):
+            text += (
+                f"\nWarning: the structure has {e['imaginary']} imaginary mode(s): "
+                "it is not a minimum, and the store's lookups leave it out."
+            )
+        printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
+
+        return {
+            "CBH energy level": (
+                energy_mc["level"] if energy_mc is not None else self.model
+            ),
+            "CBH geometry level": self.model,
+        }
 
     # -----------------------------------------------------------------------
 
@@ -1588,6 +1718,13 @@ def rung_spread(results, usable):
         return None, rungs
     values = [results[r]["DfH 298.15 K"] for r in rungs]
     return max(values) - min(values), rungs
+
+
+def species_only(P):
+    """Whether the CBH approach computes only the target, for the store."""
+    return str(P.get("cbh calculation", "enthalpy of formation")).startswith(
+        "the species only"
+    )
 
 
 def _yes(value):

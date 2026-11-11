@@ -100,6 +100,24 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Approach:",
             "help_text": "The approach or method for determining the thermochemistry.",
         },
+        "cbh calculation": {
+            "default": "enthalpy of formation",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": (
+                "enthalpy of formation",
+                "the species only (for the fragment store)",
+            ),
+            "format_string": "",
+            "description": "Calculate:",
+            "help_text": (
+                "The enthalpy of formation of the target from the CBH reactions, or "
+                "only the target itself as a CBH species: its geometry, frequencies "
+                "and energies, computed and stored exactly as for a fragment, ready "
+                "for the fragment store's harvest. The latter needs no ATcT entries "
+                "and runs no reactions, so any species can be added to the store."
+            ),
+        },
         "preset": {
             "default": "default",
             "kind": "enum",

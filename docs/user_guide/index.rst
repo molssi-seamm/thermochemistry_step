@@ -113,6 +113,19 @@ The spread of the enthalpies of formation over the rungs from CBH-1 up is
 reported and stored as an indicator of the uncertainty: a large spread points
 to trouble with the method or with the reference values.
 
+Calculate
+    ``enthalpy of formation`` (default) runs the CBH reactions as described here.
+    ``the species only (for the fragment store)`` computes only the structure
+    itself, exactly as a fragment of a reaction: optimized and its harmonic
+    frequencies at the geometry level, then its energy at the energy level, with
+    the properties and settings fingerprints that ``seamm-thermochemistry-fragments
+    harvest`` files in the store. It runs no reactions and needs no ATcT entry, so
+    it can add any species to the store, for example to recompute stored species
+    after a change of the settings that the fingerprints record. The species keeps
+    the structure's own name; harvest it with ``--species-map`` or ``--all-systems``
+    (or name the systems ``CBH:<SMILES>``). Only the controls that apply are
+    shown, and the ZPE is stored unscaled, as for every species.
+
 Preset
     The levels of theory and rungs, chosen together:
 
