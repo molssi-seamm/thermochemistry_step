@@ -35,6 +35,7 @@ so the 0 K comparison is the cleaner one for a single-conformer calculation.
 """
 
 from collections import Counter
+import json
 import logging
 import math
 import os
@@ -149,6 +150,7 @@ class CBHApproach:
         from seamm_thermochemistry.atct import canonical_smiles
 
         _P = self.apply_preset(_P)
+        self._reset_fingerprints()
         preset = _P.get("preset", "custom")
         system_db = self.get_variable("_system_db")
         target_system, target_configuration = self.get_system_configuration()
@@ -454,6 +456,21 @@ class CBHApproach:
             )
             sources[target] = "computed"
             for can, generated in fragments.items():
+                # Already computed in this job (e.g. by an earlier iteration of a
+                # Loop), with the fingerprints expected for it?
+                in_job = self._from_job(_P, system_db, can, energy_mc is not None)
+                if in_job is not None:
+                    energies[can], configurations[can] = in_job
+                    sources[can] = "job"
+                    printer.important(
+                        __(
+                            f"\nSpecies {can}: already computed in this job.",
+                            indent=4 * " ",
+                            wrap=False,
+                            dedent=False,
+                        )
+                    )
+                    continue
                 if energy_mc is not None:
                     found = self._geometry_from_store(store, can)
                     if found is not None:
@@ -994,11 +1011,13 @@ class CBHApproach:
         from thermochemistry_step.cbh_approach import cbh_charge, cbh_multiplicity
 
         model = self.model or "unknown"
+        # The fingerprints expected for this species, not the target's
+        energy_fingerprints, _ = self._geometry_level_fingerprints(can)
         record = store.get(
             can,
             charge=cbh_charge(can),
             multiplicity=cbh_multiplicity(can),
-            energy_fingerprint=getattr(self, "_settings_fingerprint", None),
+            energy_fingerprint=energy_fingerprints,
             model_chemistry=model,
         )
         if record is None or record.get("E") is None:
@@ -1111,11 +1130,13 @@ class CBHApproach:
         ({"E", "ZPE", "H0", "H298"}, geometry row, source), or None."""
         if store is None:
             return None
+        # The fingerprints expected for this species, not the target's
+        _, frequency_fingerprints = self._geometry_level_fingerprints(can)
         rows = store.geometries(
             can,
             charge=cbh_charge(can),
             multiplicity=cbh_multiplicity(can),
-            frequency_fingerprint=getattr(self, "_frequency_fingerprint", None),
+            frequency_fingerprint=frequency_fingerprints,
             model_chemistry=self.model,
         )
         rows = [
@@ -1201,25 +1222,43 @@ class CBHApproach:
             return record if isinstance(record, dict) else None
 
         high = {}
-        fingerprint = None
+        fingerprint = version = None
         for can, result in run([target]).items():
             high[can] = (result.energy, record_of(result), "computed")
             record = record_of(result)
             fingerprint = record.get("fingerprint") if record else None
+            version = record.get("version") if record else None
+
+        def expected(can):
+            """The energy level's fingerprints expected for this species (the
+            program's prediction; the target's if it cannot predict)."""
+            got = self._expected_fingerprints(
+                configurations[can], mc, "energy", version=version
+            )
+            if got is None:
+                got = [fingerprint] if fingerprint else []
+            return got
+
         to_run = []
         for can in order:
             if can in high:
                 continue
+            fingerprints = expected(can)
+            configuration = configurations[can]
+            # Already on this configuration in the job (an earlier iteration)?
+            E = self._energy_level_from_job(configuration, level, fingerprints)
+            if E is not None:
+                high[can] = (E, None, "job")
+                continue
             row = None
             if store is not None:
-                configuration = configurations[can]
                 row = store.energy(
                     hash_geometry(
                         configuration.atoms.symbols,
                         configuration.atoms.get_coordinates(fractionals=False),
                         configuration.atoms.atomic_numbers,
                     ),
-                    energy_fingerprint=fingerprint,
+                    energy_fingerprint=fingerprints,
                     model_chemistry=level,
                 )
             if row is not None:
@@ -1229,6 +1268,12 @@ class CBHApproach:
                 to_run.append(can)
         for can, result in run(to_run).items():
             high[can] = (result.energy, record_of(result), "computed")
+        # The self-check of the prediction, on what was computed
+        for can, (_, record, how) in high.items():
+            if how == "computed":
+                self._check_prediction(
+                    can, configurations[can], "energy", record, mc=mc
+                )
 
         for can in order:
             E, record, how = high[can]
@@ -1486,7 +1531,7 @@ class CBHApproach:
                     dedent=False,
                 )
             )
-            self._store_fingerprints(configuration, None)
+            self._store_fingerprints(configuration, None, can)
             return {"H298": E, "E": E}
         delta_bohr = Q_(_P["step size"].m_as("Å"), "Å").m_as("bohr")
         E0, hessian, how = self.optimize_and_hessian(
@@ -1518,27 +1563,277 @@ class CBHApproach:
             "imaginary": data.get("N saddle modes", 0),
         }
         self._store_species_properties(configuration, data)
-        self._store_fingerprints(configuration, how)
+        self._store_fingerprints(configuration, how, can)
         return result
 
-    def _store_fingerprints(self, configuration, how):
+    # -- fingerprints of each species (P5a of the fragment store) ---------------
+    #
+    # A program's settings can depend on the species, not only on the model
+    # chemistry: ORCA uses exact exchange (NoCOSX) for lone atoms and for Na, Mg,
+    # Zn, B and P (orca_step#44), so a boron species' revDSD energy has another
+    # fingerprint than methane's. Each species is therefore looked up -- in the
+    # job's database and in the fragment store -- with the fingerprints the
+    # program predicts for IT (seamm_exec.expected_fingerprints). The target's
+    # fingerprints are the fallback only for programs that cannot predict.
+
+    def _reset_fingerprints(self):
+        """Forget the previous run's fingerprints (a Loop runs this node again)."""
+        self._settings_fingerprint = None
+        self._frequency_fingerprint = None
+        self._fingerprint_version = None
+        self._hessian_how = None
+
+    def _geometry_mc(self):
+        """The geometry level's ``_model_chemistry`` wrapper, or None (e.g. the
+        subflowchart route, or no flowchart variables)."""
+        try:
+            return self.model_chemistry()
+        except Exception:
+            return None
+
+    def _expected_fingerprints(self, structure, mc, kind, version=None):
+        """The program's predicted fingerprints of a structure at a model
+        chemistry ([str]), or None when it cannot predict them."""
+        if mc is None or structure is None:
+            return None
+        # The program's version is hashed: without one from a calculation of
+        # this run (e.g. "existing results" computes nothing) a prediction
+        # would be wrong, so make none
+        version = version or getattr(self, "_fingerprint_version", None)
+        if not version:
+            return None
+        try:
+            from seamm_exec import expected_fingerprints
+        except ImportError:  # pragma: no cover - an older seamm-exec
+            return None
+        try:
+            provider = self.flowchart.plugin_manager.get(mc["step"])
+        except Exception:
+            return None
+        if provider is None:
+            return None
+        return expected_fingerprints(
+            provider,
+            mc,
+            structure,
+            kind=kind,
+            properties=("energy",),
+            version=version,
+        )
+
+    @staticmethod
+    def _species_structure(can):
+        """A stand-in structure for a species not yet built: its elements (with
+        the hydrogens), charge and multiplicity, which are all a program's
+        settings depend on; the coordinates are not settings."""
+        from rdkit import Chem
+        from seamm_exec import Geometry
+
+        mol = Chem.MolFromSmiles(can)
+        if mol is None:
+            return None
+        mol = Chem.AddHs(mol)
+        numbers = [a.GetAtomicNum() for a in mol.GetAtoms()]
+        return Geometry(
+            numbers,
+            [[0.0, 0.0, 0.0]] * len(numbers),
+            charge=cbh_charge(can),
+            multiplicity=cbh_multiplicity(can),
+        )
+
+    def _geometry_level_fingerprints(self, can, configuration=None):
+        """(energy fingerprints, frequency fingerprints) expected for a species
+        at the geometry level, each a list or None. The frequency ones are the
+        analytic Hessian's when the target's Hessian was analytic, else the
+        energy's (finite differences of gradients)."""
+        mc = self._geometry_mc()
+        structure = configuration
+        if structure is None:
+            try:
+                structure = self._species_structure(can)
+            except Exception:  # pragma: no cover - RDKit missing or odd SMILES
+                structure = None
+        energy = self._expected_fingerprints(structure, mc, "energy")
+        if getattr(self, "_hessian_how", None) == "analytic":
+            frequency = self._expected_fingerprints(structure, mc, "hessian")
+        else:
+            frequency = energy
+        if energy is None and getattr(self, "_settings_fingerprint", None):
+            energy = [self._settings_fingerprint]
+        if frequency is None and getattr(self, "_frequency_fingerprint", None):
+            frequency = [self._frequency_fingerprint]
+        return energy, frequency
+
+    def _check_prediction(self, can, configuration, kind, record, mc=None):
+        """The self-check: warn when a computed species' fingerprint is not one
+        the program predicted, i.e. the prediction has drifted from the
+        program's rules. The species is still used and stored with its own
+        fingerprint; a drift costs reuse, never correctness."""
+        if not record or not record.get("fingerprint"):
+            return
+        if mc is None:
+            mc = self._geometry_mc()
+        expected = self._expected_fingerprints(
+            configuration, mc, kind, version=record.get("version")
+        )
+        if expected is None or record["fingerprint"] in expected:
+            return
+        text = (
+            f"    Warning: the {kind} fingerprint of {can} "
+            f"({record['fingerprint'][:15]}...) is not the one predicted for it "
+            f"({', '.join(f[:15] + '...' for f in expected)}), so it will not be "
+            "found in the fragment store by later jobs. Please report this."
+        )
+        logger.warning(text.strip())
+        printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+
+    @staticmethod
+    def _property(configuration, name, units=None):
+        """A property's value (in `units` if given), or None."""
+        properties = configuration.properties
+        try:
+            if not properties.exists(name):
+                return None
+            values = properties.get(pattern=name, match="exact")
+        except Exception:
+            return None
+        if not values or name not in values:
+            return None
+        value = values[name]
+        if isinstance(value, dict) and "value" in value:
+            value = value["value"]
+        if units is not None and value is not None:
+            stored = properties.units(name)
+            value = Q_(float(value), stored if stored else units).m_as(units)
+        return value
+
+    def _from_job(self, _P, system_db, can, split):
+        """A species already computed in this job (a system named CBH:<can>,
+        e.g. by an earlier iteration of a Loop), with the fingerprints expected
+        for it at the geometry level, as ({"E", "ZPE", "H0", "H298"},
+        configuration), or None.
+
+        `split`: whether the energies are at another level, so that the
+        frequency fingerprint is the key; otherwise the settings fingerprint.
+        A configuration with an imaginary mode above 20i is not reused.
+        """
+        from seamm_thermochemistry.geometry_store import IMAGINARY_TOLERANCE
+
+        energy_fps, frequency_fps = self._geometry_level_fingerprints(can)
+        expected = frequency_fps if split else energy_fps
+        if not expected:
+            return None
+        harmonic = _P["thermal corrections"] == "harmonic"
+        model = self.model or "unknown"
+        key = "frequency fingerprint" if split else "settings fingerprint"
+        for system in system_db.get_systems():
+            if system.name != f"CBH:{can}":
+                continue
+            current = system.configuration
+            candidates = [current] + [
+                c for c in system.configurations if c.id != current.id
+            ]
+            for configuration in candidates:
+                fingerprint = self._property(
+                    configuration, f"{key}#Thermochemistry#{model}"
+                )
+                if fingerprint not in expected:
+                    continue
+                E = self._property(
+                    configuration, f"total energy#Thermochemistry#{model}", "kJ/mol"
+                )
+                if E is None:
+                    continue
+                result = {"E": E}
+                if harmonic:
+                    ZPE = self._property(
+                        configuration, f"ZPE#Thermochemistry#{model}", "kJ/mol"
+                    )
+                    H = self._property(
+                        configuration, f"H(298.15 K)#Thermochemistry#{model}", "kJ/mol"
+                    )
+                    if ZPE is None or H is None:
+                        continue
+                    frequencies = self._property(
+                        configuration, f"frequencies#Thermochemistry#{model}"
+                    )
+                    if frequencies and any(
+                        -float(f) > IMAGINARY_TOLERANCE for f in frequencies
+                    ):
+                        continue
+                    result.update(ZPE=ZPE, H0=E + ZPE, H298=H)
+                else:
+                    result["H298"] = E
+                return result, configuration
+        return None
+
+    def _energy_level_from_job(self, configuration, level, expected):
+        """The energy level's energy (kJ/mol) already on this configuration with
+        one of the expected fingerprints, or None.
+
+        The calculation must have run on the configuration's current geometry
+        (its record's geometry fingerprint): a species computed again in place
+        has new coordinates but keeps the old energy-level properties."""
+        from seamm_thermochemistry.geometry_store import hash_geometry
+
+        if not expected:
+            return None
+        fingerprint = self._property(
+            configuration, f"settings fingerprint#Thermochemistry#{level}"
+        )
+        if fingerprint not in expected:
+            return None
+        record = self._property(configuration, f"calculation#Thermochemistry#{level}")
+        if isinstance(record, str):
+            try:
+                record = json.loads(record)
+            except ValueError:
+                record = None
+        if not isinstance(record, dict) or not record.get("geometry fingerprint"):
+            return None
+        here = hash_geometry(
+            configuration.atoms.symbols,
+            configuration.atoms.get_coordinates(fractionals=False),
+            configuration.atoms.atomic_numbers,
+        )
+        if record["geometry fingerprint"] != here:
+            return None
+        return self._property(
+            configuration, f"total energy#Thermochemistry#{level}", "kJ/mol"
+        )
+
+    def _store_fingerprints(self, configuration, how, can=None):
         """Store the engine's settings fingerprints as the properties
         ``settings fingerprint``, ``element fingerprints`` and ``calculation``
         (and the ``frequency ...`` three for a Hessian: the analytic-Hessian
         record, or the energy record for finite differences) under
         ``#Thermochemistry#<model>``, the names the fragment store's harvest
-        reads. Nothing is stored when the engine gives no fingerprints."""
+        reads. Nothing is stored when the engine gives no fingerprints.
+
+        The first species of a run (the target) also sets the fallback
+        fingerprints, the program's version and the Hessian route; each
+        species' fingerprints are checked against the predicted ones."""
         records = getattr(self, "_fingerprints", None)
         if not records:
             return
         energy = records.get("energy")
         if energy and energy.get("fingerprint"):
-            self._settings_fingerprint = energy["fingerprint"]
+            if not getattr(self, "_settings_fingerprint", None):
+                self._settings_fingerprint = energy["fingerprint"]
+            if not getattr(self, "_fingerprint_version", None):
+                self._fingerprint_version = energy.get("version")
+        if how is not None and not getattr(self, "_hessian_how", None):
+            self._hessian_how = how
+        label = can or "the species"
+        self._check_prediction(label, configuration, "energy", energy)
         kinds = [("", energy)]
         if how is not None:
             frequency = records.get("hessian") if how == "analytic" else energy
             if frequency and frequency.get("fingerprint"):
-                self._frequency_fingerprint = frequency["fingerprint"]
+                if not getattr(self, "_frequency_fingerprint", None):
+                    self._frequency_fingerprint = frequency["fingerprint"]
+                if how == "analytic":
+                    self._check_prediction(label, configuration, "hessian", frequency)
             kinds.append(
                 ("frequency ", records.get("hessian") if how == "analytic" else energy)
             )

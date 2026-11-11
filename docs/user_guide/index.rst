@@ -250,6 +250,17 @@ Fragment store
     the settings fingerprints of each species' calculations are stored with its
     energies, so the harvest files verified records.
 
+    Before the store, a fragment already computed in the same job -- by an
+    earlier iteration of a Loop over many targets, say -- is taken from the
+    job's own database ("job" in the species table), when it was computed with
+    the same settings and has no imaginary mode; an energy-level single point
+    is reused only on the geometry it ran on. Each species is looked up with
+    the fingerprints expected for it, not the target's: ORCA uses exact
+    exchange (NoCOSX) for atoms and for Na, Mg, Zn, B and P, so the methane
+    fragment of a boron or phosphorus target has a different fingerprint from
+    the target's. If a computed fingerprint is not the one predicted, the
+    output says so; the species is still used.
+
 ATcT version, directory, covariances
     The version of the Thermochemical Network (``latest`` cached by default),
     where the versions are kept, and whether to fetch missing covariance blocks
