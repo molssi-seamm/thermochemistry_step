@@ -353,16 +353,19 @@ class ThermochemistryParameters(seamm.Parameters):
             ),
         },
         "fragment store": {
-            "default": "use if available",
+            "default": "use and add what is computed",
             "kind": "enum",
             "default_units": "",
-            "enumeration": ("use if available", "ignore"),
+            "enumeration": ("use and add what is computed", "use only", "ignore"),
             "format_string": "",
             "description": "Fragment store:",
             "help_text": (
-                "Use the energies of species already in the fragment-energy store "
-                "(seamm-thermochemistry-fragments) at this model chemistry instead "
-                "of computing them, or ignore the store."
+                "Use the species already in the fragment-energy store at this model "
+                "chemistry instead of computing them, and add the species this step "
+                "computes, so that later iterations and jobs reuse them; or only "
+                "use the store; or ignore it. The species are added only when the "
+                "store is on a local disk of the machine running the job; "
+                "otherwise the job is harvested into the store when it returns."
             ),
         },
         "fragment store file": {

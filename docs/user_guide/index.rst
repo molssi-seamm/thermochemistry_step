@@ -241,10 +241,17 @@ Reference values
     0 K: ATcT's 298.15 K values are conformer averages.
 
 Fragment store
-    Species already in the fragment-energy store at this model chemistry
-    (``seamm-thermochemistry-fragments harvest`` promotes them there from
-    finished jobs) are taken from it instead of being computed, and serve as
-    the fallback in "existing results" mode. The species table says where
+    ``use and add what is computed`` (default), ``use only`` or ``ignore``.
+    Species already in the fragment-energy store at this model chemistry are
+    taken from it instead of being computed, and serve as the fallback in
+    "existing results" mode. With ``use and add what is computed`` the species
+    the step computes are added to the store at once, so later iterations of a
+    Loop and later jobs find them; the output lists what was added and anything
+    refused (a structure that rearranged while it was optimized, one with an
+    imaginary mode). They are added only when the store is on a local disk of
+    the machine running the job. Otherwise the job is marked, and is harvested
+    into the store when it returns to its JobServer (or by hand with
+    ``seamm-thermochemistry-fragments harvest``). The species table says where
     each value came from; a record without a settings fingerprint is
     "unverified" and the output says so. When the engine provides them (ORCA),
     the settings fingerprints of each species' calculations are stored with its
