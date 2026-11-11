@@ -270,6 +270,15 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH high level": {
+        "description": (
+            "How the 'high' preset chose the energy level for this target "
+            "(canonical or DLPNO CCSD(T)-F12, or why there is no 'high' result)"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "CBH composite recipe": {
         "description": (
             "The composite method (SEAMM:CMP@<recipe>) whose geometry and energy "

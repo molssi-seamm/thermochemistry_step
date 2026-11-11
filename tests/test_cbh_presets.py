@@ -276,3 +276,30 @@ def test_multi_component_recipes_are_refused(tmp_path):
     )
     with pytest.raises(RuntimeError, match="combines several calculations"):
         cbh_approach.recipe_levels("SEAMM:CMP@toy", data_path=[tmp_path])
+
+
+def test_high_preset_chooses_canonical_f12_for_a_small_target(preset):
+    from thermochemistry_step.high_level import CANONICAL
+
+    P = _preset(preset, "high")
+    assert preset.apply_preset(P)["energy model chemistry"] == cbh_approach.HIGH_ENERGY
+    preset.preset_model_chemistry(P)
+    data = preset.run_cbh(P)
+    assert FakeEvaluator.level == CANONICAL
+    assert data["CBH energy level"] == CANONICAL
+    assert data["CBH geometry level"] == R2SCAN
+    assert "canonical CCSD(T)-F12" in data["CBH high level"]
+    assert "CBH composite recipe" not in data
+
+
+def test_high_preset_falls_back_to_default_with_the_reason(preset, monkeypatch):
+    from thermochemistry_step import high_level
+
+    monkeypatch.setattr(high_level, "CANONICAL_MAX_BF", 10)  # force 'too large'
+    monkeypatch.setattr(
+        high_level, "dlpno_problem", lambda smiles, multiplicity: "a test says so"
+    )
+    data = preset.run_cbh(_preset(preset, "high"))
+    assert data["CBH energy level"] == REVDSD
+    assert "No 'high' result" in data["CBH high level"]
+    assert "a test says so" in data["CBH high level"]

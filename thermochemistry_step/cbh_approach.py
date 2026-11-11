@@ -69,7 +69,21 @@ PRESETS = {
         "geometry": "ORCA:CMP@R2SCAN-3C",
         "energy": "ORCA:DFT@REVDSD-PBEP86-D4_2021/def2-TZVPP",
     },
+    # The energy level is chosen per target (high_level.py): canonical or DLPNO
+    # CCSD(T)-F12, the same for every species of the reaction
+    "high": {
+        "recipe": None,
+        "geometry": "ORCA:CMP@R2SCAN-3C",
+        "energy": None,  # replaced by HIGH_ENERGY below
+    },
 }
+
+#: The 'high' preset's energy level, chosen when the target is known
+HIGH_ENERGY = (
+    "CCSD(T)-F12/cc-pVTZ-F12 (canonical, or DLPNO for a large saturated "
+    "closed-shell target)"
+)
+PRESETS["high"]["energy"] = HIGH_ENERGY
 
 #: The owner and type of SEAMM's composite recipes as model chemistries.
 COMPOSITE_PREFIX = "SEAMM:CMP@"
@@ -231,6 +245,12 @@ class CBHApproach:
         multiplicity = target_configuration.spin_multiplicity or 1
         smiles = self._target_smiles(target_configuration, charge, multiplicity)
         target = canonical_smiles(smiles)
+        self._high_choice = None
+        self._high_target = (
+            smiles,
+            multiplicity,
+            list(target_configuration.atoms.atomic_numbers),
+        )
 
         if species_only(_P):
             return self._run_species_only(
@@ -932,6 +952,8 @@ class CBHApproach:
             data["CBH composite recipe"] = composite["recipe"]
             data["CBH composite recipe version"] = composite["version"]
             data["CBH composite recipe fingerprint"] = composite["fingerprint"]
+        if getattr(self, "_high_choice", None) is not None:
+            data["CBH high level"] = self._high_choice["reason"]
         data["CBH rung"] = best["rung"]
         data["CBH reaction"] = best["reaction"]
         if "DfH 0 K" in best:
@@ -1396,6 +1418,8 @@ class CBHApproach:
         """The geometry and energy levels of a preset: its recipe's, when the
         Composite step is installed, else the spellings in :data:`PRESETS`."""
         levels = dict(PRESETS[preset])
+        if levels.get("recipe") is None:
+            return levels
         try:
             import composite_step  # noqa: F401
         except ImportError:
@@ -1469,6 +1493,8 @@ class CBHApproach:
         """The ``_model_chemistry`` wrapper of the energy level, or None when the
         energies are at the geometry level."""
         text = str(_P.get("energy model chemistry", "") or "").strip()
+        if text == HIGH_ENERGY:
+            text = self._high_energy_level()
         composite = getattr(self, "_composite", None)
         if text in ("", "the geometry level") and composite is not None:
             # A composite as the flowchart's model chemistry: its energy level
@@ -1490,6 +1516,26 @@ class CBHApproach:
         if text in ("", "the geometry level") or text == self.model:
             return None
         return self._resolve_model_chemistry(text)
+
+    def _high_energy_level(self):
+        """The 'high' preset's energy level for the target (high_level.py); the
+        default preset's when there is no 'high' result, with the reason printed
+        and kept for the results."""
+        from .high_level import high_level
+
+        smiles, multiplicity, atomic_numbers = self._high_target
+        level, reason = high_level(smiles, multiplicity, atomic_numbers)
+        if level is None:
+            level = PRESETS["default"]["energy"]
+            note = (
+                f"No 'high' result for {smiles}: {reason}. The energies are at the "
+                f"default preset's level, {level}."
+            )
+        else:
+            note = f"The 'high' energy level for {smiles}: {level}, since {reason}."
+        self._high_choice = {"level": level, "reason": note}
+        printer.important(__(note, indent=4 * " "))
+        return level
 
     @staticmethod
     def _resolve_model_chemistry(text):
