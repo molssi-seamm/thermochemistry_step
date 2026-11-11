@@ -270,6 +270,27 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH composite recipe": {
+        "description": (
+            "The composite method (SEAMM:CMP@<recipe>) whose geometry and energy "
+            "levels were used, if any"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH composite recipe version": {
+        "description": "The version of the composite recipe",
+        "dimensionality": "scalar",
+        "type": "integer",
+        "format": "",
+    },
+    "CBH composite recipe fingerprint": {
+        "description": "The fingerprint of the composite recipe (sha256)",
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "ZPE scale factor": {
         "description": "The factor the harmonic ZPEs were scaled by",
         "dimensionality": "scalar",

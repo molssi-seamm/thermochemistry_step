@@ -54,14 +54,78 @@ printer = printing.getPrinter("Thermochemistry")
 T_REF = 298.15
 
 #: The presets of the CBH approach (thermo's defaults, adopted 2026-11-08): the
-#: geometry/frequency level and the energy level (None: the geometry level)
+#: composite recipe (composite_step), and its geometry/frequency level and energy
+#: level (None: the geometry level). With composite_step installed the levels come
+#: from the recipe; these spellings are the fallback without it, and a test keeps
+#: them equal to the recipes'.
 PRESETS = {
-    "quick": {"geometry": "ORCA:CMP@R2SCAN-3C", "energy": None},
+    "quick": {
+        "recipe": "SEAMM:CMP@r2SCAN-3c-HO",
+        "geometry": "ORCA:CMP@R2SCAN-3C",
+        "energy": None,
+    },
     "default": {
+        "recipe": "SEAMM:CMP@revDSD-r2SCAN-3c-HO",
         "geometry": "ORCA:CMP@R2SCAN-3C",
         "energy": "ORCA:DFT@REVDSD-PBEP86-D4_2021/def2-TZVPP",
     },
 }
+
+#: The owner and type of SEAMM's composite recipes as model chemistries.
+COMPOSITE_PREFIX = "SEAMM:CMP@"
+
+
+def is_composite(level):
+    """Whether a model chemistry is one of SEAMM's composite recipes."""
+    return str(level or "").startswith(COMPOSITE_PREFIX)
+
+
+def recipe_levels(level, data_path=None):
+    """The levels of a composite recipe ``SEAMM:CMP@<recipe>`` (composite_step).
+
+    Returns
+    -------
+    dict
+        ``recipe`` (the level spec), ``name``, ``version``, ``fingerprint``,
+        ``geometry`` (the geometry/frequency level), ``energy`` (the energy level,
+        or None when E0 is the geometry level's energy) and ``zpe`` ((factor,
+        source)). The step runs these ordinary levels, so the species' cached
+        properties, the fragment store's rows and the ZPE table are those of the
+        component levels; the recipe's name never keys anything.
+    """
+    try:
+        from composite_step.evaluate import component_levels, single_source
+        from composite_step.recipes import RecipeLibrary
+    except ImportError:
+        raise RuntimeError(
+            f"The composite method {level} needs the Composite step "
+            "(composite-step) installed."
+        )
+    name = str(level)[len(COMPOSITE_PREFIX) :]
+    extra = [Path(p) / "recipes" for p in (data_path or ())]
+    library = RecipeLibrary(extra_directories=extra)
+    try:
+        recipe = library.get(name)
+    except KeyError as e:
+        raise RuntimeError(f"No composite recipe for {level}: {e}")
+    source = single_source(recipe)
+    if source is None:
+        raise RuntimeError(
+            f"The composite {level} combines several calculations; the "
+            "thermochemistry step runs recipes with one energy (a geometry level and "
+            "at most one energy level) so far."
+        )
+    levels = component_levels(recipe)
+    return {
+        "recipe": recipe.model_chemistry,
+        "name": recipe.name,
+        "version": recipe.version,
+        "fingerprint": recipe.fingerprint(),
+        "geometry": recipe.geometry["level"],
+        "energy": None if source == "geometry" else levels[source],
+        "zpe": recipe.zpe_scale,
+    }
+
 
 _PROTECT = {
     "default": "default",
@@ -177,7 +241,8 @@ class CBHApproach:
         if preset in PRESETS:
             levels = PRESETS[preset]
             text += (
-                f"The '{preset}' preset: geometries and frequencies with "
+                f"The '{preset}' preset ({levels['recipe']}): geometries and "
+                "frequencies with "
                 f"{levels['geometry']}, energies with "
                 f"{levels['energy'] or levels['geometry']}, the highest CBH rung "
                 f"available up to CBH-{max(self._preset_rungs(_P))}.\n"
@@ -862,6 +927,11 @@ class CBHApproach:
             energy_mc["level"] if energy_mc is not None else self.model
         )
         data["CBH geometry level"] = self.model
+        composite = getattr(self, "_composite", None)
+        if composite is not None:
+            data["CBH composite recipe"] = composite["recipe"]
+            data["CBH composite recipe version"] = composite["version"]
+            data["CBH composite recipe fingerprint"] = composite["fingerprint"]
         data["CBH rung"] = best["rung"]
         data["CBH reaction"] = best["reaction"]
         if "DfH 0 K" in best:
@@ -959,7 +1029,8 @@ class CBHApproach:
         if preset in PRESETS:
             levels = PRESETS[preset]
             text += (
-                f"The '{preset}' preset: the geometry and frequencies with "
+                f"The '{preset}' preset ({levels['recipe']}): the geometry and "
+                "frequencies with "
                 f"{levels['geometry']}, the energy with "
                 f"{levels['energy'] or levels['geometry']}.\n"
             )
@@ -1047,12 +1118,18 @@ class CBHApproach:
             )
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
 
-        return {
+        data = {
             "CBH energy level": (
                 energy_mc["level"] if energy_mc is not None else self.model
             ),
             "CBH geometry level": self.model,
         }
+        composite = getattr(self, "_composite", None)
+        if composite is not None:
+            data["CBH composite recipe"] = composite["recipe"]
+            data["CBH composite recipe version"] = composite["version"]
+            data["CBH composite recipe fingerprint"] = composite["fingerprint"]
+        return data
 
     # -----------------------------------------------------------------------
 
@@ -1311,16 +1388,51 @@ class CBHApproach:
         P["cbh rungs"] = ", ".join(str(r) for r in self._preset_rungs(_P))
         P["thermal corrections"] = "harmonic"
         P["cbh energies"] = "finite-difference harmonic"
-        P["energy model chemistry"] = PRESETS[preset]["energy"] or "the geometry level"
+        energy = self.preset_levels(preset)["energy"]
+        P["energy model chemistry"] = energy or "the geometry level"
         return P
+
+    def preset_levels(self, preset):
+        """The geometry and energy levels of a preset: its recipe's, when the
+        Composite step is installed, else the spellings in :data:`PRESETS`."""
+        levels = dict(PRESETS[preset])
+        try:
+            import composite_step  # noqa: F401
+        except ImportError:
+            return levels
+        recipe = recipe_levels(levels["recipe"], getattr(self, "data_path", None))
+        levels.update(
+            geometry=recipe["geometry"], energy=recipe["energy"], composite=recipe
+        )
+        return levels
 
     def preset_model_chemistry(self, _P):
         """The ``_model_chemistry`` wrapper of the preset's geometry level, or None
-        for 'custom'."""
+        for 'custom'. A preset's recipe (or a composite recipe as the flowchart's
+        model chemistry) is kept in ``self._composite``: its geometry level is the
+        step's model, its energy level and ZPE factor follow."""
         preset = _P.get("preset", "custom")
+        self._composite = None
         if preset not in PRESETS:
+            return self.composite_model_chemistry()
+        levels = self.preset_levels(preset)
+        self._composite = levels.get("composite")
+        return self._resolve_model_chemistry(levels["geometry"])
+
+    def composite_model_chemistry(self):
+        """For a composite recipe as the flowchart's model chemistry, the wrapper
+        of its geometry level (kept in ``self._composite``); else None."""
+        import seamm
+
+        if seamm.flowchart_variables is None:  # no flowchart (the GUI, tests)
             return None
-        return self._resolve_model_chemistry(PRESETS[preset]["geometry"])
+        if not self.variable_exists("_model_chemistry"):
+            return None
+        level = (self.get_variable("_model_chemistry") or {}).get("level")
+        if not is_composite(level):
+            return None
+        self._composite = recipe_levels(level, getattr(self, "data_path", None))
+        return self._resolve_model_chemistry(self._composite["geometry"])
 
     def _zpe_scale(self, _P):
         """(factor, source, caution) for the ZPEs: a number given, or the table's
@@ -1337,6 +1449,13 @@ class CBHApproach:
         from seamm_thermochemistry import zpe_scale_factor
 
         factor = zpe_scale_factor(self.model)
+        composite = getattr(self, "_composite", None)
+        if composite is not None and composite["geometry"] == self.model:
+            # The recipe pins its factor; the same as the table's, it is reported
+            # as the table's, so the results are those of the levels themselves
+            scale, source = composite["zpe"]
+            if factor is None or scale != factor.factor:
+                return scale, f"the recipe {composite['name']}: {source}", ""
         if factor is None:
             return (
                 1.0,
@@ -1350,6 +1469,24 @@ class CBHApproach:
         """The ``_model_chemistry`` wrapper of the energy level, or None when the
         energies are at the geometry level."""
         text = str(_P.get("energy model chemistry", "") or "").strip()
+        composite = getattr(self, "_composite", None)
+        if text in ("", "the geometry level") and composite is not None:
+            # A composite as the flowchart's model chemistry: its energy level
+            text = composite["energy"] or ""
+        if is_composite(text):
+            # A composite as the energy level: its one energy, on this step's
+            # geometries
+            recipe = recipe_levels(text, getattr(self, "data_path", None))
+            if recipe["geometry"] != self.model:
+                printer.important(
+                    __(
+                        f"Note: the composite {text} is defined with geometries at "
+                        f"{recipe['geometry']}; its energy, {recipe['energy']}, is "
+                        f"used here on the geometries of {self.model}.",
+                        indent=4 * " ",
+                    )
+                )
+            text = recipe["energy"] or recipe["geometry"]
         if text in ("", "the geometry level") or text == self.model:
             return None
         return self._resolve_model_chemistry(text)

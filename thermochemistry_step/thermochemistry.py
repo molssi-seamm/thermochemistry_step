@@ -14,7 +14,7 @@ import numpy as np
 from tabulate import tabulate
 
 import thermochemistry_step
-from thermochemistry_step.cbh_approach import CBHApproach
+from thermochemistry_step.cbh_approach import CBHApproach, is_composite
 from thermochemistry_step.hessian import ModelChemistryHessian
 from thermochemistry_step.symmetry import rotational_symmetry_number
 import molsystem
@@ -715,10 +715,20 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
 
         step_size = _P["step size"].m_as("Å")
 
-        # A preset of the CBH approach brings its own model chemistry
+        # A preset of the CBH approach brings its own model chemistry, and so does
+        # a composite recipe (SEAMM:CMP@<recipe>): its geometry level
         self._preset_mc = None
+        self._composite = None
         if _P["approach"].startswith("Isodesmic"):
             self._preset_mc = self.preset_model_chemistry(_P)
+        elif self.model_chemistry() is not None and is_composite(
+            self.model_chemistry().get("level")
+        ):
+            raise ValueError(
+                f"The composite method {self.model_chemistry()['level']} is used by "
+                "the isodesmic (CBH) approach; for the harmonic thermochemistry of "
+                "this structure, use a single model chemistry."
+            )
 
         # Where the energies and gradients come from. An old flowchart with a
         # subflowchart and no Model Chemistry keeps working.
