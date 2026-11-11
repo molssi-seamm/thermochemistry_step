@@ -229,7 +229,13 @@ class CBHApproach:
         base = None if base in ("default", "") else os.path.expanduser(base)
         version = _P["ATcT version"]
         version = None if version in ("latest", "") else version
+        downloaded = self._ensure_atct(base, version)
         tables = ATcT(version=version, base=base)
+        if downloaded:
+            text += (
+                f"No ATcT data were installed, so ver. {tables.version} was "
+                "downloaded from atct.anl.gov.\n"
+            )
         text += (
             f"Reference values from ATcT ver. {tables.version} of the "
             f"Thermochemical Network ({tables.directory}).\n"
@@ -594,6 +600,8 @@ class CBHApproach:
                 table.add_column(column, coltype)
 
         results = {}
+        fetch_covariances = _P["covariances"] == "fetch if needed"
+        fetch_failed = False
         for rung in usable:
             reaction = reactions[rung]
             result = {"rung": rung, "reaction": str(reaction)}
@@ -623,11 +631,12 @@ class CBHApproach:
             uncertainties = [
                 tables.entries[_id]["uncertainty_298K"] or 0.0 for _id in ids
             ]
-            covariance = (
-                tables.covariance(ids, fetch=(_P["covariances"] == "fetch if needed"))
-                if ids
-                else None
-            )
+            # Fetch a missing block at most until a fetch fails (each failure
+            # waits for the timeout, e.g. on a compute node without network)
+            fetch = fetch_covariances and not fetch_failed
+            covariance = tables.covariance(ids, fetch=fetch) if ids else None
+            if ids and covariance is None and fetch:
+                fetch_failed = True
             u_atct, used = reaction_uncertainty(coefficients, uncertainties, covariance)
             u_method = 0.0
             if method_c2 > 0 and ladder is not None:
@@ -637,9 +646,12 @@ class CBHApproach:
             u = (u_atct**2 + u_method**2) ** 0.5
             result["uncertainty"] = u
             result["uncertainty ATcT"] = u_atct
-            result["uncertainty method"] = (
-                "ATcT covariance" if used else "quadrature (no covariance cached)"
-            )
+            if used:
+                result["uncertainty method"] = "ATcT covariance"
+            elif fetch_covariances:
+                result["uncertainty method"] = "quadrature (covariance fetch failed)"
+            else:
+                result["uncertainty method"] = "quadrature (no covariance cached)"
             if u_method:
                 result["uncertainty ladder method"] = u_method
                 result["uncertainty method"] += " + ladder method term"
@@ -794,13 +806,20 @@ class CBHApproach:
                 "fingerprint (matched on the model chemistry only), so they are "
                 "unverified: check that their settings match this calculation."
             )
-        if any(
-            r["uncertainty method"].startswith("quadrature") for r in results.values()
-        ):
+        methods = [r["uncertainty method"] for r in results.values()]
+        if any("fetch failed" in m for m in methods):
+            text += (
+                "\nFetching the ATcT covariance blocks from atct.anl.gov failed "
+                "(see the log), so some reference uncertainties ignore the "
+                "correlations (quadrature); run 'seamm-thermochemistry-atct "
+                "covariance' on a machine with network access to cache them."
+            )
+        elif any(m.startswith("quadrature") for m in methods):
             text += (
                 "\nNo ATcT covariance block was cached for some reactions, so their "
                 "reference uncertainties ignore the correlations (quadrature); run "
-                "'seamm-thermochemistry-atct covariance' to cache them."
+                "'seamm-thermochemistry-atct covariance' to cache them, or set "
+                "'ATcT covariances' to fetch them."
             )
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
 
@@ -850,6 +869,7 @@ class CBHApproach:
         if "DfH 298.15 K" in best:
             data["DfH 298K"] = best["DfH 298.15 K"]
         data["DfH uncertainty"] = best["uncertainty"]
+        data["DfH uncertainty method"] = best["uncertainty method"]
         data["ATcT version"] = tables.version
         if target_entry is not None:
             data["ATcT DfH 0K"] = target_entry["dfH0_0K"]
@@ -862,6 +882,36 @@ class CBHApproach:
         # Citations
         self._cite_cbh(tables)
         return data
+
+    def _ensure_atct(self, base, version):
+        """Download ATcT when no version is installed (e.g. an installation
+        made before the installer set it up). Returns True if it downloaded.
+
+        atct.anl.gov serves only its current version, so a specific version
+        is never downloaded. Parallel jobs may race to download:
+        the download goes to a per-process file and an existing version wins."""
+        from seamm_thermochemistry import atct
+
+        if atct.ATcT.available(base):
+            return False
+        directory = atct.atct_directory(base)
+        if version is not None:
+            raise RuntimeError(
+                f"ATcT version {version} is not installed in {directory}. Install "
+                "it with 'seamm-thermochemistry-atct download --from FILE' from a "
+                "copy of that version, or choose 'latest'."
+            )
+        try:
+            atct.download_all(base, exist_ok=True)
+        except (atct.ATcTError, OSError) as e:
+            raise RuntimeError(
+                f"No ATcT data are installed in {directory}, and downloading them "
+                f"failed: {e}. Install them with 'seamm-thermochemistry-installer "
+                "install' (or 'seamm-thermochemistry-atct download --from FILE' "
+                "from a copy saved in a browser) on this machine, or set the ATcT "
+                "directory to an installed copy."
+            ) from None
+        return True
 
     def _reference_species_result(self, target, entry, tables):
         """The result for a target that is itself a reference species: its ATcT
@@ -883,6 +933,7 @@ class CBHApproach:
             "CBH reaction": label,
             "DfH 298K": dfh298,
             "DfH uncertainty": u,
+            "DfH uncertainty method": "the target's own ATcT value",
             "ATcT version": tables.version,
             "ATcT DfH 298K": dfh298,
             "ATcT DfH uncertainty": entry["uncertainty_298K"],

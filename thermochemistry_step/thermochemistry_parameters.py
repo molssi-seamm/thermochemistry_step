@@ -439,15 +439,18 @@ class ThermochemistryParameters(seamm.Parameters):
             ),
         },
         "covariances": {
-            "default": "cached only",
+            "default": "fetch if needed",
             "kind": "enum",
             "default_units": "",
-            "enumeration": ("cached only", "fetch if needed"),
+            "enumeration": ("fetch if needed", "cached only"),
             "format_string": "",
             "description": "ATcT covariances:",
             "help_text": (
-                "Use only the covariance blocks already cached, or fetch missing "
-                "ones from atct.anl.gov (not on a compute node without network)."
+                "Fetch the covariance blocks that are not cached from atct.anl.gov "
+                "and cache them, or use only those already cached. Without a block "
+                "(or when fetching fails, e.g. with no network) the reference "
+                "uncertainty ignores the correlations (quadrature), and the "
+                "'uncertainty method' says so."
             ),
         },
         "compare with ATcT": {
