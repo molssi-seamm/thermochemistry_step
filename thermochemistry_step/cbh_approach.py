@@ -103,11 +103,13 @@ def recipe_levels(level, data_path=None):
     -------
     dict
         ``recipe`` (the level spec), ``name``, ``version``, ``fingerprint``,
-        ``geometry`` (the geometry/frequency level), ``energy`` (the energy level,
-        or None when E0 is the geometry level's energy) and ``zpe`` ((factor,
-        source)). The step runs these ordinary levels, so the species' cached
-        properties, the fragment store's rows and the ZPE table are those of the
-        component levels; the recipe's name never keys anything.
+        ``geometry`` (the geometry/frequency level), ``energy`` (the energy level:
+        None when E0 is the geometry level's energy, the component's level when it
+        is one other energy, or the composite itself, ``recipe``, when it combines
+        several), ``components`` ({name: level}), ``zpe`` ((factor, source)) and
+        ``object`` (the composite_step Recipe). The step runs ordinary levels, so
+        the species' cached properties, the fragment store's rows and the ZPE table
+        are those of the component levels; the recipe's name never keys anything.
     """
     try:
         from composite_step.evaluate import component_levels, single_source
@@ -125,21 +127,24 @@ def recipe_levels(level, data_path=None):
     except KeyError as e:
         raise RuntimeError(f"No composite recipe for {level}: {e}")
     source = single_source(recipe)
-    if source is None:
-        raise RuntimeError(
-            f"The composite {level} combines several calculations; the "
-            "thermochemistry step runs recipes with one energy (a geometry level and "
-            "at most one energy level) so far."
-        )
     levels = component_levels(recipe)
+    if source is None:
+        # Several calculations: the composite itself is the energy level
+        energy = recipe.model_chemistry
+    elif source == "geometry":
+        energy = None
+    else:
+        energy = levels[source]
     return {
         "recipe": recipe.model_chemistry,
         "name": recipe.name,
         "version": recipe.version,
         "fingerprint": recipe.fingerprint(),
         "geometry": recipe.geometry["level"],
-        "energy": None if source == "geometry" else levels[source],
+        "energy": energy,
+        "components": levels,
         "zpe": recipe.zpe_scale,
+        "object": recipe,
     }
 
 
@@ -1525,8 +1530,9 @@ class CBHApproach:
         if text in ("", "the geometry level") and composite is not None:
             # A composite as the flowchart's model chemistry: its energy level
             text = composite["energy"] or ""
+        self._energy_recipe = None
         if is_composite(text):
-            # A composite as the energy level: its one energy, on this step's
+            # A composite as the energy level: its energy, on this step's
             # geometries
             recipe = recipe_levels(text, getattr(self, "data_path", None))
             if recipe["geometry"] != self.model:
@@ -1537,6 +1543,12 @@ class CBHApproach:
                         f"used here on the geometries of {self.model}.",
                         indent=4 * " ",
                     )
+                )
+            if recipe["energy"] == recipe["recipe"]:
+                # Several calculations, combined: the composite runs as itself
+                self._energy_recipe = recipe["object"]
+                return self._resolve_model_chemistry(
+                    recipe["recipe"], getattr(self, "data_path", None)
                 )
             text = recipe["energy"] or recipe["geometry"]
         if text in ("", "the geometry level") or text == self.model:
@@ -1565,8 +1577,10 @@ class CBHApproach:
         return level
 
     @staticmethod
-    def _resolve_model_chemistry(text):
-        """The ``_model_chemistry`` wrapper for a model chemistry string."""
+    def _resolve_model_chemistry(text, data_path=None):
+        """The ``_model_chemistry`` wrapper for a model chemistry string.
+        ``data_path`` (the node's) lets discovery see a user's or a job's
+        composite recipes."""
         import seamm
 
         try:
@@ -1582,7 +1596,7 @@ class CBHApproach:
                 "Model Chemistry step (model-chemistry-step) installed."
             )
         text = resolve_level(text, dict(seamm.flowchart_variables._data))
-        available = discover_model_chemistries(periodic_only=False)
+        available = discover_model_chemistries(periodic_only=False, data_path=data_path)
         mc = available.get(text) or match_model_chemistry(text, available)
         if mc is None:
             raise ValueError(availability_problem(text, available, periodic=False))
@@ -1658,6 +1672,10 @@ class CBHApproach:
         from seamm_thermochemistry.geometry_store import hash_geometry
 
         level = mc["level"]
+        if is_composite(level):
+            return self._composite_energies(
+                mc, store, order, configurations, energies, sources
+            )
         directory = self._species_directory()
         directory = directory / "energy_level" if directory is not None else None
         keys = {can: f"species_{i}" for i, can in enumerate(order)}
@@ -1779,6 +1797,142 @@ class CBHApproach:
                 dedent=False,
             )
         )
+
+    def _composite_energies(self, mc, store, order, configurations, energies, sources):
+        """The energies of a composite that combines several calculations, on the
+        species' geometries: one CompositeEvaluator over all the species.
+
+        Each component is looked up first, never the composite: in the job (an
+        earlier iteration's property at the component's level) and in the fragment
+        store's energy table by the component's own fingerprint. The rest run, each
+        component as one batch of its program. Each computed component is stored
+        as its own energy property (so the store's harvest keeps components only),
+        and the composite's record, E0 and fingerprint under ``composite ...``
+        names, which the harvest does not read."""
+        from composite_step.evaluate import CompositeEvaluator
+        from seamm_thermochemistry.geometry_store import hash_geometry
+
+        level = mc["level"]
+        recipe = getattr(self, "_energy_recipe", None)
+        directory = self._species_directory()
+        directory = directory / "composite" if directory is not None else None
+        keys = {can: f"species_{i}" for i, can in enumerate(order)}
+        by_key = {v: k for k, v in keys.items()}
+
+        def lookup(source, component_mc, key, configuration):
+            can = by_key[key]
+            component = component_mc["level"]
+            fingerprints = (
+                self._expected_fingerprints(configuration, component_mc, "energy") or []
+            )
+            E = self._energy_level_from_job(configuration, component, fingerprints)
+            if E is not None:
+                name = f"settings fingerprint#Thermochemistry#{component}"
+                fingerprint = None
+                if configuration.properties.exists(name):
+                    fingerprint = configuration.properties.get(name)[name]["value"]
+                return E, "job", {"fingerprint": fingerprint}
+            if store is None:
+                return None
+            geometry_layer = getattr(self, "_store_layer", {}).get(can, "local")
+            kwargs = {"prefer": geometry_layer} if hasattr(store, "lowest") else {}
+            row = store.energy(
+                hash_geometry(
+                    configuration.atoms.symbols,
+                    configuration.atoms.get_coordinates(fractionals=False),
+                    configuration.atoms.atomic_numbers,
+                ),
+                energy_fingerprint=fingerprints,
+                model_chemistry=component,
+                **kwargs,
+            )
+            if row is None:
+                return None
+            record = {
+                "fingerprint": row.get("energy_fingerprint"),
+                "program": row.get("program"),
+                "version": row.get("version"),
+            }
+            return row["E"], self._store_source(store, row), record
+
+        results = {}
+        with CompositeEvaluator(
+            self,
+            mc,
+            recipe,
+            properties=("energy",),
+            directory=directory,
+            name="Thermochemistry_composite",
+            component_lookup=lookup,
+        ) as evaluator:
+            for can in order:
+                evaluator.submit(configurations[can], key=keys[can])
+            for result in evaluator.results():
+                results[by_key[result.key]] = result
+        for can in order:
+            result = results.get(can)
+            if result is None or not result.ok or result.energy is None:
+                reason = result.reason if result is not None else "no result"
+                raise RuntimeError(f"The {level} energy of {can} failed: {reason}")
+
+        for can in order:
+            result = results[can]
+            composite = result.data["composite"]
+            record = result.data["calculation"]
+            E = result.energy
+            low = energies[can]
+            combined = {"E": E, "E geometry level": low["E"]}
+            if "ZPE" in low:
+                combined["ZPE"] = low["ZPE"]
+                combined["H0"] = E + low["ZPE"]
+            if "H298" in low:
+                combined["H298"] = E + (low["H298"] - low["E"])
+            if "imaginary" in low:
+                combined["imaginary"] = low["imaginary"]
+            energies[can] = combined
+            hows = ", ".join(
+                f"{source} {c['how']}" for source, c in composite["components"].items()
+            )
+            sources[can] = f"{sources.get(can, '')}; energy {hows}".lstrip("; ")
+            for source, c in composite["components"].items():
+                if c["how"] == "computed":
+                    self._store_energy_level(
+                        configurations[can],
+                        c["model chemistry"],
+                        c["energy"],
+                        record["components"][source]["record"],
+                    )
+            self._store_composite(configurations[can], level, E, record)
+        printer.important(
+            __(
+                f"\n{level} energies: "
+                + "; ".join(
+                    f"{can} ({sources[can].split('energy ', 1)[-1]})" for can in order
+                )
+                + ".",
+                indent=4 * " ",
+                wrap=True,
+                dedent=False,
+            )
+        )
+
+    @staticmethod
+    def _store_composite(configuration, level, E, record):
+        """A composite's E0 (E_h), fingerprint and record as properties
+        ``composite energy|fingerprint|calculation#Thermochemistry#<level>``: with
+        the results, never as an energy row of the fragment store (whose harvest
+        reads ``total energy`` and ``settings fingerprint`` only)."""
+        properties = configuration.properties
+        values = [
+            ("composite energy", Q_(E, "kJ/mol").m_as("E_h"), "float", "E_h"),
+            ("composite fingerprint", record.get("fingerprint"), "str", None),
+            ("composite calculation", record, "json", None),
+        ]
+        for base, value, kind, units in values:
+            name = f"{base}#Thermochemistry#{level}"
+            if not properties.exists(name):
+                properties.add(name, kind, units=units, description=base)
+            properties.put(name, value)
 
     @staticmethod
     def _store_energy_level(configuration, level, E, record):

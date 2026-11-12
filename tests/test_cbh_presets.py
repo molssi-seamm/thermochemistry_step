@@ -266,18 +266,6 @@ def test_composite_as_the_energy_level(node, monkeypatch):
     assert any("defined with geometries at" in " ".join(t.split()) for t in printed)
 
 
-def test_multi_component_recipes_are_refused(tmp_path):
-    pytest.importorskip("composite_step")
-    (tmp_path / "recipes").mkdir()
-    (tmp_path / "recipes" / "toy.yaml").write_text(
-        "recipe: toy\nversion: 1\ngeometry: {level: 'ORCA:CMP@R2SCAN-3C'}\n"
-        "components:\n  a: {level: 'ORCA:QC@MP2/def2-TZVP'}\n"
-        "  b: {level: 'ORCA:QC@MP2/def2-SVP'}\ncombine: |\n  E0 = a - b\n"
-    )
-    with pytest.raises(RuntimeError, match="combines several calculations"):
-        cbh_approach.recipe_levels("SEAMM:CMP@toy", data_path=[tmp_path])
-
-
 def test_high_preset_chooses_canonical_f12_for_a_small_target(preset):
     from thermochemistry_step.high_level import CANONICAL
 
