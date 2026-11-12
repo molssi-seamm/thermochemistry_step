@@ -241,6 +241,82 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "library DfH 298K": {
+        "description": "The target's own value at 298.15 K in the reference library",
+        "dimensionality": "scalar",
+        "property": "library DfH 298K#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "library DfH 0K": {
+        "description": "The target's own value at 0 K in the reference library",
+        "dimensionality": "scalar",
+        "property": "library DfH 0K#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "library DfH uncertainty": {
+        "description": (
+            "The 95 % uncertainty of the target's library value, with its "
+            "source's offset"
+        ),
+        "dimensionality": "scalar",
+        "property": "library DfH uncertainty#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "library source": {
+        "description": "The source of the target's library value",
+        "dimensionality": "scalar",
+        "property": "library source#Thermochemistry#{model}",
+        "type": "string",
+        "format": "",
+    },
+    "CBH - library": {
+        "description": (
+            "The CBH enthalpy of formation (highest rung, 298.15 K, else "
+            "0 K) minus the target's library value"
+        ),
+        "dimensionality": "scalar",
+        "property": "CBH - library#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "library check": {
+        "description": (
+            "Whether the CBH value agrees with the target's library value "
+            "within twice the library's uncertainty"
+        ),
+        "dimensionality": "scalar",
+        "property": "library check#Thermochemistry#{model}",
+        "type": "string",
+        "format": "",
+    },
+    "CBH references": {
+        "description": (
+            "Where the reference values of the reaction used came from: ATcT-only, "
+            "laddered, mixed (the reference library too), mixed: several sources "
+            "(for one element), computed references or user references"
+        ),
+        "dimensionality": "scalar",
+        "property": "CBH references#Thermochemistry#{model}",
+        "type": "string",
+        "format": "",
+    },
+    "references": {
+        "description": (
+            "The versions of ATcT and the reference libraries, and the library "
+            "values used (id, source, citation, conversion), for reproducing "
+            "and auditing the result"
+        ),
+        "dimensionality": "dictionary",
+        "type": "json",
+        "format": "",
+    },
     "CBH rung": {
         "description": "The CBH rung the enthalpy of formation comes from",
         "dimensionality": "scalar",

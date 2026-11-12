@@ -331,6 +331,43 @@ Fragment store
     the target's. If a computed fingerprint is not the one predicted, the
     output says so; the species is still used.
 
+Supplementary references, Use my own references
+    Reference species that ATcT lacks (whole elements such as Li, Na, P or Al,
+    and many organic parents) can come from the reference library, which is
+    installed beside the ATcT data. It holds evaluated compilations and
+    measurements: printed JANAF, CODATA, the NBS tables of 1982, spectroscopic
+    D\ :sub:`0`, W4-17 and measurements from the NIST WebBook, each cited to its
+    original source, and computed references.
+
+    - ``compilations and computed``, the default, uses all of them;
+      ``compilations`` leaves out the computed references; ``none`` uses ATcT
+      only.
+    - ATcT always comes first. The library is used only with ATcT as the
+      reference values, not with a ladder.
+    - For an element that ATcT lacks, all its references are taken from one
+      source where possible, so that the source's own error cancels in the
+      reaction. When the references of one element come from several sources,
+      the output says so and the result is labelled *mixed: several sources*.
+    - A library value has no covariance with ATcT. Its uncertainty (95 %, plus
+      the source's typical offset from ATcT) is added in quadrature.
+    - A value tabulated at only one temperature is converted to the other with
+      the species' own H(298.15 K) − H(0) from this calculation. The species
+      table marks the value with ``*``.
+    - *Use my own references* (shown unless the setting is ``none``) also uses
+      the references you added to your local library with
+      ``seamm-thermochemistry-references``, ahead of the compilations.
+
+    A target that ATcT lacks but the library has is treated like a target in
+    ATcT. When a rung works, the CBH value is the result, and its difference
+    from the library value is reported (*CBH - library*) and flagged when it
+    exceeds twice the library's uncertainty: a check of the library value. When
+    no rung works, the library value is the result, unchecked.
+
+    The result's *CBH references* says where the references of the reaction
+    came from: ``ATcT-only``, ``mixed``, ``mixed: several sources``, ``computed
+    references`` or ``user references``. *references* records the versions and
+    the library values used.
+
 ATcT version, directory, covariances
     The version of the Thermochemical Network (``latest`` cached by default),
     where the versions are kept, and whether to fetch missing covariance blocks

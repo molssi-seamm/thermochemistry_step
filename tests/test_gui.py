@@ -204,3 +204,23 @@ def test_cbh_species_only_layout(tk_node):
     tk_node["cbh calculation"].set("enthalpy of formation")
     tk_node.reset_dialog()
     assert _mapped(tk_node["cbh rungs"]) and _mapped(tk_node["cbh calculation"])
+
+
+def test_reference_library_layout(tk_node):
+    tk_node.create_dialog()
+    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
+    tk_node["preset"].set("custom")
+    tk_node["reference values"].set("ATcT")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["supplementary references"])
+    assert _mapped(tk_node["use my own references"])
+    tk_node["supplementary references"].set("none")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["supplementary references"])
+    assert not _mapped(tk_node["use my own references"])
+    # Only with ATcT as the reference values, not with a ladder
+    tk_node["supplementary references"].set("compilations")
+    tk_node["reference values"].set("laddered")
+    tk_node.reset_dialog()
+    assert not _mapped(tk_node["supplementary references"])
+    assert not _mapped(tk_node["use my own references"])

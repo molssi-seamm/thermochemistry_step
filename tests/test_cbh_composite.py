@@ -24,7 +24,7 @@ from tests.test_cbh_energy_level import (  # noqa: E402,F401
     split,
 )
 
-A, B = "High:QC@A/x", "High:QC@B/y"
+A, B = "High:QC@A/x", "High:QC@B/x"  # differ in method only (one change)
 SHIFT = 7.0
 RECIPE = R.Recipe.from_dict(
     {
@@ -138,7 +138,7 @@ def test_composite_energy_level(composite):
     assert _property(cf, f"total energy#Thermochemistry#{A}") == pytest.approx(
         (ENERGIES["CF"] + SHIFT) / 2625.4996394799
     )
-    assert _property(cf, f"settings fingerprint#Thermochemistry#{B}") == "fp:B/y"
+    assert _property(cf, f"settings fingerprint#Thermochemistry#{B}") == "fp:B/x"
     assert _property(cf, "composite energy#Thermochemistry#SEAMM:CMP@toy") == (
         pytest.approx(ENERGIES["CF"] / 2625.4996394799)
     )
@@ -151,7 +151,7 @@ def test_composite_energy_level(composite):
 
 
 def test_a_failed_component_names_itself(composite):
-    ComponentEvaluator.fail = ("B/y", "CF")
+    ComponentEvaluator.fail = ("B/x", "CF")
     with pytest.raises(RuntimeError, match=r"CF failed: the b component"):
         composite.run_cbh(_computed(composite))
 
@@ -271,7 +271,7 @@ def test_rerun_from_the_store_reproduces_the_composite(
         rows = s._connect().execute("SELECT energy_fingerprint FROM energy")
         fingerprints = sorted(r[0] for r in rows.fetchall())
     # Components only, never the composite
-    assert set(fingerprints) == {"fp:A/x", "fp:B/y"}
+    assert set(fingerprints) == {"fp:A/x", "fp:B/x"}
 
     ComponentEvaluator.calls = []
     second = composite.run_cbh(dict(P))

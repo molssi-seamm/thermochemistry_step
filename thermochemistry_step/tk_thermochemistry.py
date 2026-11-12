@@ -181,6 +181,7 @@ class TkThermochemistry(seamm.TkNode):
             "optimize fragments",
             "fragment store",
             "reference values",
+            "supplementary references",
             "initial conformer",
             "target conformer",
         ):
@@ -396,6 +397,11 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("ladder")
         if policy.startswith("ATcT below"):
             keys.append("ATcT uncertainty threshold")
+        if policy == "ATcT":
+            # The reference library is used only with ATcT as the reference values
+            keys.append("supplementary references")
+            if self["supplementary references"].get() != "none":
+                keys.append("use my own references")
         keys += ["ATcT version", "ATcT directory", "covariances", "compare with ATcT"]
 
         for key in keys:
