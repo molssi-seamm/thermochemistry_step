@@ -1708,9 +1708,11 @@ class CBHApproach:
             return record if isinstance(record, dict) else None
 
         high = {}
+        computed_parts = {}
         fingerprint = version = None
         for can, result in run([target]).items():
             high[can] = (result.energy, record_of(result), "computed")
+            computed_parts[can] = (result.data or {}).get("energy parts")
             record = record_of(result)
             fingerprint = record.get("fingerprint") if record else None
             version = record.get("version") if record else None
@@ -1765,6 +1767,7 @@ class CBHApproach:
                 to_run.append(can)
         for can, result in run(to_run).items():
             high[can] = (result.energy, record_of(result), "computed")
+            computed_parts[can] = (result.data or {}).get("energy parts")
         # The self-check of the prediction, on what was computed
         for can, (_, record, how) in high.items():
             if how == "computed":
@@ -1786,7 +1789,9 @@ class CBHApproach:
             energies[can] = combined
             sources[can] = f"{sources.get(can, '')}; energy {how}".lstrip("; ")
             if how == "computed":
-                self._store_energy_level(configurations[can], level, E, record)
+                self._store_energy_level(
+                    configurations[can], level, E, record, computed_parts.get(can)
+                )
         printer.important(
             __(
                 f"\n{level} energies: "
@@ -1827,11 +1832,15 @@ class CBHApproach:
             )
             E = self._energy_level_from_job(configuration, component, fingerprints)
             if E is not None:
-                name = f"settings fingerprint#Thermochemistry#{component}"
-                fingerprint = None
-                if configuration.properties.exists(name):
-                    fingerprint = configuration.properties.get(name)[name]["value"]
-                return E, "job", {"fingerprint": fingerprint}
+                record = {}
+                for key, base in (
+                    ("fingerprint", "settings fingerprint"),
+                    ("energy parts", "energy parts"),
+                ):
+                    name = f"{base}#Thermochemistry#{component}"
+                    if configuration.properties.exists(name):
+                        record[key] = configuration.properties.get(name)[name]["value"]
+                return E, "job", record
             if store is None:
                 return None
             geometry_layer = getattr(self, "_store_layer", {}).get(can, "local")
@@ -1852,6 +1861,7 @@ class CBHApproach:
                 "fingerprint": row.get("energy_fingerprint"),
                 "program": row.get("program"),
                 "version": row.get("version"),
+                "energy parts": row.get("byproducts") or None,
             }
             return row["E"], self._store_source(store, row), record
 
@@ -1895,12 +1905,13 @@ class CBHApproach:
             )
             sources[can] = f"{sources.get(can, '')}; energy {hows}".lstrip("; ")
             for source, c in composite["components"].items():
-                if c["how"] == "computed":
+                if str(c["how"]).startswith("computed"):
                     self._store_energy_level(
                         configurations[can],
                         c["model chemistry"],
                         c["energy"],
                         record["components"][source]["record"],
+                        c.get("parts"),
                     )
             self._store_composite(configurations[can], level, E, record)
         printer.important(
@@ -1935,9 +1946,11 @@ class CBHApproach:
             properties.put(name, value)
 
     @staticmethod
-    def _store_energy_level(configuration, level, E, record):
-        """The energy-level energy (E_h), its settings fingerprint and the
-        calculation record as properties ``...#Thermochemistry#<level>``."""
+    def _store_energy_level(configuration, level, E, record, parts=None):
+        """The energy-level energy (E_h), its settings fingerprint, the
+        calculation record and the parts of the energy (as the program reported
+        them) as properties ``...#Thermochemistry#<level>``, for the fragment
+        store's harvest."""
         properties = configuration.properties
         values = [
             ("total energy", Q_(E, "kJ/mol").m_as("E_h"), "float", "E_h"),
@@ -1948,6 +1961,8 @@ class CBHApproach:
                     ("settings fingerprint", record["fingerprint"], "str", None)
                 )
             values.append(("calculation", record, "json", None))
+        if parts:
+            values.append(("energy parts", parts, "json", None))
         for base, value, kind, units in values:
             name = f"{base}#Thermochemistry#{level}"
             if not properties.exists(name):
