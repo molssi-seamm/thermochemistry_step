@@ -194,7 +194,11 @@ def test_store_lookup_is_by_component_never_composite(composite, tmp_path, monke
     data = composite.run_cbh(P)
     assert data["DfH 298K"] == pytest.approx(-244.947 - 2.0, abs=1e-6)
     assert asked and not any(str(m).startswith("SEAMM:CMP@") for m in asked)
-    # CF's component a came from the store; its component b was computed
+    # CF's component a came from the store, with its fingerprint in the
+    # composite record; its component b was computed
+    cf = composite._find_fragment(composite._test_db, "CF")
+    record = _property(cf, "composite calculation#Thermochemistry#SEAMM:CMP@toy")
+    assert record["components"]["a"]["fingerprint"] == "fp:A/x"
     calls = dict(ComponentEvaluator.calls)
     assert "CBH:CF" not in calls[A]
     assert "CBH:CF" in calls[B]

@@ -1827,7 +1827,11 @@ class CBHApproach:
             )
             E = self._energy_level_from_job(configuration, component, fingerprints)
             if E is not None:
-                return E, "job"
+                name = f"settings fingerprint#Thermochemistry#{component}"
+                fingerprint = None
+                if configuration.properties.exists(name):
+                    fingerprint = configuration.properties.get(name)[name]["value"]
+                return E, "job", {"fingerprint": fingerprint}
             if store is None:
                 return None
             geometry_layer = getattr(self, "_store_layer", {}).get(can, "local")
@@ -1844,7 +1848,12 @@ class CBHApproach:
             )
             if row is None:
                 return None
-            return row["E"], self._store_source(store, row)
+            record = {
+                "fingerprint": row.get("energy_fingerprint"),
+                "program": row.get("program"),
+                "version": row.get("version"),
+            }
+            return row["E"], self._store_source(store, row), record
 
         results = {}
         with CompositeEvaluator(
