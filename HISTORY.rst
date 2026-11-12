@@ -19,6 +19,10 @@ History
     * New results: "CBH references" (ATcT-only, mixed, mixed: several sources,
       computed references, user references) and "references" (the versions of
       ATcT and the libraries, and the library values used).
+    * A target that ATcT lacks but the library has: with a usable rung, the CBH
+      value is checked against the library value ("CBH - library", flagged beyond
+      twice the library's uncertainty); with none, the library value is the
+      result.
 
 2026.11.12.1 -- The parts of energies kept and reused
     * Every energy the CBH approach computes at the energy level is stored with its

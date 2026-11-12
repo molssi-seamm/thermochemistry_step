@@ -144,3 +144,83 @@ def test_the_error_names_the_remedies(radical_node, monkeypatch):  # noqa: F811
     with pytest.raises(RuntimeError, match="or the reference library") as e:
         node.run_cbh(P)
     assert "Use my own references" in str(e.value)
+
+
+def test_library_target(radical_node, monkeypatch):  # noqa: F811
+    """The n-propyl radical, with its CBH-1 blocked and not in ATcT, but in the
+    library: the library value is the result."""
+    node = radical_node
+    monkeypatch.setattr(node._test_target, "to_smiles", lambda **k: "[CH2]CC")
+    real = A.ATcT.lookup
+
+    def lookup(self, smiles=None, **kwargs):
+        if smiles is not None and A.canonical_smiles(smiles) == "[CH2]C":
+            raise A.MissingEntry(f"No ATcT entry for {smiles}")
+        return real(self, smiles, **kwargs)
+
+    monkeypatch.setattr(A.ATcT, "lookup", lookup)
+    lib = references.ReferenceLibrary(
+        node._test_base.parent / "references-official.db",
+        create=True,
+        layer="official",
+    )
+    lib.add_source("WebBook-SRD69", "measured", 50)
+    sid = lib.add_species("[CH2]CC", multiplicity=2)
+    lib.add_measurement(
+        sid,
+        "WebBook-SRD69",
+        dfh_298k=100.5,
+        uncertainty=2.0,
+        unc_level="2 sigma",
+        citation="Radical et al. 2001",
+    )
+    lib.choose(sid, "WebBook-SRD69")
+    lib.close()
+    from tests.test_cbh_existing import _parameters as parameters
+
+    data = node.run_cbh(
+        parameters(node, **{"supplementary references": "compilations"})
+    )
+    assert data["DfH 298K"] == 100.5
+    assert data["DfH uncertainty"] == pytest.approx(2.0)
+    assert data["CBH reaction"] == "target is a reference species (WebBook-SRD69)"
+    assert data["CBH references"] == "mixed"
+    assert "DfH 0K" not in data
+
+
+def test_library_target_checked_by_a_rung(node, monkeypatch):
+    """Fluoroethane, here not in ATcT but in the library: CBH-1 works, so the
+    CBH value is the result and the library value is checked against it."""
+    real = A.ATcT.lookup
+
+    def lookup(self, smiles=None, **kwargs):
+        if smiles is not None and A.canonical_smiles(smiles) == "CCF":
+            raise A.MissingEntry(f"No ATcT entry for {smiles}")
+        return real(self, smiles, **kwargs)
+
+    monkeypatch.setattr(A.ATcT, "lookup", lookup)
+    lib = references.ReferenceLibrary(
+        node._test_base.parent / "references-official.db",
+        create=True,
+        layer="official",
+    )
+    lib.add_source("WebBook-SRD69", "measured", 50)
+    sid = lib.add_species("CCF", formula="C2H5F")
+    lib.add_measurement(
+        sid,
+        "WebBook-SRD69",
+        dfh_298k=-250.0,
+        uncertainty=1.0,
+        unc_level="2 sigma",
+        citation="Fluoro et al. 1980",
+    )
+    lib.choose(sid, "WebBook-SRD69")
+    lib.close()
+    data = node.run_cbh(
+        _parameters(node, **{"supplementary references": "compilations"})
+    )
+    assert data["DfH 298K"] == pytest.approx(-244.947 - 2.0, abs=1e-6)
+    assert data["library DfH 298K"] == -250.0
+    assert data["CBH - library"] == pytest.approx(3.053, abs=1e-6)
+    assert data["library check"].startswith("differs by more than twice")
+    assert "ATcT DfH 298K" not in data

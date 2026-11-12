@@ -357,6 +357,12 @@ Supplementary references, Use my own references
       the references you added to your local library with
       ``seamm-thermochemistry-references``, ahead of the compilations.
 
+    A target that ATcT lacks but the library has is treated like a target in
+    ATcT. When a rung works, the CBH value is the result, and its difference
+    from the library value is reported (*CBH - library*) and flagged when it
+    exceeds twice the library's uncertainty: a check of the library value. When
+    no rung works, the library value is the result, unchecked.
+
     The result's *CBH references* says where the references of the reaction
     came from: ``ATcT-only``, ``mixed``, ``mixed: several sources``, ``computed
     references`` or ``user references``. *references* records the versions and

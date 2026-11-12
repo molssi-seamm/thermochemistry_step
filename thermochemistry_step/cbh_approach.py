@@ -541,6 +541,17 @@ class CBHApproach:
             target_entry, target_via = lookup_target(
                 tables, target, charge, multiplicity
             )
+        # A target that ATcT lacks but the reference library has: its library
+        # value is reported, and checked against the CBH value when a rung works
+        library_target = None
+        if resolver is not None:
+            check_atct = target_entry
+            if check_atct is None and not _yes(_P["compare with ATcT"]):
+                check_atct, _ = lookup_target(tables, target, charge, multiplicity)
+            if check_atct is None:
+                own, _, _, _ = resolver.resolve([target])
+                if target in own and own[target].get("source") != "ATcT":
+                    library_target = own[target]
 
         # Report the reactions
         lines = []
@@ -575,6 +586,10 @@ class CBHApproach:
             if target_entry is not None:
                 return self._reference_species_result(
                     target, target_entry, tables, via=target_via
+                )
+            if library_target is not None:
+                return self._library_species_result(
+                    target, library_target, tables, resolver
                 )
             if resolver is not None:
                 raise RuntimeError(
@@ -1015,6 +1030,43 @@ class CBHApproach:
                 f"ΔfH°(0 K) = {target_entry['dfH0_0K']:.2f} and ΔfH°(298.15 K) = "
                 f"{target_entry['dfH0_298K']:.2f} {unc} kJ/mol for the target.\n"
             )
+        library_check = None
+        if library_target is not None:
+            lt = library_target
+            lu = lt["uncertainty_298K"] or 0.0
+            parts = []
+            if lt["dfH0_0K"] is not None:
+                parts.append(f"ΔfH°(0 K) = {lt['dfH0_0K']:.2f}")
+            if lt["dfH0_298K"] is not None:
+                parts.append(f"ΔfH°(298.15 K) = {lt['dfH0_298K']:.2f}")
+            text += (
+                f"\nThe target is in the reference library ({lt['source']}: "
+                f"{lt['citation']}): " + " and ".join(parts) + f" ± {lu:.2f} kJ/mol "
+                "(95 %). As a check of that value:\n"
+            )
+            for rung in usable:
+                r = results[rung]
+                for key, column in (
+                    ("DfH 298.15 K", "dfH0_298K"),
+                    ("DfH 0 K", "dfH0_0K"),
+                ):
+                    if key in r and lt[column] is not None:
+                        delta = r[key] - lt[column]
+                        flag = abs(delta) > 2 * lu
+                        r["library delta"] = delta
+                        text += (
+                            f"    CBH-{rung} - library ({key[4:]}) = {delta:+.2f} "
+                            "kJ/mol"
+                            + (
+                                ", more than twice the library's uncertainty"
+                                if flag
+                                else ""
+                            )
+                            + "\n"
+                        )
+                        if rung == usable[-1]:
+                            library_check = (delta, flag)
+                        break
         if used_library:
             text += "\nReference values from the reference library:\n"
             for can, entry in used_library.items():
@@ -1155,6 +1207,18 @@ class CBHApproach:
             }
         else:
             data["CBH references"] = "ATcT-only" if ladder is None else "laddered"
+        if library_target is not None:
+            data["library DfH 298K"] = library_target["dfH0_298K"]
+            data["library DfH 0K"] = library_target["dfH0_0K"]
+            data["library DfH uncertainty"] = library_target["uncertainty_298K"]
+            data["library source"] = library_target["source"]
+            if library_check is not None:
+                data["CBH - library"] = library_check[0]
+                data["library check"] = (
+                    "differs by more than twice the library's uncertainty"
+                    if library_check[1]
+                    else "agrees"
+                )
         if target_entry is not None:
             data["ATcT DfH 0K"] = target_entry["dfH0_0K"]
             data["ATcT DfH 298K"] = target_entry["dfH0_298K"]
@@ -1232,6 +1296,54 @@ class CBHApproach:
         if dfh0 is not None:
             data["DfH 0K"] = dfh0
             data["ATcT DfH 0K"] = dfh0
+        self._cite_cbh(tables)
+        return data
+
+    def _library_species_result(self, target, entry, tables, resolver):
+        """The result for a target that ATcT lacks but the reference library
+        has: its library value, with nothing computed."""
+        dfh0, dfh298 = entry["dfH0_0K"], entry["dfH0_298K"]
+        u = entry["uncertainty_298K"] or 0.0
+        text = (
+            f"\nNo rung gives a reaction for {target}, but the target is itself a "
+            f"reference species in the reference library ({entry['source']}: "
+            f"{entry['citation']}): "
+        )
+        parts = []
+        if dfh0 is not None:
+            parts.append(f"ΔfH°(0 K) = {dfh0:.2f}")
+        if dfh298 is not None:
+            parts.append(f"ΔfH°(298.15 K) = {dfh298:.2f}")
+        text += " and ".join(parts) + f" ± {u:.2f} kJ/mol (95 %, with the source's "
+        text += (
+            "offset). That value is the result; no species were computed, so it is "
+            "not checked by a CBH reaction."
+        )
+        if dfh298 is None:
+            text += " The library gives it at 0 K only."
+        printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+        data = {
+            "CBH reaction": f"target is a reference species ({entry['source']})",
+            "DfH uncertainty": u,
+            "DfH uncertainty method": "the target's own reference-library value",
+            "ATcT version": tables.version,
+            "CBH references": resolver.label({target: entry}),
+            "references": {
+                **resolver.versions(),
+                "library values": {
+                    target: {
+                        "id": entry["id"],
+                        "source": entry["source"],
+                        "citation": entry["citation"],
+                        "converted": None,
+                    }
+                },
+            },
+        }
+        if dfh298 is not None:
+            data["DfH 298K"] = dfh298
+        if dfh0 is not None:
+            data["DfH 0K"] = dfh0
         self._cite_cbh(tables)
         return data
 
