@@ -457,6 +457,33 @@ class ThermochemistryParameters(seamm.Parameters):
                 "Parameters/thermochemistry/ATcT by default."
             ),
         },
+        "supplementary references": {
+            "default": "compilations and computed",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("compilations and computed", "compilations", "none"),
+            "format_string": "",
+            "description": "Supplementary references:",
+            "help_text": (
+                "For reference species ATcT lacks, use the reference library: "
+                "evaluated compilations and measurements (JANAF, CODATA, "
+                "spectroscopic D0, W4-17, the NIST WebBook), and also computed "
+                "references if chosen. 'none' uses ATcT only. Used only with ATcT "
+                "as the reference values."
+            ),
+        },
+        "use my own references": {
+            "default": "no",
+            "kind": "boolean",
+            "default_units": "",
+            "enumeration": ("no", "yes"),
+            "format_string": "",
+            "description": "Use my own references:",
+            "help_text": (
+                "Use the references you added to your local reference library "
+                "(seamm-thermochemistry-references), ahead of the compilations."
+            ),
+        },
         "covariances": {
             "default": "fetch if needed",
             "kind": "enum",

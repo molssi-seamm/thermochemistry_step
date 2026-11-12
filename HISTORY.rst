@@ -1,6 +1,25 @@
 =======
 History
 =======
+2026.11.12.2 -- Reference species that ATcT lacks, from the reference library
+    * New: the CBH approach can take reference species that ATcT lacks from the
+      supplementary reference library of seamm-thermochemistry (printed JANAF,
+      CODATA, the NBS tables of 1982, spectroscopic D0, W4-17, NIST WebBook
+      measurements, computed references), with one source per element where
+      possible. Their uncertainties (95 %, with each source's offset from ATcT) are added in
+      quadrature, and a value given at one temperature only is converted with the
+      species' own computed H(298.15 K) - H(0).
+    * New parameters: "Supplementary references" (compilations and computed /
+      compilations / none) and "Use my own references". The default,
+      "compilations and computed", is Paul's decision 4 (2026-10-29). Flowcharts
+      saved before this release take the default when they are run again, so a
+      target that had no usable rung with ATcT alone may now get a result from
+      mixed references. Targets that ATcT alone closes are unchanged, and "none"
+      reproduces the earlier results exactly.
+    * New results: "CBH references" (ATcT-only, mixed, mixed: several sources,
+      computed references, user references) and "references" (the versions of
+      ATcT and the libraries, and the library values used).
+
 2026.11.12.1 -- The parts of energies kept and reused
     * Every energy the CBH approach computes at the energy level is stored with its
       parts (HF, correlation, triples, ...) when the program reports them, so

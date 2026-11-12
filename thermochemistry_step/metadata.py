@@ -241,6 +241,27 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH references": {
+        "description": (
+            "Where the reference values of the reaction used came from: ATcT-only, "
+            "laddered, mixed (the reference library too), mixed: several sources "
+            "(for one element), computed references or user references"
+        ),
+        "dimensionality": "scalar",
+        "property": "CBH references#Thermochemistry#{model}",
+        "type": "string",
+        "format": "",
+    },
+    "references": {
+        "description": (
+            "The versions of ATcT and the reference libraries, and the library "
+            "values used (id, source, citation, conversion), for reproducing "
+            "and auditing the result"
+        ),
+        "dimensionality": "dictionary",
+        "type": "json",
+        "format": "",
+    },
     "CBH rung": {
         "description": "The CBH rung the enthalpy of formation comes from",
         "dimensionality": "scalar",
