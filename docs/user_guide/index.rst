@@ -166,7 +166,14 @@ Preset
     ``SEAMM:CMP@revDSD-r2SCAN-3c-HO`` when the Composite step (composite-step) is
     installed, and the results record the recipe, its version and its fingerprint;
     the levels and the numbers are the same either way. A composite recipe may also
-    be the flowchart's model chemistry with ``custom``, for the CBH approach only. Each uses the highest rung
+    be the flowchart's model chemistry with ``custom``, for the CBH approach only,
+    or the energy level. A recipe that combines several calculations runs each
+    component as its own batch on every species; each component is looked up on its
+    own in the job and in the fragment store, and stored as its own energy, never the
+    combination. The species table names how each component was obtained, and a
+    species whose component fails stops the step with that component named.
+
+    Each preset uses the highest rung
     available, at most CBH-2: CBH-3 is no more accurate (its error is dominated by
     the reference values), and *Include CBH-3* adds it only to the spread between
     the rungs. One r2SCAN-3c geometry and frequency calculation serves every
