@@ -1547,7 +1547,9 @@ class CBHApproach:
             if recipe["energy"] == recipe["recipe"]:
                 # Several calculations, combined: the composite runs as itself
                 self._energy_recipe = recipe["object"]
-                return self._resolve_model_chemistry(recipe["recipe"])
+                return self._resolve_model_chemistry(
+                    recipe["recipe"], getattr(self, "data_path", None)
+                )
             text = recipe["energy"] or recipe["geometry"]
         if text in ("", "the geometry level") or text == self.model:
             return None
@@ -1575,8 +1577,10 @@ class CBHApproach:
         return level
 
     @staticmethod
-    def _resolve_model_chemistry(text):
-        """The ``_model_chemistry`` wrapper for a model chemistry string."""
+    def _resolve_model_chemistry(text, data_path=None):
+        """The ``_model_chemistry`` wrapper for a model chemistry string.
+        ``data_path`` (the node's) lets discovery see a user's or a job's
+        composite recipes."""
         import seamm
 
         try:
@@ -1592,7 +1596,7 @@ class CBHApproach:
                 "Model Chemistry step (model-chemistry-step) installed."
             )
         text = resolve_level(text, dict(seamm.flowchart_variables._data))
-        available = discover_model_chemistries(periodic_only=False)
+        available = discover_model_chemistries(periodic_only=False, data_path=data_path)
         mc = available.get(text) or match_model_chemistry(text, available)
         if mc is None:
             raise ValueError(availability_problem(text, available, periodic=False))
