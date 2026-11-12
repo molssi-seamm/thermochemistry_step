@@ -72,12 +72,20 @@ class ComponentEvaluator:
                 )
                 continue
             energy = ENERGIES[can] + SHIFT if method == "A/x" else SHIFT
+            E_h = energy / 2625.4996394798254
             yield seamm_exec.EvaluatorResult(
                 key=key,
                 ok=True,
                 energy=energy,
                 data={
-                    "calculation": {"program": "High", "fingerprint": f"fp:{method}"}
+                    "calculation": {"program": "High", "fingerprint": f"fp:{method}"},
+                    "energy parts": {
+                        "parts version": 1,
+                        "units": "E_h",
+                        "parts": {"HF": 0.9 * E_h, "CCSD correlation": 0.1 * E_h},
+                        "total": ["HF", "CCSD correlation"],
+                        "reference": "RHF",
+                    },
                 },
             )
         ComponentEvaluator.calls.append((self.mc["level"], names))
@@ -273,3 +281,95 @@ def test_rerun_from_the_store_reproduces_the_composite(
         assert again[can][1] == fingerprint
         assert again[can][0] == pytest.approx(E0, abs=1e-10)
     assert second["DfH 298K"] == pytest.approx(first["DfH 298K"], abs=1e-6)
+
+
+PARTS_RECIPE = R.Recipe.from_dict(
+    {
+        "recipe": "toy",
+        "version": 1,
+        "geometry": {"level": "Low:DFT@R2SCAN"},
+        "components": {"a": {"level": A}, "b": {"level": B}},
+        "combine": "E0 = hf_part(a) + corr_part(a) - b\n",
+    }
+)
+
+
+def test_parts_are_stored_and_a_row_without_them_is_recomputed(
+    composite, monkeypatch, tmp_path
+):
+    """The parts of what is computed are stored with it for the harvest. A
+    recipe that uses parts recomputes a component whose stored row has none, says
+    so, and the store then has the parts on that row."""
+    import json
+    import types
+
+    import seamm_thermochemistry
+    from seamm_thermochemistry import (
+        EnergyRecord,
+        FragmentStore,
+        GeometryRecord,
+    )
+
+    monkeypatch.setattr(
+        seamm_thermochemistry, "store_is_writable", lambda path=None: (True, "test")
+    )
+    job = tmp_path / "job"
+    job.mkdir()
+    (job / "job_data.json").write_text(
+        "!MolSSI job_data 1.0\n" + json.dumps({"job id": 79})
+    )
+    composite.flowchart = types.SimpleNamespace(root_directory=str(job))
+
+    def energy_level(P):
+        composite._energy_recipe = PARTS_RECIPE
+        return MC
+
+    monkeypatch.setattr(composite, "_energy_level", energy_level)
+
+    # A stored geometry and an energy of component a for CF, without parts
+    path = tmp_path / "fragments.db"
+    xyz = [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.38],
+        [1.03, 0.0, -0.36],
+        [-0.51, 0.89, -0.36],
+        [-0.51, -0.89, -0.36],
+    ]
+    with FragmentStore(path, create=True) as store:
+        g = GeometryRecord.make(
+            "CF",
+            ["C", "F", "H", "H", "H"],
+            xyz,
+            E=ENERGIES["CF"] + OFFSET["CF"],
+            ZPE=10.0,
+            H=ENERGIES["CF"] + OFFSET["CF"] + 15.0,
+            model_chemistry=LOW,
+        )
+        store.put_geometry(g)
+        store.put_energy(
+            EnergyRecord.make(
+                g["geometry_hash"], ENERGIES["CF"] + SHIFT, energy_fingerprint="fp:A/x"
+            )
+        )
+        hash_cf = g["geometry_hash"]
+
+    P = _computed(composite, **{"fragment store": "use and add what is computed"})
+    P["fragment store file"] = str(path)
+    data = composite.run_cbh(P)
+    assert data["DfH 298K"] == pytest.approx(-244.947 - 2.0, abs=1e-6)
+    # CF's component a was computed again, and says why
+    calls = dict(ComponentEvaluator.calls)
+    assert "CBH:CF" in calls[A]
+    cf = composite._find_fragment(composite._test_db, "CF")
+    record = _property(cf, "composite calculation#Thermochemistry#SEAMM:CMP@toy")
+    assert record["components"]["a"]["fingerprint"] == "fp:A/x"
+    # Its parts are stored with it, and the store's row now has them
+    parts = _property(cf, f"energy parts#Thermochemistry#{A}")
+    assert parts["reference"] == "RHF"
+    with FragmentStore(path) as store:
+        row = store.energy(hash_cf, energy_fingerprint=["fp:A/x"])
+    assert row["byproducts"]["parts"]["HF"] == pytest.approx(parts["parts"]["HF"])
+    # A second run takes everything from the store
+    ComponentEvaluator.calls = []
+    composite.run_cbh(P)
+    assert ComponentEvaluator.calls == []

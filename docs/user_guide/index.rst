@@ -173,6 +173,12 @@ Preset
     combination. The species table names how each component was obtained, and a
     species whose component fails stops the step with that component named.
 
+    Every energy the step computes at the energy level, a component or not, is
+    stored with its parts (HF, correlation, triples, ...) when the program reports
+    them. A recipe that uses parts takes them from the job or the store with the
+    energy; a stored energy without parts is computed again, and the store then
+    keeps its parts.
+
     Each preset uses the highest rung
     available, at most CBH-2: CBH-3 is no more accurate (its error is dominated by
     the reference values), and *Include CBH-3* adds it only to the spread between

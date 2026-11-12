@@ -1,6 +1,15 @@
 =======
 History
 =======
+2026.11.12.1 -- The parts of energies kept and reused
+    * Every energy the CBH approach computes at the energy level is stored with its
+      parts (HF, correlation, triples, ...) when the program reports them, so
+      composite recipes that use the parts find them in the job or the fragment
+      store.
+    * A stored energy without the parts a recipe needs is computed again, and the
+      store then keeps its parts.
+    * Needs seamm-thermochemistry 2026.11.12 or later.
+
 2026.11.12 -- Composite recipes with several calculations as the CBH energy level
     * A composite recipe that combines several calculations (``SEAMM:CMP@<recipe>``)
       can be the energy level of the CBH approach, as the flowchart's model
