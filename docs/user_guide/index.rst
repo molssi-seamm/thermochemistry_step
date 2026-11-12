@@ -100,9 +100,13 @@ itself is in ATcT the difference is reported too.
 Radicals and ions are handled: every fragment containing the radical or
 charged atom keeps that spin or charge, and the ATcT entry is selected with
 the same charge and multiplicity. The reactions follow from the SMILES of the
-structure, so the system's charge and spin multiplicity must agree with it;
-the step stops if they do not. Build a radical from its SMILES
-(``[CH2]C`` for the ethyl radical), which sets both. A fragment takes the spin
+structure, so the system's charge must agree with it, and so must its number of
+electrons: the step stops if they do not. Build a radical from its SMILES
+(``[CH2]C`` for the ethyl radical), which sets both. The structure's spin
+multiplicity may be lower than the unpaired electrons the SMILES shows: SiCl\ :sub:`2`
+and BH are singlets that a SMILES writes with two unpaired electrons. The step
+then uses the structure's multiplicity and says so, noting whether it is the
+known ground state. A fragment takes the spin
 multiplicity of its ground state: its unpaired electrons + 1, except the
 singlets that a SMILES writes with two unpaired electrons (SiH\ :sub:`2`,
 SiCl\ :sub:`2`, CF\ :sub:`2`, BH, ...) and the triplets it writes closed-shell
@@ -120,6 +124,13 @@ stored is the highest usable rung, and every rung goes into the table ``CBH``.
 When no rung is usable but the target is itself in ATcT (methane, benzene, the
 methyl radical, CO: every rung reproduces the target), its ATcT value is the
 result, labelled "target is a reference species", and nothing is computed.
+The target is found in ATcT also when ATcT writes it as another resonance form:
+SiO from a structure is ``[O+]#[Si-]`` but ATcT's is ``[Si]=O``, and OBrO is
+``[O][Br+][O-]`` against ``[O]Br[O]``. The match ignores bond orders, formal
+charges and radical centres but keeps the atoms, their connections and
+hydrogens, and the total charge, so isomers such as HCN and HNC stay apart; it
+is used only when exactly one ATcT species matches, and the output names the
+ATcT SMILES it matched.
 The spread of the enthalpies of formation over the rungs from CBH-1 up is
 reported and stored as an indicator of the uncertainty: a large spread points
 to trouble with the method or with the reference values.

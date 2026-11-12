@@ -1,6 +1,20 @@
 =======
 History
 =======
+2026.11.11.5 -- Bugfix: CBH targets in another resonance form, and singlet diradicals
+    * A target that ATcT writes as another resonance form is now found: SiO from a
+      structure is [O+]#[Si-] but ATcT's is [Si]=O, and OBrO is [O][Br+][O-] against
+      [O]Br[O]. Such a target got no result when every rung reproduced it. The match
+      ignores bond orders, formal charges and radical centres but keeps the atoms,
+      their connections and hydrogens, and the total charge, so isomers such as HCN
+      and HNC stay apart. It is used only when exactly one ATcT species matches, and
+      the output names the ATcT SMILES it matched.
+    * A structure's spin multiplicity may now be lower than the unpaired electrons its
+      SMILES shows: SiCl2 and BH are singlets that a SMILES writes as diradicals, and
+      they stopped the step. The structure's multiplicity is used and the output says
+      so, noting whether it is the known ground state. The charge and the number of
+      electrons must still agree with the SMILES.
+
 2026.11.11.4 -- ATcT is downloaded when needed; covariances are fetched by default
     * A calculation that finds no ATcT version installed downloads the current one
       from atct.anl.gov (an installation made before the seamm-thermochemistry
