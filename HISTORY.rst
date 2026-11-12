@@ -23,6 +23,7 @@ History
       value is checked against the library value ("CBH - library", flagged beyond
       twice the library's uncertainty); with none, the library value is the
       result.
+    * Needs seamm-thermochemistry 2026.11.12.1 or later.
 
 2026.11.12.1 -- The parts of energies kept and reused
     * Every energy the CBH approach computes at the energy level is stored with its

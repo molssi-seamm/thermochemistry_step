@@ -335,9 +335,9 @@ Supplementary references, Use my own references
     Reference species that ATcT lacks (whole elements such as Li, Na, P or Al,
     and many organic parents) can come from the reference library, which is
     installed beside the ATcT data. It holds evaluated compilations and
-    measurements: printed JANAF, CODATA, spectroscopic D\ :sub:`0`, W4-17 and
-    measurements from the NIST WebBook, each cited to its original source, and
-    computed references.
+    measurements: printed JANAF, CODATA, the NBS tables of 1982, spectroscopic
+    D\ :sub:`0`, W4-17 and measurements from the NIST WebBook, each cited to its
+    original source, and computed references.
 
     - ``compilations and computed``, the default, uses all of them;
       ``compilations`` leaves out the computed references; ``none`` uses ATcT
