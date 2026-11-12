@@ -1,6 +1,23 @@
 =======
 History
 =======
+2026.11.12 -- Composite recipes with several calculations as the CBH energy level
+    * A composite recipe that combines several calculations (``SEAMM:CMP@<recipe>``)
+      can be the energy level of the CBH approach, as the flowchart's model
+      chemistry or as the energy model chemistry. Each component runs as its own
+      batch on every species.
+    * Each component is looked up on its own in the job and in the fragment store,
+      and stored there as its own energy under its own fingerprint, never the
+      combination, so later recipes that share a component reuse it. The
+      composite's record goes with the results.
+    * The species table names how each component was obtained. A species whose
+      component fails stops the step, with the component named.
+    * A rerun that takes every component from the store reproduces the composite
+      energies to about 1e-12 E_h (not bit for bit: the store keeps energies through
+      a unit conversion).
+    * Needs composite-step 2026.11.12 and seamm-exec 2026.11.12 or later for recipes
+      with several components.
+
 2026.11.11.6 -- The 'high' preset (CCSD(T)-F12); presets as composite recipes
     * The new ``high`` preset of the CBH approach takes the energies from CCSD(T)-F12
       with cc-pVTZ-F12 on r2SCAN-3c geometries: canonical CCSD(T)-F12D/RI up to 546

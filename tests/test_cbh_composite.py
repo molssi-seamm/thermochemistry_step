@@ -219,3 +219,57 @@ def test_recipe_levels_of_a_multi_component_recipe(tmp_path):
         "a": "ORCA:QC@MP2/def2-TZVP",
         "b": "ORCA:QC@MP2/def2-SVP",
     }
+
+
+def test_rerun_from_the_store_reproduces_the_composite(
+    composite, monkeypatch, tmp_path
+):
+    """Run 1 computes every component and adds them to the store; run 2 computes
+    nothing and gives the same composite record and E0 within 1e-10 E_h (the
+    store keeps energies through a unit conversion, so not bitwise)."""
+    import json
+    import types
+
+    import seamm_thermochemistry
+    from seamm_thermochemistry import FragmentStore
+
+    monkeypatch.setattr(
+        seamm_thermochemistry, "store_is_writable", lambda path=None: (True, "test")
+    )
+    job = tmp_path / "job"
+    job.mkdir()
+    (job / "job_data.json").write_text(
+        "!MolSSI job_data 1.0\n" + json.dumps({"job id": 78})
+    )
+    composite.flowchart = types.SimpleNamespace(root_directory=str(job))
+    store = tmp_path / "fragments.db"
+    P = _computed(composite, **{"fragment store": "use and add what is computed"})
+    P["fragment store file"] = str(store)
+
+    def results():
+        out = {}
+        for can in ("CCF", "C", "CF", "CC"):
+            configuration = composite._find_fragment(composite._test_db, can)
+            prefix = "#Thermochemistry#SEAMM:CMP@toy"
+            out[can] = (
+                _property(configuration, "composite energy" + prefix),
+                _property(configuration, "composite fingerprint" + prefix),
+            )
+        return out
+
+    first = composite.run_cbh(dict(P))
+    computed = results()
+    with FragmentStore(store) as s:
+        rows = s._connect().execute("SELECT energy_fingerprint FROM energy")
+        fingerprints = sorted(r[0] for r in rows.fetchall())
+    # Components only, never the composite
+    assert set(fingerprints) == {"fp:A/x", "fp:B/y"}
+
+    ComponentEvaluator.calls = []
+    second = composite.run_cbh(dict(P))
+    assert ComponentEvaluator.calls == []
+    again = results()
+    for can, (E0, fingerprint) in computed.items():
+        assert again[can][1] == fingerprint
+        assert again[can][0] == pytest.approx(E0, abs=1e-10)
+    assert second["DfH 298K"] == pytest.approx(first["DfH 298K"], abs=1e-6)
