@@ -229,6 +229,8 @@ class CBHApproach:
         )
         from seamm_thermochemistry.atct import canonical_smiles
 
+        from .resonance import lookup_target
+
         _P = self.apply_preset(_P)
         self._reset_fingerprints()
         preset = _P.get("preset", "custom")
@@ -276,10 +278,24 @@ class CBHApproach:
         if charge != 0 or multiplicity != 1:
             text += f" with charge {charge} and multiplicity {multiplicity}"
         text += "."
-        # The structure's multiplicity is used; say so where the ground state
-        # differs (a singlet carbene built as a triplet, or O2 as a singlet)
+        # The structure's multiplicity is used; say so where the SMILES shows more
+        # unpaired electrons, and where the ground state differs (a singlet carbene
+        # built as a triplet, or O2 as a singlet)
+        _, _, radicals, _ = cbh._composition(smiles)
         ground = cbh_multiplicity(smiles)
-        if ground != multiplicity:
+        if radicals > multiplicity - 1:
+            text += (
+                f" Its SMILES shows {radicals} unpaired electrons, but the "
+                f"structure's spin multiplicity, {multiplicity}, is used"
+            )
+            if ground == multiplicity:
+                text += f", which is the ground state of {target}."
+            else:
+                text += (
+                    f"; check it: the ground state of {target} is taken to be "
+                    f"{ground}."
+                )
+        elif ground != multiplicity:
             text += (
                 f" Its spin multiplicity, {multiplicity}, is the structure's; the "
                 f"ground state of {target} is {ground}."
@@ -455,13 +471,11 @@ class CBHApproach:
                 usable.append(rung)
 
         target_entry = None
+        target_via = None
         if _yes(_P["compare with ATcT"]):
-            try:
-                target_entry = tables.lookup(
-                    target, charge=charge, multiplicity=multiplicity
-                )
-            except (MissingEntry, AmbiguousEntry):
-                target_entry = None
+            target_entry, target_via = lookup_target(
+                tables, target, charge, multiplicity
+            )
 
         # Report the reactions
         lines = []
@@ -488,14 +502,13 @@ class CBHApproach:
             # methyl radical, CO): its rungs are trivial or need other species
             # that ATcT lacks, but its own value is the answer
             if target_entry is None:
-                try:
-                    target_entry = tables.lookup(
-                        target, charge=charge, multiplicity=multiplicity
-                    )
-                except (MissingEntry, AmbiguousEntry):
-                    target_entry = None
+                target_entry, target_via = lookup_target(
+                    tables, target, charge, multiplicity
+                )
             if target_entry is not None:
-                return self._reference_species_result(target, target_entry, tables)
+                return self._reference_species_result(
+                    target, target_entry, tables, via=target_via
+                )
             raise RuntimeError(
                 "No CBH rung has all its reference species in ATcT "
                 f"(ver. {tables.version}); see the reactions above."
@@ -1011,16 +1024,23 @@ class CBHApproach:
             ) from None
         return True
 
-    def _reference_species_result(self, target, entry, tables):
+    def _reference_species_result(self, target, entry, tables, via=None):
         """The result for a target that is itself a reference species: its ATcT
-        value, with nothing computed."""
+        value, with nothing computed. `via`: the ATcT SMILES it matched, when
+        ATcT writes another resonance form."""
         dfh0, dfh298 = entry["dfH0_0K"], entry["dfH0_298K"]
         u = 0.0 if entry["exact"] else (entry["uncertainty_298K"] or 0.0)
         label = f"target is a reference species (ATcT {entry['id']})"
         text = (
             f"\nNo rung gives a reaction for {target}, but the target is itself a "
-            f"reference species, ATcT {entry['id']} (ver. {tables.version}): "
+            f"reference species, ATcT {entry['id']} (ver. {tables.version}"
         )
+        if via is not None:
+            text += (
+                f", written {via}: the same species as {target}, another resonance "
+                "form"
+            )
+        text += "): "
         if dfh0 is not None:
             text += f"ΔfH°(0 K) = {dfh0:.2f} and "
         text += f"ΔfH°(298.15 K) = {dfh298:.2f} "
@@ -1792,7 +1812,9 @@ class CBHApproach:
         smiles = configuration.to_smiles(canonical=True, isomeric=True)
         _, q, radicals, _ = cbh._composition(smiles)
         unpaired = multiplicity - 1
-        if q != charge or unpaired < radicals or (unpaired - radicals) % 2 != 0:
+        # Fewer unpaired electrons than the SMILES shows is allowed: the structure's
+        # multiplicity wins (SiCl2 and BH are singlets, written as diradicals)
+        if q != charge or (unpaired - radicals) % 2 != 0:
             raise RuntimeError(
                 f"The SMILES of the structure, {smiles}, implies charge {q} and "
                 f"{radicals} unpaired electron(s), but the configuration has charge "
