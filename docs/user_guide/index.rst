@@ -156,11 +156,17 @@ Preset
     =========  ==========================  ==============================  ==========
     quick      r2SCAN-3c                   r2SCAN-3c                       up to CBH-2
     default    r2SCAN-3c                   revDSD-PBEP86-D4/def2-TZVPP     up to CBH-2
+    high       r2SCAN-3c                   CCSD(T)-F12/cc-pVTZ-F12         up to CBH-2
     custom     the Model Chemistry         as set below                    as set below
     =========  ==========================  ==============================  ==========
 
     The presets compute every species with ORCA, so they need no Model Chemistry step
-    before this one, and scale the ZPEs by 0.9899. Each uses the highest rung
+    before this one, and scale the ZPEs by 0.9899. ``quick`` and ``default`` are the
+    composite recipes ``SEAMM:CMP@r2SCAN-3c-HO`` and
+    ``SEAMM:CMP@revDSD-r2SCAN-3c-HO`` when the Composite step (composite-step) is
+    installed, and the results record the recipe, its version and its fingerprint;
+    the levels and the numbers are the same either way. A composite recipe may also
+    be the flowchart's model chemistry with ``custom``, for the CBH approach only. Each uses the highest rung
     available, at most CBH-2: CBH-3 is no more accurate (its error is dominated by
     the reference values), and *Include CBH-3* adds it only to the spread between
     the rungs. One r2SCAN-3c geometry and frequency calculation serves every
@@ -172,8 +178,23 @@ Preset
     is not available ``quick`` is much weaker: several kJ/mol at CBH-1, and 7 kJ/mol
     MAE on small aromatics, whose rings are kept whole so that CBH-2 is trivial.
     ``quick`` therefore warns when the highest rung is below CBH-2, and suggests
-    ``default``. (A ``high`` preset, CCSD(T)-F12/cc-pVTZ-F12 energies, about
-    1 kJ/mol, is to follow.)
+    ``default``.
+
+    ``high`` takes the energies from CCSD(T)-F12, about 1 kJ/mol, chosen for each
+    target:
+
+    * canonical CCSD(T)-F12D/RI with cc-pVTZ-F12 when the target has at most 546
+      basis functions (*Largest canonical F12 (basis functions)*; 546 fits in
+      96 GB of memory, and larger calculations need 200-330 GB);
+    * otherwise DLPNO-CCSD(T)-F12D (TightPNO, TCutPNO 1e-8), but only for
+      closed-shell molecules of H, C, N, O and F with no multiple or aromatic bonds
+      and no two bonded fluorinated carbons, as validated;
+    * otherwise no ``high`` result, with the reason, and the ``default`` result
+      instead.
+
+    The fragments follow the target's choice, so canonical and DLPNO energies are
+    never mixed in one reaction. ORCA has cc-pVTZ-F12 for H to Ar only. ``high``
+    needs orca-step 2026.11.11.1 or later.
 
 ZPE scale factor
     ``from the table`` (default): the factor for the geometry level, with its

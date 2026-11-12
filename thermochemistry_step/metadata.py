@@ -270,6 +270,45 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH high level": {
+        "description": (
+            "How the 'high' preset chose the energy level for this target "
+            "(canonical or DLPNO CCSD(T)-F12, or why there is no 'high' result)"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH high canonical limit": {
+        "description": (
+            "The largest canonical CCSD(T)-F12 the 'high' preset allowed (cc-pVTZ-F12 "
+            "basis functions)"
+        ),
+        "dimensionality": "scalar",
+        "type": "integer",
+        "format": "",
+    },
+    "CBH composite recipe": {
+        "description": (
+            "The composite method (SEAMM:CMP@<recipe>) whose geometry and energy "
+            "levels were used, if any"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH composite recipe version": {
+        "description": "The version of the composite recipe",
+        "dimensionality": "scalar",
+        "type": "integer",
+        "format": "",
+    },
+    "CBH composite recipe fingerprint": {
+        "description": "The fingerprint of the composite recipe (sha256)",
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "ZPE scale factor": {
         "description": "The factor the harmonic ZPEs were scaled by",
         "dimensionality": "scalar",

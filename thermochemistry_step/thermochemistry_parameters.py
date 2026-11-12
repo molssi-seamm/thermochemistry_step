@@ -122,17 +122,36 @@ class ThermochemistryParameters(seamm.Parameters):
             "default": "default",
             "kind": "enum",
             "default_units": "",
-            "enumeration": ("quick", "default", "custom"),
+            "enumeration": ("quick", "default", "high", "custom"),
             "format_string": "",
             "description": "Preset:",
             "help_text": (
-                "The levels of theory of the isodesmic (CBH) approach. Both presets "
+                "The levels of theory of the isodesmic (CBH) approach. The presets "
                 "optimize every species and compute its frequencies with r2SCAN-3c "
                 "(ZPE x 0.9899) and use the highest CBH rung available up to CBH-2: "
                 "'quick' takes the energies from r2SCAN-3c too, 'default' from "
                 "revDSD-PBEP86-D4/def2-TZVPP single points (about 2 kJ/mol RMS "
-                "against ATcT at CBH-2). 'custom' uses the flowchart's Model "
-                "Chemistry and the settings below."
+                "against ATcT at CBH-2), 'high' from CCSD(T)-F12/cc-pVTZ-F12: "
+                "canonical up to 546 basis functions, DLPNO (TightPNO, TCutPNO "
+                "1e-8) for larger closed-shell saturated molecules, and otherwise "
+                "no 'high' result (the default level is used, with the reason). "
+                "'custom' uses the flowchart's Model Chemistry and the settings "
+                "below."
+            ),
+        },
+        "maximum basis functions for canonical F12": {
+            "default": 546,
+            "kind": "integer",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Largest canonical F12 (basis functions):",
+            "help_text": (
+                "For the 'high' preset: the largest target, in cc-pVTZ-F12 basis "
+                "functions, computed with canonical CCSD(T)-F12. 546 fits in 96 GB; "
+                "with 200 GB nodes about 700 is possible. Larger closed-shell "
+                "saturated targets use DLPNO-CCSD(T)-F12, and others get no 'high' "
+                "result."
             ),
         },
         "include CBH-3": {

@@ -170,3 +170,139 @@ def test_rung_spread():
     spread, rungs = cbh_approach.rung_spread(results, [0, 1, 2, 3])
     assert rungs == [1, 2, 3] and spread == pytest.approx(1.5)  # CBH-0 left out
     assert cbh_approach.rung_spread(results, [0, 1]) == (None, [1])
+
+
+# -- the presets as composite recipes (composite_step) ------------------------------
+
+
+@pytest.mark.parametrize("name", ["quick", "default"])
+def test_presets_are_their_recipes(name):
+    """The spellings in PRESETS (the fallback without composite_step) are the
+    recipes' levels, and the recipes' ZPE factor is the table's."""
+    pytest.importorskip("composite_step")
+    from seamm_thermochemistry import zpe_scale_factor
+
+    recipe = cbh_approach.recipe_levels(cbh_approach.PRESETS[name]["recipe"])
+    assert recipe["geometry"] == cbh_approach.PRESETS[name]["geometry"]
+    assert recipe["energy"] == cbh_approach.PRESETS[name]["energy"]
+    assert recipe["zpe"][0] == zpe_scale_factor(recipe["geometry"]).factor
+
+
+def test_default_preset_records_its_recipe(preset):
+    pytest.importorskip("composite_step")
+    P = _preset(preset, "default")
+    preset.preset_model_chemistry(P)
+    data = preset.run_cbh(P)
+    assert data["CBH composite recipe"] == "SEAMM:CMP@revDSD-r2SCAN-3c-HO"
+    assert data["CBH composite recipe version"] == 1
+    assert data["CBH composite recipe fingerprint"].startswith("sha256:")
+    # The levels, which key the species' cached properties and the store, are
+    # the ordinary ones
+    assert data["CBH geometry level"] == R2SCAN and preset.model == R2SCAN
+    assert data["CBH energy level"] == REVDSD
+    assert "extrapolation" in data["ZPE scale factor source"]  # the table's
+
+
+def test_the_recipe_path_reproduces_the_preset_path(preset, monkeypatch):
+    """With and without composite_step the preset gives the same levels and the
+    same numbers: species cached or stored under the old presets are hit."""
+    pytest.importorskip("composite_step")
+    P = _preset(preset, "default")
+    preset.preset_model_chemistry(P)
+    with_recipe = preset.run_cbh(P)
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_composite(name, *args, **kwargs):
+        if name.startswith("composite_step"):
+            raise ImportError(name)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_composite)
+    preset.preset_model_chemistry(P)
+    assert preset._composite is None
+    without = preset.run_cbh(P)
+    recipe_keys = {k for k in with_recipe if k.startswith("CBH composite recipe")}
+    assert {k: v for k, v in with_recipe.items() if k not in recipe_keys} == without
+
+
+def test_composite_as_the_flowcharts_model_chemistry(node, monkeypatch):
+    pytest.importorskip("composite_step")
+    import seamm
+
+    monkeypatch.setattr(
+        node, "_resolve_model_chemistry", lambda text: {"level": text, "step": "X"}
+    )
+    monkeypatch.setattr(seamm, "flowchart_variables", object())  # a flowchart
+    variables = {
+        "_model_chemistry": {"level": "SEAMM:CMP@revDSD-r2SCAN-3c-HO", "step": "C"}
+    }
+    monkeypatch.setattr(node, "variable_exists", lambda name: name in variables)
+    monkeypatch.setattr(node, "get_variable", lambda name: variables[name])
+    mc = node.preset_model_chemistry({"preset": "custom"})
+    assert mc["level"] == R2SCAN
+    node.model = mc["level"]
+    energy = node._energy_level({"energy model chemistry": "the geometry level"})
+    assert energy["level"] == REVDSD
+    assert node._zpe_scale({"ZPE scale factor": "from the table"})[0] == 0.9899
+
+
+def test_composite_as_the_energy_level(node, monkeypatch):
+    pytest.importorskip("composite_step")
+    monkeypatch.setattr(
+        node, "_resolve_model_chemistry", lambda text: {"level": text, "step": "X"}
+    )
+    node._composite = None
+    node.model = "ORCA:DFT@PBE0-D4/def2-TZVP"
+    printed = []
+    monkeypatch.setattr(
+        cbh_approach.printer, "important", lambda t, *a, **k: printed.append(str(t))
+    )
+    energy = node._energy_level(
+        {"energy model chemistry": "SEAMM:CMP@revDSD-r2SCAN-3c-HO"}
+    )
+    assert energy["level"] == REVDSD
+    assert any("defined with geometries at" in " ".join(t.split()) for t in printed)
+
+
+def test_multi_component_recipes_are_refused(tmp_path):
+    pytest.importorskip("composite_step")
+    (tmp_path / "recipes").mkdir()
+    (tmp_path / "recipes" / "toy.yaml").write_text(
+        "recipe: toy\nversion: 1\ngeometry: {level: 'ORCA:CMP@R2SCAN-3C'}\n"
+        "components:\n  a: {level: 'ORCA:QC@MP2/def2-TZVP'}\n"
+        "  b: {level: 'ORCA:QC@MP2/def2-SVP'}\ncombine: |\n  E0 = a - b\n"
+    )
+    with pytest.raises(RuntimeError, match="combines several calculations"):
+        cbh_approach.recipe_levels("SEAMM:CMP@toy", data_path=[tmp_path])
+
+
+def test_high_preset_chooses_canonical_f12_for_a_small_target(preset):
+    from thermochemistry_step.high_level import CANONICAL
+
+    P = _preset(preset, "high")
+    assert preset.apply_preset(P)["energy model chemistry"] == cbh_approach.HIGH_ENERGY
+    preset.preset_model_chemistry(P)
+    data = preset.run_cbh(P)
+    assert FakeEvaluator.level == CANONICAL
+    assert data["CBH energy level"] == CANONICAL
+    assert data["CBH geometry level"] == R2SCAN
+    assert "canonical CCSD(T)-F12" in data["CBH high level"]
+    assert data["CBH high canonical limit"] == 546
+    assert "CBH composite recipe" not in data
+
+
+def test_high_preset_falls_back_to_default_with_the_reason(preset, monkeypatch):
+    from thermochemistry_step import high_level
+
+    monkeypatch.setattr(
+        high_level, "dlpno_problem", lambda smiles, multiplicity: "a test says so"
+    )
+    # The limit is a parameter: 10 basis functions makes every target too large
+    P = _preset(preset, "high", **{"maximum basis functions for canonical F12": 10})
+    data = preset.run_cbh(P)
+    assert data["CBH high canonical limit"] == 10
+    assert data["CBH energy level"] == REVDSD
+    assert "No 'high' result" in data["CBH high level"]
+    assert "a test says so" in data["CBH high level"]

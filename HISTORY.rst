@@ -1,6 +1,22 @@
 =======
 History
 =======
+2026.11.11.6 -- The 'high' preset (CCSD(T)-F12); presets as composite recipes
+    * The new ``high`` preset of the CBH approach takes the energies from CCSD(T)-F12
+      with cc-pVTZ-F12 on r2SCAN-3c geometries: canonical CCSD(T)-F12D/RI up to 546
+      basis functions (a parameter; 546 fits in 96 GB), and above that
+      DLPNO-CCSD(T)-F12D (TightPNO, TCutPNO 1e-8) for the closed-shell, saturated
+      H/C/N/O/F molecules it was validated on. Other targets get no ``high`` result,
+      with the reason, and the ``default`` preset's energies instead. The fragments
+      follow the target, so canonical and DLPNO energies are never mixed in one
+      reaction. Needs orca-step 2026.11.11.1 or later.
+    * With the Composite step (composite-step) installed, the ``quick`` and
+      ``default`` presets are the composite recipes ``SEAMM:CMP@r2SCAN-3c-HO`` and
+      ``SEAMM:CMP@revDSD-r2SCAN-3c-HO``, and the results record the recipe, its
+      version and its fingerprint. The levels and the numbers are unchanged. A
+      composite recipe may also be the flowchart's model chemistry for the CBH
+      approach.
+
 2026.11.11.5 -- Bugfix: CBH targets in another resonance form, and singlet diradicals
     * A target that ATcT writes as another resonance form is now found: SiO from a
       structure is [O+]#[Si-] but ATcT's is [Si]=O, and OBrO is [O][Br+][O-] against
