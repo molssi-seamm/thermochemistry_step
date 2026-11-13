@@ -201,7 +201,12 @@ def test_species_only(split, monkeypatch):
     assert split._computed == ["CCF"]
     # The target alone, once
     assert len(FakeEvaluator.calls) == 1 and len(FakeEvaluator.calls[0]) == 1
-    assert data == {"CBH energy level": "High:F12", "CBH geometry level": LOW}
+    assert data == {
+        "CBH energy level": "High:F12",
+        "CBH geometry level": LOW,
+        "CBH unconverged species": "",
+        "CBH changed fragments": "",
+    }
     assert "DfH 298K" not in data
     _, configuration = split.get_system_configuration()
     p = configuration.properties

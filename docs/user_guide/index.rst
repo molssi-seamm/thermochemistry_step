@@ -438,6 +438,18 @@ geometry. Slashes in a SMILES (double-bond stereo) become ``_`` and ``-`` in the
 file name. Species taken from the fragment store or from existing results are not
 written, since their structures are not computed here.
 
+Each computed species is checked after its optimization:
+
+* An optimization that has not converged in *Fragment max steps* continues from
+  where it stopped for as many steps again. One that still has not converged is
+  used, but listed in the result ``CBH unconverged species`` (empty when all
+  converged), marked ``optimization converged: no`` in its SDF file, and not added
+  to the fragment store.
+* A target whose bonds are no longer those of its SMILES after the optimization
+  (dimethyl sulfate falling apart to SO\ :sub:`2` and CH\ :sub:`3`\ OOCH\ :sub:`3`,
+  say) fails, since its energy would be that of other molecules. A fragment that
+  does so is used, listed in ``CBH changed fragments`` and not added to the store.
+
 Results
 =======
 

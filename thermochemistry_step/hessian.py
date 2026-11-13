@@ -76,6 +76,7 @@ class ModelChemistryHessian:
             return driver.optimize_and_energy(configuration, optimize, fmax, max_steps)
         finally:
             self._fingerprints = driver.fingerprints
+            self._last_optimization = getattr(driver, "last_optimization", None)
 
     def optimize_and_hessian(
         self, configuration, delta_bohr=0.01, optimize=True, fmax=0.005, max_steps=200
@@ -95,3 +96,4 @@ class ModelChemistryHessian:
             )
         finally:
             self._fingerprints = driver.fingerprints
+            self._last_optimization = getattr(driver, "last_optimization", None)

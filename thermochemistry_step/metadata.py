@@ -355,6 +355,24 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH unconverged species": {
+        "description": (
+            "The species (target or fragments) whose optimization did not converge, "
+            "even after continuing it; empty if none"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH changed fragments": {
+        "description": (
+            "The fragments whose structure (bonds) changed while they were "
+            "optimized; empty if none"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "CBH energy level": {
         "description": "The model chemistry of the species' energies",
         "dimensionality": "scalar",
