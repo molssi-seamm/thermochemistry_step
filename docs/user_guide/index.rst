@@ -340,7 +340,11 @@ Fragment store
     the step computes are added to the store at once, so later iterations of a
     Loop and later jobs find them; the output lists what was added and anything
     refused (a structure that rearranged while it was optimized, one with an
-    imaginary mode). They are added only when the store is on a local disk of
+    imaginary mode), and names each computed species that was not added, with
+    the reason. Without thermal corrections (MOPAC's enthalpy of formation as
+    the enthalpy) only the energy is stored, with no ZPE or enthalpy, so a run
+    with harmonic thermal corrections at the same level computes its own. They
+    are added only when the store is on a local disk of
     the machine running the job. Otherwise the job is marked, and is harvested
     into the store when it returns to its JobServer (or by hand with
     ``seamm-thermochemistry-fragments harvest``).

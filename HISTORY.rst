@@ -1,6 +1,16 @@
 =======
 History
 =======
+2026.11.13.1 -- Bugfix: species computed without thermal corrections were not added to the fragment store
+    * With "thermal corrections: none" (MOPAC's enthalpy of formation taken as the
+      enthalpy) the species the step computed were never added to the fragment
+      store, so every iteration of a Loop computed all of its fragments again. Their
+      energies are now stored, with no ZPE or enthalpy, and are reused by later
+      species, iterations and jobs at the same level.
+    * The fragment-store summary counts the species records too, and names each
+      computed species that was not added, with the reason.
+    * Needs seamm-thermochemistry 2026.11.13.1.
+
 2026.11.13 -- Per-frequency corrections of the harmonic frequencies (PM7)
     * New: "Frequency correction" corrects each harmonic frequency before the ZPE,
       H(T) - H(0), S and Cp, for a level that has a correction: so far PM7
