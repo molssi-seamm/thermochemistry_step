@@ -667,15 +667,22 @@ class CBHApproach:
                     )
                     sources[can] = "properties"
         else:
-            energies[target] = self._compute_species(
-                _P,
-                target,
-                smiles,
-                target_system,
-                target_configuration,
-                embed=str(_P.get("target conformer", "as given")).startswith("lowest"),
+            embed = str(_P.get("target conformer", "as given")).startswith("lowest")
+            reused = self._target_from_store(
+                _P, store, target, smiles, target_configuration, embed
             )
-            sources[target] = "computed"
+            if reused is not None:
+                energies[target], sources[target] = reused
+            else:
+                energies[target] = self._compute_species(
+                    _P,
+                    target,
+                    smiles,
+                    target_system,
+                    target_configuration,
+                    embed=embed,
+                )
+                sources[target] = "computed"
             for can, generated in fragments.items():
                 # Already computed in this job (e.g. by an earlier iteration of a
                 # Loop), with the fingerprints expected for it?
@@ -1942,6 +1949,121 @@ class CBHApproach:
             raise ValueError(availability_problem(text, available, periodic=False))
         return mc
 
+    def _target_from_store(self, _P, store, target, smiles, configuration, embed):
+        """The target's energies from the fragment store's geometry table, when
+        it holds the very structure this target starts from (see
+        :func:`match_structure`), as ({"E", "ZPE", "H0", "H298"}, source); the
+        target's coordinates become the stored ones. None to compute it."""
+        if store is None or configuration is None:
+            return None
+        if _P.get("reuse stored target", "if the structure matches") == "never":
+            return None
+        if _P.get("thermal corrections", "harmonic") != "harmonic":
+            return None
+        if _P.get("cbh energies", "").startswith("existing"):
+            return None
+        if configuration.n_atoms < 2:
+            return None
+        if embed:
+            self._embed_lowest(
+                configuration, smiles, int(_P.get("conformer embeddings", 20))
+            )
+        # Before anything is computed neither the Hessian's route nor the
+        # program's version is known: predict the fingerprints of either route
+        # (analytic, or finite differences of the energy's) with this run's
+        # version, or else with each version the store has the target at, so a
+        # stored row is taken only with exactly the settings this run would use
+        mc = self._geometry_mc()
+        versions = [getattr(self, "_fingerprint_version", None)]
+        if not versions[0]:
+            versions = sorted(_stored_versions(store, target))
+        frequency_fingerprints = []
+        for version in versions:
+            for kind in ("hessian", "energy"):
+                got = self._expected_fingerprints(
+                    configuration, mc, kind, version=version
+                )
+                frequency_fingerprints += [
+                    self._corrected_fingerprint(fp) for fp in (got or [])
+                ]
+        if not frequency_fingerprints:
+            return None  # the settings cannot be checked: compute it
+        try:
+            rows = store.geometries(
+                target,
+                charge=cbh_charge(target),
+                multiplicity=cbh_multiplicity(target),
+                frequency_fingerprint=frequency_fingerprints,
+                model_chemistry=self.model,
+            )
+        except Exception as e:  # never fail the target over the lookup
+            logger.warning(f"Looking up the target {target} in the store failed: {e}")
+            return None
+        symbols = list(configuration.atoms.symbols)
+        start = np.asarray(configuration.atoms.get_coordinates(fractionals=False))
+        best = None
+        reasons = []
+        for row in rows:
+            if row["E"] is None or row["ZPE"] is None or row["H"] is None:
+                continue
+            if row.get("T") not in (None, T_REF):
+                continue
+            ok, rmsd, why = match_structure(
+                symbols, start, list(row["symbols"]), row["coordinates"]
+            )
+            if not ok:
+                reasons.append(why)
+                continue
+            if best is None or rmsd < best[1]:
+                best = (row, rmsd)
+        if best is None:
+            if reasons:
+                printer.important(
+                    __(
+                        f"\nThe fragment store has the target {target} at this level, "
+                        "but not this structure ("
+                        + "; ".join(sorted(set(reasons)))
+                        + "), so it is computed.",
+                        indent=4 * " ",
+                        wrap=True,
+                        dedent=False,
+                    )
+                )
+            return None
+        row, rmsd = best
+        if not getattr(self, "_fingerprint_version", None) and row.get("version"):
+            # This run's calculations must be of the same version (checked in
+            # _store_fingerprints)
+            self._fingerprint_version = row["version"]
+            self._assumed_version = row["version"]
+        configuration.atoms.set_coordinates(
+            np.asarray(row["coordinates"], dtype=float), fractionals=False
+        )
+        if not hasattr(self, "_store_layer"):
+            self._store_layer = {}
+        self._store_layer[target] = row.get("layer", "local")
+        result = {
+            "E": row["E"],
+            "ZPE": row["ZPE"],
+            "H0": row["E"] + row["ZPE"],
+            "H298": row["H"],
+        }
+        source = (
+            f"{self._store_source(store, row)}; the input structure "
+            f"(heavy-atom RMSD {rmsd:.3f} Å)"
+        )
+        printer.important(
+            __(
+                f"\nThe target {target}: geometry and frequencies from the fragment "
+                f"store, whose structure is this target's (the same atoms, order and "
+                f"bonds; heavy-atom RMSD {rmsd:.3f} Å to the input structure).",
+                indent=4 * " ",
+                wrap=True,
+                dedent=False,
+            )
+        )
+        return result, source
+
     def _geometry_from_store(self, store, can):
         """A species' geometry, ZPE and H(298.15 K) at the geometry level from the
         fragment store's geometry table (the lowest conformer at that level), as
@@ -2616,6 +2738,7 @@ class CBHApproach:
         self._settings_fingerprint = None
         self._frequency_fingerprint = None
         self._fingerprint_version = None
+        self._assumed_version = None
         self._hessian_how = None
 
     def _geometry_mc(self):
@@ -2870,6 +2993,15 @@ class CBHApproach:
         if not records:
             return
         energy = records.get("energy")
+        assumed = getattr(self, "_assumed_version", None)
+        if assumed and energy and energy.get("version"):
+            if _major_minor(energy["version"]) != _major_minor(assumed):
+                raise RuntimeError(
+                    f"The target was taken from the fragment store, computed with "
+                    f"version {assumed} of the program, but this run's calculations "
+                    f"are with version {energy['version']}. Set 'Reuse a stored "
+                    "target' to 'never' to compute it with this version."
+                )
         if energy and energy.get("fingerprint"):
             if not getattr(self, "_settings_fingerprint", None):
                 self._settings_fingerprint = energy["fingerprint"]
@@ -3318,6 +3450,93 @@ def species_only(P):
     return str(P.get("cbh calculation", "enthalpy of formation")).startswith(
         "the species only"
     )
+
+
+#: The largest heavy-atom RMSD (Å) between a target's starting structure and a
+#: stored geometry for the stored one to be taken as this target's (the same
+#: conformer optimized: typically 0.01-0.1 Å from another level's structure)
+TARGET_MATCH_RMSD = 0.3
+
+
+def match_structure(symbols, start, stored_symbols, stored, max_rmsd=TARGET_MATCH_RMSD):
+    """Whether a stored geometry is the given structure optimized: (ok, heavy-atom
+    RMSD in Å, reason when not).
+
+    Strict on purpose: the same atoms in the same order, the same bonds (perceived
+    from each geometry, atom by atom), and the heavy atoms within `max_rmsd` of
+    each other after the best rotation and translation, with no reflection, so a
+    different conformer, diastereomer or arrangement of the enantiomer is never
+    taken."""
+    if list(symbols) != list(stored_symbols):
+        return False, None, "other atoms or atom order"
+    a = np.asarray(start, dtype=float).reshape(-1, 3)
+    b = np.asarray(stored, dtype=float).reshape(-1, 3)
+    try:
+        from seamm_thermochemistry.fragment_store import _perceive
+
+        bonds = []
+        for xyz in (a, b):
+            mol = _perceive(symbols, xyz)
+            if mol is None:
+                return False, None, "bonds could not be perceived"
+            bonds.append(
+                {
+                    tuple(sorted((bd.GetBeginAtomIdx(), bd.GetEndAtomIdx())))
+                    for bd in mol.GetBonds()
+                }
+            )
+    except ImportError:  # pragma: no cover - RDKit missing: no reuse
+        return False, None, "no RDKit to compare the bonds"
+    if bonds[0] != bonds[1]:
+        return False, None, "other bonds"
+    heavy = [i for i, s in enumerate(symbols) if s != "H"] or list(range(len(a)))
+    rmsd = kabsch_rmsd(a[heavy], b[heavy])
+    if rmsd > max_rmsd:
+        return False, rmsd, f"heavy-atom RMSD {rmsd:.2f} Å, another conformer"
+    return True, rmsd, None
+
+
+def kabsch_rmsd(a, b):
+    """The RMSD of two sets of points after the best proper rotation and
+    translation (no reflection)."""
+    a = np.asarray(a, dtype=float) - np.mean(a, axis=0)
+    b = np.asarray(b, dtype=float) - np.mean(b, axis=0)
+    if len(a) < 2:
+        return 0.0
+    h = a.T @ b
+    u, _, vt = np.linalg.svd(h)
+    d = np.sign(np.linalg.det(vt.T @ u.T)) or 1.0
+    rotation = vt.T @ np.diag([1.0, 1.0, d]) @ u.T
+    diff = (rotation @ a.T).T - b
+    return float(np.sqrt((diff**2).sum() / len(a)))
+
+
+def _stored_versions(store, species):
+    """The program versions of the verified geometries of a species in the
+    store's layers."""
+    layers = (
+        [layer for _, layer in store._layers()]
+        if hasattr(store, "_layers")
+        else [store]
+    )
+    versions = set()
+    for layer in layers:
+        try:
+            db = layer._connect()
+            for (version,) in db.execute(
+                "SELECT DISTINCT version FROM geometry WHERE species = ? AND "
+                "verified = 1",
+                (species,),
+            ):
+                if version:
+                    versions.add(version)
+        except Exception:  # a layer without the file or the table
+            continue
+    return versions
+
+
+def _major_minor(version):
+    return ".".join(str(version or "").split(".")[:2])
 
 
 def _merge_counts(total, part):

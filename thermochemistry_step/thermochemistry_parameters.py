@@ -295,6 +295,23 @@ class ThermochemistryParameters(seamm.Parameters):
                 "optimization (a single embedding of a long chain is often gauche)."
             ),
         },
+        "reuse stored target": {
+            "default": "if the structure matches",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("if the structure matches", "never"),
+            "format_string": "",
+            "description": "Reuse a stored target:",
+            "help_text": (
+                "Take the target's geometry, ZPE and enthalpy from the fragment "
+                "store instead of computing it, when the store has it at this "
+                "geometry level and its stored structure is the one this target "
+                "starts from: the same atoms in the same order, the same bonds, and "
+                "the heavy atoms within 0.3 Å RMSD after superposition (no "
+                "mirroring), so another conformer or stereoisomer is never taken. "
+                "Or always compute the target."
+            ),
+        },
         "optimize fragments": {
             "default": "yes",
             "kind": "boolean",

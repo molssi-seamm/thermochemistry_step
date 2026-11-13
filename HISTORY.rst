@@ -1,6 +1,16 @@
 =======
 History
 =======
+2026.11.13.3 -- A target already in the fragment store is reused
+    * The CBH approach computed the target every time, even when the fragment store
+      held it. Now, with "Reuse a stored target" ("if the structure matches", the
+      default), the target's geometry, ZPE and enthalpy come from the store when the
+      stored structure is the one the target starts from: the same atoms in the same
+      order, the same bonds, and the heavy atoms within 0.3 Å RMSD after
+      superposition, with no mirroring, so another conformer or stereoisomer is never
+      used. The output gives the RMSD; a stored target that does not match is
+      reported and the target is computed.
+
 2026.11.13.2 -- Unconverged and broken species are flagged; the geometry-level (quick) result too
     * An optimization of a species that has not converged in "Fragment max steps"
       now continues for as many steps again. If it still has not converged, the

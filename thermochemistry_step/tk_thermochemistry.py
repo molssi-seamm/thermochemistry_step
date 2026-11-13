@@ -390,6 +390,8 @@ class TkThermochemistry(seamm.TkNode):
                 "target conformer"
             ].get().startswith("lowest"):
                 keys.append("conformer embeddings")
+            if harmonic and not self["fragment store"].get().startswith("ignore"):
+                keys.append("reuse stored target")
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]

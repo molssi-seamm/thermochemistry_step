@@ -371,6 +371,16 @@ Fragment store
     the settings fingerprints of each species' calculations are stored with its
     energies, so the harvest files verified records.
 
+    The target, too, is taken from the store (*Reuse a stored target*, ``if the
+    structure matches`` by default) when the store has it at this geometry level
+    and the stored structure is the one the target starts from: the same atoms in
+    the same order, the same bonds, and the heavy atoms within 0.3 Å RMSD after
+    the best superposition, with no mirroring, so another conformer or stereoisomer
+    is never taken. The output gives the RMSD, and the target's coordinates become
+    the stored ones; its energy at another energy level is then looked up in the
+    store or computed on that geometry. A stored target that does not match is
+    reported, and the target is computed. ``never`` always computes it.
+
     Before the store, a fragment already computed in the same job -- by an
     earlier iteration of a Loop over many targets, say -- is taken from the
     job's own database ("job" in the species table), when it was computed with
