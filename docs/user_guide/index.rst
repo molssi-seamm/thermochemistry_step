@@ -186,6 +186,17 @@ Preset
     preset, so a species stored in the fragment store at one preset is not
     recomputed for another; only its energy is.
 
+    When the energies are at another level than the geometries (``default``,
+    ``high``, or ``custom`` with an energy level), the step also gives the same
+    reactions at the geometry level alone: each species' r2SCAN-3c energy with the
+    same thermal corrections and reference values. That is the ``quick`` result,
+    so a ``default`` run need not be repeated with ``quick``. The output prints its
+    rung table after the main one, and the results ``DfH 0K (geometry level)``,
+    ``DfH 298K (geometry level)``, ``DfH uncertainty (geometry level)`` and
+    ``CBH rung spread (geometry level)`` hold it, with ``CBH geometry level
+    preset`` naming the preset it equals (``quick``, or empty for other geometry
+    levels).
+
     On 46 molecules against ATcT or vetted reference values at CBH-2, ``default``
     has an RMS error of about 2.1 kJ/mol and ``quick`` about 2.2, but where CBH-2
     is not available ``quick`` is much weaker: several kJ/mol at CBH-1, and 7 kJ/mol

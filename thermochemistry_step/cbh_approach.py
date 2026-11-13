@@ -912,6 +912,14 @@ class CBHApproach:
                 }
             )
 
+        # The same reactions at the geometry level, when the energies are at
+        # another level: E(geometry level) + the same thermal parts. With the
+        # same references this is the result of a run at the geometry level
+        # alone (the 'quick' preset for r2SCAN-3c geometries)
+        geometry_results = self._geometry_level_results(
+            usable, reactions, energies, ref_value
+        )
+
         # Print the species and the results
         species_rows = []
         for can in [target] + list(fragments):
@@ -1022,6 +1030,10 @@ class CBHApproach:
             colalign=("left",) + ("decimal",) * (len(headers) - 1),
         )
         text += "\n"
+        if geometry_results:
+            text += self._geometry_level_text(
+                geometry_results, results, usable, target_entry
+            )
         if target_entry is not None:
             unc = (
                 "exact"
@@ -1176,6 +1188,21 @@ class CBHApproach:
             data["DfH 298K"] = best["DfH 298.15 K"]
         data["DfH uncertainty"] = best["uncertainty"]
         data["DfH uncertainty method"] = best["uncertainty method"]
+        if geometry_results:
+            geometry_best = geometry_results.get(best["rung"], {})
+            data["CBH geometry level preset"] = self._geometry_level_preset() or ""
+            if "DfH 0 K" in geometry_best:
+                data["DfH 0K (geometry level)"] = geometry_best["DfH 0 K"]
+            if "DfH 298.15 K" in geometry_best:
+                data["DfH 298K (geometry level)"] = geometry_best["DfH 298.15 K"]
+            data["DfH uncertainty (geometry level)"] = best["uncertainty"]
+            geometry_spread, _ = rung_spread(
+                geometry_results, [r for r in usable if r in geometry_results]
+            )
+            if geometry_spread is not None:
+                data["CBH rung spread (geometry level)"] = geometry_spread
+            for rung, r in geometry_results.items():
+                results[rung]["geometry level"] = dict(r)
         data["ATcT version"] = tables.version
         if resolver is not None:
             best_refs = {
@@ -2928,6 +2955,101 @@ class CBHApproach:
         if not optimize or status is None:
             return result, None
         return result, bool(status.get("converged", True))
+
+    @staticmethod
+    def _geometry_level_results(usable, reactions, energies, ref_value):
+        """{rung: {"DrH 0 K", "DfH 0 K", "DrH 298.15 K", "DfH 298.15 K"}} at the
+        geometry level, or {} when the energies are at the geometry level.
+
+        Each species' enthalpy is its geometry-level energy plus the same thermal
+        part (ZPE, H - E, scaled as at the energy level), and the reference
+        values are the same, so this is what a run at the geometry level alone
+        gives."""
+        if not any("E geometry level" in e for e in energies.values()):
+            return {}
+        results = {}
+        for rung in usable:
+            reaction = reactions[rung]
+            species = reaction.coefficients
+            if not all("E geometry level" in energies[s] for s in species):
+                continue
+            result = {}
+            for key, label in (("H0", "0 K"), ("H298", "298.15 K")):
+                if not all(key in energies[s] and "E" in energies[s] for s in species):
+                    continue
+                drH = sum(
+                    c
+                    * (
+                        energies[s]["E geometry level"]
+                        + energies[s][key]
+                        - energies[s]["E"]
+                    )
+                    for s, c in species.items()
+                )
+                column = "dfH0_0K" if key == "H0" else "dfH0_298K"
+                values = {s: ref_value(s, column) for s in reaction.references}
+                if any(v is None for v in values.values()):
+                    continue
+                ref = sum(c * values[s] for s, c in reaction.references.items())
+                result[f"DrH {label}"] = drH
+                result[f"DfH {label}"] = ref - drH
+            if result:
+                results[rung] = result
+        return results
+
+    def _geometry_level_preset(self):
+        """The preset whose result the geometry level's is ('quick' for
+        r2SCAN-3c geometries), or None."""
+        for name, levels in PRESETS.items():
+            if levels.get("energy") is None and levels.get("geometry") == self.model:
+                return name
+        return None
+
+    def _geometry_level_text(self, geometry_results, results, usable, target_entry):
+        """The table of the results at the geometry level."""
+        rows = []
+        for rung in usable:
+            r = geometry_results.get(rung)
+            if r is None:
+                continue
+            row = [f"CBH-{rung}"]
+            for key in ("DrH 0 K", "DfH 0 K", "DrH 298.15 K", "DfH 298.15 K"):
+                row.append(f"{r[key]:.2f}" if key in r else "")
+            row.append(f"{results[rung]['uncertainty']:.2f}")
+            if target_entry is not None:
+                for key, column in (
+                    ("DfH 0 K", "dfH0_0K"),
+                    ("DfH 298.15 K", "dfH0_298K"),
+                ):
+                    if key in r and target_entry[column] is not None:
+                        row.append(f"{r[key] - target_entry[column]:+.2f}")
+                    else:
+                        row.append("")
+            rows.append(row)
+        headers = [
+            "Rung",
+            "ΔrH(0 K)",
+            "ΔfH°(0 K)",
+            "ΔrH(298.15 K)",
+            "ΔfH°(298.15 K)",
+            "± ref (95%)",
+        ]
+        if target_entry is not None:
+            headers += ["Δ vs ATcT (0 K)", "Δ vs ATcT (298.15 K)"]
+        preset = self._geometry_level_preset()
+        same = f", the result of the '{preset}' preset" if preset else ""
+        text = (
+            f"\nThe same reactions at the geometry level alone ({self.model}"
+            f"{same}; kJ/mol):\n"
+        )
+        text += tabulate(
+            rows,
+            headers=headers,
+            tablefmt="rounded_outline",
+            disable_numparse=True,
+            colalign=("left",) + ("decimal",) * (len(headers) - 1),
+        )
+        return text + "\n"
 
     @staticmethod
     def _storable(can, result):

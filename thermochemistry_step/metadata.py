@@ -355,6 +355,57 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "DfH 0K (geometry level)": {
+        "description": (
+            "The enthalpy of formation at 0 K from the same reactions with the "
+            "energies at the geometry level (e.g. the 'quick' result of a default "
+            "run); only when the energies are at another level"
+        ),
+        "dimensionality": "scalar",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "DfH 298K (geometry level)": {
+        "description": (
+            "The enthalpy of formation at 298.15 K from the same reactions with the "
+            "energies at the geometry level (e.g. the 'quick' result of a default "
+            "run); only when the energies are at another level"
+        ),
+        "dimensionality": "scalar",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "DfH uncertainty (geometry level)": {
+        "description": (
+            "The 95 % uncertainty of the reference part of the geometry-level "
+            "enthalpy of formation (the same references as the main result)"
+        ),
+        "dimensionality": "scalar",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "CBH rung spread (geometry level)": {
+        "description": (
+            "The range of the geometry-level enthalpy of formation at 298.15 K over "
+            "the CBH rungs from CBH-1 up"
+        ),
+        "dimensionality": "scalar",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
+    "CBH geometry level preset": {
+        "description": (
+            "The preset whose result the geometry-level one is (e.g. 'quick'), or "
+            "empty"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "CBH unconverged species": {
         "description": (
             "The species (target or fragments) whose optimization did not converge, "
