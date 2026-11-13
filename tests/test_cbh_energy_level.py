@@ -201,7 +201,12 @@ def test_species_only(split, monkeypatch):
     assert split._computed == ["CCF"]
     # The target alone, once
     assert len(FakeEvaluator.calls) == 1 and len(FakeEvaluator.calls[0]) == 1
-    assert data == {"CBH energy level": "High:F12", "CBH geometry level": LOW}
+    assert data == {
+        "CBH energy level": "High:F12",
+        "CBH geometry level": LOW,
+        "CBH unconverged species": "",
+        "CBH changed fragments": "",
+    }
     assert "DfH 298K" not in data
     _, configuration = split.get_system_configuration()
     p = configuration.properties
@@ -236,3 +241,30 @@ def test_species_only_description(split):
         }
     )
     assert "No CBH reactions" in text and PRESETS["default"]["energy"] in text
+
+
+def test_the_geometry_level_result_is_also_reported(split, monkeypatch):
+    """A run with the energies at another level also reports the same reactions
+    at the geometry level, identical to a run at the geometry level alone (a
+    default run gives the quick result too)."""
+    both = split.run_cbh(_computed(split))
+    assert both["DfH 298K"] == pytest.approx(-244.947 - 2.0, abs=1e-6)
+    monkeypatch.setattr(split, "_energy_level", lambda P: None)
+    alone = split.run_cbh(
+        _computed(split, **{"energy model chemistry": "the geometry level"})
+    )
+    for key in ("DfH 298K", "DfH 0K", "DfH uncertainty"):
+        assert both[f"{key} (geometry level)"] == pytest.approx(alone[key], abs=1e-6)
+    assert "DfH 298K (geometry level)" not in alone
+    assert both["CBH geometry level preset"] == ""  # LOW is no preset's level
+    for rung, r in both["CBH results"].items():
+        assert r["geometry level"]["DfH 298.15 K"] == pytest.approx(
+            alone["CBH results"][rung]["DfH 298.15 K"], abs=1e-6
+        )
+
+
+def test_which_preset_the_geometry_level_is(node):
+    node.model = "ORCA:CMP@R2SCAN-3C"
+    assert node._geometry_level_preset() == "quick"
+    node.model = "ORCA:DFT@B3LYP/def2-TZVP"
+    assert node._geometry_level_preset() is None

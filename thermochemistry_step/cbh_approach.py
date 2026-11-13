@@ -745,6 +745,8 @@ class CBHApproach:
             for can in [target] + list(fragments):
                 if "computed" not in sources.get(can, ""):
                     continue
+                if not self._storable(can, energies.get(can)):
+                    continue
                 configuration = configurations.get(can)
                 if configuration is None:
                     configuration = self._find_fragment(system_db, can)
@@ -910,6 +912,14 @@ class CBHApproach:
                 }
             )
 
+        # The same reactions at the geometry level, when the energies are at
+        # another level: E(geometry level) + the same thermal parts. With the
+        # same references this is the result of a run at the geometry level
+        # alone (the 'quick' preset for r2SCAN-3c geometries)
+        geometry_results = self._geometry_level_results(
+            usable, reactions, energies, ref_value
+        )
+
         # Print the species and the results
         species_rows = []
         for can in [target] + list(fragments):
@@ -1020,6 +1030,10 @@ class CBHApproach:
             colalign=("left",) + ("decimal",) * (len(headers) - 1),
         )
         text += "\n"
+        if geometry_results:
+            text += self._geometry_level_text(
+                geometry_results, results, usable, target_entry
+            )
         if target_entry is not None:
             unc = (
                 "exact"
@@ -1167,12 +1181,28 @@ class CBHApproach:
             data["CBH high canonical limit"] = int(self._high_max_bf)
         data["CBH rung"] = best["rung"]
         data["CBH reaction"] = best["reaction"]
+        data.update(self._flags(energies))
         if "DfH 0 K" in best:
             data["DfH 0K"] = best["DfH 0 K"]
         if "DfH 298.15 K" in best:
             data["DfH 298K"] = best["DfH 298.15 K"]
         data["DfH uncertainty"] = best["uncertainty"]
         data["DfH uncertainty method"] = best["uncertainty method"]
+        if geometry_results:
+            geometry_best = geometry_results.get(best["rung"], {})
+            data["CBH geometry level preset"] = self._geometry_level_preset() or ""
+            if "DfH 0 K" in geometry_best:
+                data["DfH 0K (geometry level)"] = geometry_best["DfH 0 K"]
+            if "DfH 298.15 K" in geometry_best:
+                data["DfH 298K (geometry level)"] = geometry_best["DfH 298.15 K"]
+            data["DfH uncertainty (geometry level)"] = best["uncertainty"]
+            geometry_spread, _ = rung_spread(
+                geometry_results, [r for r in usable if r in geometry_results]
+            )
+            if geometry_spread is not None:
+                data["CBH rung spread (geometry level)"] = geometry_spread
+            for rung, r in geometry_results.items():
+                results[rung]["geometry level"] = dict(r)
         data["ATcT version"] = tables.version
         if resolver is not None:
             best_refs = {
@@ -1419,7 +1449,8 @@ class CBHApproach:
                 sources,
             )
         self._report_store_notes(store)
-        self._write_back(_P, {target: configuration})
+        if self._storable(target, energies.get(target)):
+            self._write_back(_P, {target: configuration})
         system_db = self.get_variable("_system_db")
         system_db.system = system
         system.configuration = configuration
@@ -1457,6 +1488,7 @@ class CBHApproach:
                 energy_mc["level"] if energy_mc is not None else self.model
             ),
             "CBH geometry level": self.model,
+            **self._flags(energies),
         }
         composite = getattr(self, "_composite", None)
         if composite is not None:
@@ -2092,8 +2124,9 @@ class CBHApproach:
                 combined["H0"] = E + low["ZPE"]
             if "H298" in low:
                 combined["H298"] = E + (low["H298"] - low["E"])
-            if "imaginary" in low:
-                combined["imaginary"] = low["imaginary"]
+            for flag in ("imaginary", "converged", "broken"):
+                if flag in low:
+                    combined[flag] = low[flag]
             energies[can] = combined
             sources[can] = f"{sources.get(can, '')}; energy {how}".lstrip("; ")
             if how == "computed":
@@ -2205,8 +2238,9 @@ class CBHApproach:
                 combined["H0"] = E + low["ZPE"]
             if "H298" in low:
                 combined["H298"] = E + (low["H298"] - low["E"])
-            if "imaginary" in low:
-                combined["imaginary"] = low["imaginary"]
+            for flag in ("imaginary", "converged", "broken"):
+                if flag in low:
+                    combined[flag] = low[flag]
             energies[can] = combined
             hows = ", ".join(
                 f"{source} {c['how']}" for source, c in composite["components"].items()
@@ -2365,8 +2399,9 @@ class CBHApproach:
                 result = {"H298": E, "E": E}
                 self._store_species_energy(configuration, E)
             else:
+                converged = None
                 if _yes(_P["optimize fragments"]) and configuration.n_atoms > 1:
-                    self._optimize(configuration, _P)
+                    converged = self._optimize(configuration, _P, can)
                 self._XYZ0 = np.array(
                     configuration.atoms.get_coordinates(fractionals=False)
                 )
@@ -2393,6 +2428,8 @@ class CBHApproach:
                     "H298": E + data["H thermal"][0][0],
                 }
                 result["imaginary"] = data.get("N saddle modes", 0)
+                if converged is not None:
+                    result["converged"] = converged
                 # Keep them on the configuration for "existing results" runs
                 self._store_species_properties(configuration, data)
         finally:
@@ -2402,6 +2439,8 @@ class CBHApproach:
         except Exception as e:
             # Diagnostic output: it must never fail the species
             logger.warning(f"Could not write the structure of {can}: {e}")
+        # After the structure is written, so a broken one can be looked at
+        self._check_species(can, configuration, result)
         return result
 
     def _species_directory(self):
@@ -2445,6 +2484,8 @@ class CBHApproach:
                 fields[title] = f"{value:.3f}"
         if "imaginary" in result:
             fields["imaginary modes"] = str(result["imaginary"])
+        if "converged" in result:
+            fields["optimization converged"] = "yes" if result["converged"] else "no"
         body = text.rstrip()
         if body.endswith("$$$$"):
             body = body[: -len("$$$$")].rstrip()
@@ -2475,12 +2516,17 @@ class CBHApproach:
     def _compute_species_mc(self, _P, can, configuration):
         """One species through the Model Chemistry: energy only, or optimize
         + Hessian + harmonic thermochemistry."""
+        optimize = _yes(_P["optimize fragments"])
+        steps = int(_P["fragment max steps"])
+        fmax = _P["fragment convergence"].m_as("eV/Å")
         if _P["thermal corrections"] != "harmonic":
-            E = self.optimize_and_energy(
-                configuration,
-                optimize=(_yes(_P["optimize fragments"])),
-                fmax=_P["fragment convergence"].m_as("eV/Å"),
-                max_steps=int(_P["fragment max steps"]),
+            E, converged = self._run_optimization(
+                can,
+                lambda: self.optimize_and_energy(
+                    configuration, optimize=optimize, fmax=fmax, max_steps=steps
+                ),
+                optimize,
+                steps,
             )
             printer.important(
                 __(
@@ -2492,14 +2538,18 @@ class CBHApproach:
             )
             self._store_species_energy(configuration, E)
             self._store_fingerprints(configuration, None, can)
-            return {"H298": E, "E": E}
+            result = {"H298": E, "E": E}
+            if converged is not None:
+                result["converged"] = converged
+            return result
         delta_bohr = Q_(_P["step size"].m_as("Å"), "Å").m_as("bohr")
-        E0, hessian, how = self.optimize_and_hessian(
-            configuration,
-            delta_bohr,
-            optimize=(_yes(_P["optimize fragments"])),
-            fmax=_P["fragment convergence"].m_as("eV/Å"),
-            max_steps=int(_P["fragment max steps"]),
+        (E0, hessian, how), converged = self._run_optimization(
+            can,
+            lambda: self.optimize_and_hessian(
+                configuration, delta_bohr, optimize=optimize, fmax=fmax, max_steps=steps
+            ),
+            optimize,
+            steps,
         )
         from ase.vibrations import VibrationsData
 
@@ -2522,6 +2572,8 @@ class CBHApproach:
             "H298": E + data["H thermal"][0][0],
             "imaginary": data.get("N saddle modes", 0),
         }
+        if converged is not None:
+            result["converged"] = converged
         self._store_species_properties(configuration, data)
         self._store_fingerprints(configuration, how, can)
         return result
@@ -2860,22 +2912,235 @@ class CBHApproach:
                     properties.add(full, kind, units=None, description=name)
                 properties.put(full, value)
 
-    def _optimize(self, configuration, _P):
-        """Optimize the structure with ASE's BFGS through the subflowchart."""
+    def _optimize(self, configuration, _P, can="the species"):
+        """Optimize the structure with ASE's BFGS through the subflowchart,
+        continuing once for as many steps again if it has not converged.
+        Returns whether it converged."""
         from ase.optimize import BFGS
 
         atoms = self.ase_atoms(configuration)
         fmax = _P["fragment convergence"].m_as("eV/Å")
-        optimizer = BFGS(atoms, logfile=None)
-        converged = optimizer.run(fmax=fmax, steps=int(_P["fragment max steps"]))
-        configuration.atoms.set_coordinates(atoms.positions, fractionals=False)
+        steps = int(_P["fragment max steps"])
+        converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
         if not converged:
+            self._say_continuing(can, steps)
+            converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
+        configuration.atoms.set_coordinates(atoms.positions, fractionals=False)
+        return bool(converged)
+
+    def _say_continuing(self, can, steps):
+        printer.important(
+            __(
+                f"    The optimization of {can} did not converge in {steps} steps, "
+                f"so it continues for {steps} more.",
+                indent=4 * " ",
+                wrap=False,
+                dedent=False,
+            )
+        )
+
+    def _run_optimization(self, can, run, optimize, steps):
+        """Run an optimization over the Model Chemistry (`run`, e.g.
+        optimize_and_energy) and, if it did not converge, once more from where
+        it stopped. Returns (run's result, converged), converged None when the
+        driver does not say (nothing optimized, or an older seamm-exec)."""
+        self._last_optimization = None
+        result = run()
+        status = self._last_optimization
+        if optimize and status is not None and not status.get("converged", True):
+            self._say_continuing(can, steps)
+            self._last_optimization = None
+            result = run()
+            status = self._last_optimization
+        if not optimize or status is None:
+            return result, None
+        return result, bool(status.get("converged", True))
+
+    @staticmethod
+    def _geometry_level_results(usable, reactions, energies, ref_value):
+        """{rung: {"DrH 0 K", "DfH 0 K", "DrH 298.15 K", "DfH 298.15 K"}} at the
+        geometry level, or {} when the energies are at the geometry level.
+
+        Each species' enthalpy is its geometry-level energy plus the same thermal
+        part (ZPE, H - E, scaled as at the energy level), and the reference
+        values are the same, so this is what a run at the geometry level alone
+        gives."""
+        if not any("E geometry level" in e for e in energies.values()):
+            return {}
+        results = {}
+        for rung in usable:
+            reaction = reactions[rung]
+            species = reaction.coefficients
+            if not all("E geometry level" in energies[s] for s in species):
+                continue
+            result = {}
+            for key, label in (("H0", "0 K"), ("H298", "298.15 K")):
+                if not all(key in energies[s] and "E" in energies[s] for s in species):
+                    continue
+                drH = sum(
+                    c
+                    * (
+                        energies[s]["E geometry level"]
+                        + energies[s][key]
+                        - energies[s]["E"]
+                    )
+                    for s, c in species.items()
+                )
+                column = "dfH0_0K" if key == "H0" else "dfH0_298K"
+                values = {s: ref_value(s, column) for s in reaction.references}
+                if any(v is None for v in values.values()):
+                    continue
+                ref = sum(c * values[s] for s, c in reaction.references.items())
+                result[f"DrH {label}"] = drH
+                result[f"DfH {label}"] = ref - drH
+            if result:
+                results[rung] = result
+        return results
+
+    def _geometry_level_preset(self):
+        """The preset whose result the geometry level's is ('quick' for
+        r2SCAN-3c geometries), or None."""
+        for name, levels in PRESETS.items():
+            if levels.get("energy") is None and levels.get("geometry") == self.model:
+                return name
+        return None
+
+    def _geometry_level_text(self, geometry_results, results, usable, target_entry):
+        """The table of the results at the geometry level."""
+        rows = []
+        for rung in usable:
+            r = geometry_results.get(rung)
+            if r is None:
+                continue
+            row = [f"CBH-{rung}"]
+            for key in ("DrH 0 K", "DfH 0 K", "DrH 298.15 K", "DfH 298.15 K"):
+                row.append(f"{r[key]:.2f}" if key in r else "")
+            row.append(f"{results[rung]['uncertainty']:.2f}")
+            if target_entry is not None:
+                for key, column in (
+                    ("DfH 0 K", "dfH0_0K"),
+                    ("DfH 298.15 K", "dfH0_298K"),
+                ):
+                    if key in r and target_entry[column] is not None:
+                        row.append(f"{r[key] - target_entry[column]:+.2f}")
+                    else:
+                        row.append("")
+            rows.append(row)
+        headers = [
+            "Rung",
+            "ΔrH(0 K)",
+            "ΔfH°(0 K)",
+            "ΔrH(298.15 K)",
+            "ΔfH°(298.15 K)",
+            "± ref (95%)",
+        ]
+        if target_entry is not None:
+            headers += ["Δ vs ATcT (0 K)", "Δ vs ATcT (298.15 K)"]
+        preset = self._geometry_level_preset()
+        same = f", the result of the '{preset}' preset" if preset else ""
+        text = (
+            f"\nThe same reactions at the geometry level alone ({self.model}"
+            f"{same}; kJ/mol):\n"
+        )
+        text += tabulate(
+            rows,
+            headers=headers,
+            tablefmt="rounded_outline",
+            disable_numparse=True,
+            colalign=("left",) + ("decimal",) * (len(headers) - 1),
+        )
+        return text + "\n"
+
+    @staticmethod
+    def _storable(can, result):
+        """Whether a computed species may go into the fragment store: not one
+        whose optimization did not converge, nor one whose structure changed."""
+        if not isinstance(result, dict):
+            return True
+        if result.get("converged") is False or result.get("broken"):
+            why = (
+                "its optimization did not converge"
+                if result.get("converged") is False
+                else "its structure changed"
+            )
             printer.important(
                 __(
-                    f"    Warning: the optimization did not converge in "
-                    f"{_P['fragment max steps']} steps.",
+                    f"    {can} is not added to the fragment store: {why}.",
                     indent=4 * " ",
                     wrap=False,
+                    dedent=False,
+                )
+            )
+            return False
+        return True
+
+    @staticmethod
+    def _flags(energies):
+        """The results that flag the species: those whose optimization did not
+        converge and those whose structure changed (fragments)."""
+        unconverged = [
+            can
+            for can, e in energies.items()
+            if isinstance(e, dict) and e.get("converged") is False
+        ]
+        broken = [
+            can
+            for can, e in energies.items()
+            if isinstance(e, dict) and e.get("broken")
+        ]
+        return {
+            "CBH unconverged species": ", ".join(unconverged),
+            "CBH changed fragments": ", ".join(broken),
+        }
+
+    def _check_species(self, can, configuration, result):
+        """After a species is computed: a target whose bonds are no longer its
+        SMILES' has become another molecule, and fails; a fragment that did so,
+        or that did not converge, is flagged ("broken", "converged") and kept
+        out of the fragment store."""
+        problem = None
+        try:
+            from seamm_thermochemistry.fragment_store import check_structure
+        except ImportError:  # pragma: no cover - an older seamm-thermochemistry
+            check_structure = None
+        if check_structure is not None and configuration.n_atoms > 1:
+            try:
+                problem = check_structure(
+                    configuration.atoms.symbols,
+                    configuration.atoms.get_coordinates(fractionals=False),
+                    can,
+                    cbh_charge(can),
+                    cbh_multiplicity(can),
+                )
+            except Exception as e:  # the check must not fail a good species
+                logger.warning(f"Could not check the structure of {can}: {e}")
+        name = configuration.system.name if configuration.system else ""
+        target = not str(name).startswith("CBH:")
+        if problem:
+            if target:
+                raise RuntimeError(
+                    f"The structure of {can} changed while it was optimized "
+                    f"({problem}), so its energy is that of another molecule."
+                )
+            result["broken"] = problem
+            printer.important(
+                __(
+                    f"    Warning: the structure of the fragment {can} changed while "
+                    f"it was optimized ({problem}). Its energy is used, but it is "
+                    "not added to the fragment store.",
+                    indent=4 * " ",
+                    wrap=True,
+                    dedent=False,
+                )
+            )
+        if result.get("converged") is False:
+            printer.important(
+                __(
+                    f"    Warning: the optimization of {can} did not converge, even "
+                    "after continuing. Its energy is used and flagged in the "
+                    "results, and it is not added to the fragment store.",
+                    indent=4 * " ",
+                    wrap=True,
                     dedent=False,
                 )
             )

@@ -1,6 +1,23 @@
 =======
 History
 =======
+2026.11.13.2 -- Unconverged and broken species are flagged; the geometry-level (quick) result too
+    * An optimization of a species that has not converged in "Fragment max steps"
+      now continues for as many steps again. If it still has not converged, the
+      species is used but listed in the new result "CBH unconverged species",
+      flagged in its SDF file, and not added to the fragment store. Before, its
+      energy was used as if it had converged.
+    * A target whose bonds change while it is optimized (it has become other
+      molecules) now fails, with the reason. A fragment that does so is listed in
+      the new result "CBH changed fragments" and not added to the store.
+    * When the energies are at another level than the geometries (the 'default'
+      and 'high' presets, or an energy level), the step also reports the same CBH
+      reactions at the geometry level alone, which for r2SCAN-3c geometries is the
+      'quick' result: a rung table in the output and the new results "DfH 0K
+      (geometry level)", "DfH 298K (geometry level)", "DfH uncertainty (geometry
+      level)", "CBH rung spread (geometry level)" and "CBH geometry level preset".
+    * Needs seamm-exec 2026.11.13.
+
 2026.11.13.1 -- Bugfix: species computed without thermal corrections were not added to the fragment store
     * With "thermal corrections: none" (MOPAC's enthalpy of formation taken as the
       enthalpy) the species the step computed were never added to the fragment
