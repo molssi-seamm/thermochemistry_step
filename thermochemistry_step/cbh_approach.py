@@ -1585,9 +1585,12 @@ class CBHApproach:
             return
         counts = new_counts()
         job = self._job_label()
+        # The species of which nothing was stored, with the harvest's reasons
+        missed = {}
         try:
             with FragmentStore(path, create=True) as store:
                 for can, configuration in species.items():
+                    mine = new_counts()
                     harvest_configuration(
                         store,
                         configuration,
@@ -1603,8 +1606,11 @@ class CBHApproach:
                             "frequency fingerprint#Thermochemistry#*"
                         ),
                         write_back=True,
-                        counts=counts,
+                        counts=mine,
                     )
+                    _merge_counts(counts, mine)
+                    if not _any_rows(mine):
+                        missed[can] = mine["skipped"] or ["nothing to store"]
                 where = store.path
         except Exception as e:
             logger.warning(f"Writing the fragment store failed: {e}")
@@ -1614,12 +1620,23 @@ class CBHApproach:
         def tally(table):
             return ", ".join(f"{n} {k}" for k, n in sorted(counts[table].items()))
 
+        fragments = ", ".join(
+            f"{counts[k]} {k}"
+            for k in ("inserted", "duplicate", "logged", "superseded")
+            if counts[k]
+        )
         text = f"\nAdded to the fragment store ({where}): "
+        text += f"species: {fragments or 'none'}; "
         text += f"geometries: {tally('geometry') or 'none'}; "
         text += f"energies: {tally('energy') or 'none'}."
+        for can, reasons in missed.items():
+            for reason in reasons:
+                if reason.startswith(f"{can}: "):
+                    reason = reason[len(can) + 2 :]
+                text += f"\n    {can} was not added: {reason}"
         for reason in counts["skipped"]:
-            if "no property matching" in reason:
-                continue  # a species with nothing computed at a level
+            if any(reason in reasons for reasons in missed.values()):
+                continue
             text += f"\n    {reason}"
         printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
 
@@ -2346,6 +2363,7 @@ class CBHApproach:
                     )
                 )
                 result = {"H298": E, "E": E}
+                self._store_species_energy(configuration, E)
             else:
                 if _yes(_P["optimize fragments"]) and configuration.n_atoms > 1:
                     self._optimize(configuration, _P)
@@ -2472,6 +2490,7 @@ class CBHApproach:
                     dedent=False,
                 )
             )
+            self._store_species_energy(configuration, E)
             self._store_fingerprints(configuration, None, can)
             return {"H298": E, "E": E}
         delta_bohr = Q_(_P["step size"].m_as("Å"), "Å").m_as("bohr")
@@ -2861,6 +2880,21 @@ class CBHApproach:
                 )
             )
 
+    def _store_species_energy(self, configuration, E):
+        """Store the engine's energy (kJ/mol) of a species computed without
+        thermal corrections as ``total energy#Thermochemistry#<model>``, the
+        property the fragment store's harvest reads, so that write-back keeps it
+        and later species and runs reuse it. With MOPAC it is the enthalpy of
+        formation, which such a run takes as the enthalpy at 298.15 K; it is
+        stored with no ZPE or H, so no harmonic run takes it for one."""
+        if not self.model:
+            return  # no level to store it under
+        name = f"total energy#Thermochemistry#{self.model}"
+        properties = configuration.properties
+        if not properties.exists(name):
+            properties.add(name, "float", units="E_h", description="E")
+        properties.put(name, Q_(E, "kJ/mol").m_as("E_h"))
+
     def _store_species_properties(self, configuration, data):
         """Store E, ZPE and H(298.15 K) on the configuration."""
         model = self.model or "unknown"
@@ -3019,6 +3053,26 @@ def species_only(P):
     return str(P.get("cbh calculation", "enthalpy of formation")).startswith(
         "the species only"
     )
+
+
+def _merge_counts(total, part):
+    """Add one harvest's tallies (seamm_thermochemistry's ``new_counts``) to
+    another's."""
+    for key, value in part.items():
+        if isinstance(value, list):
+            total[key].extend(value)
+        elif isinstance(value, dict):
+            for outcome, n in value.items():
+                total[key][outcome] = total[key].get(outcome, 0) + n
+        else:
+            total[key] += value
+
+
+def _any_rows(counts):
+    """Whether a harvest touched any row (inserted, found or logged one)."""
+    return any(
+        counts[k] for k in ("inserted", "duplicate", "logged", "superseded")
+    ) or any(counts[t] for t in ("geometry", "energy"))
 
 
 def _yes(value):
