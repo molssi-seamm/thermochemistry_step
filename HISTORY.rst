@@ -1,6 +1,21 @@
 =======
 History
 =======
+2026.11.13 -- Per-frequency corrections of the harmonic frequencies (PM7)
+    * New: "Frequency correction" corrects each harmonic frequency before the ZPE,
+      H(T) - H(0), S and Cp, for a level that has a correction: so far PM7
+      (Rozanska et al. 2014, eq 1), as published or for the high frequencies only.
+      It replaces the ZPE scale factor for that level, and does nothing without
+      thermal corrections.
+    * The output lists the harmonic and corrected frequencies and the ZPE with and
+      without the correction, and warns about frequencies near the map's
+      discontinuities, stretches of hydrogen bonded to elements outside the fit
+      set, and frequencies above the fit's range, which are left uncorrected.
+    * The corrected frequencies, the correction and its status are stored with
+      the results, and its tag is part of the frequency fingerprint, so the
+      fragment store keeps corrected and uncorrected thermal data apart.
+    * Needs seamm-thermochemistry 2026.11.13.
+
 2026.11.12.2 -- Reference species that ATcT lacks, from the reference library
     * New: the CBH approach can take reference species that ATcT lacks from the
       supplementary reference library of seamm-thermochemistry (printed JANAF,

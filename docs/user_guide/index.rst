@@ -214,7 +214,43 @@ ZPE scale factor
     source, which the output and the results give (r2SCAN-3c 0.9899, fitted to
     small molecules; PBE0/def2-TZVP 0.975, a value for another basis;
     B2PLYP-D3/cc-pVTZ 0.9863). A level not in the table is not scaled, with a
-    warning. Or a number.
+    warning. Or a number. A level with a frequency correction (below) is not
+    scaled: the two are never combined, and a number given with a correction is
+    refused.
+
+Frequency correction
+    ``from the table`` (default) or ``none``. Some methods get their frequencies
+    wrong in a way one scale factor cannot fix, and have a correction applied to
+    each frequency before the ZPE, H(T) - H(0), S and Cp are computed, in the
+    harmonic approach and for the CBH species alike. So far there is one, for PM7
+    (Rozanska et al., J. Chem. Eng. Data 59, 3136 (2014), eq 1): unchanged below
+    125 cm\ :sup:`-1`, 1.006 ν - 27.7 up to 2500 cm\ :sup:`-1`, and 3.99 ν - 7849.2
+    above. Other MOPAC methods (PM6, PM6-ORG, ...) have none: PM7's fit does not
+    carry over, and the output says so.
+
+    The output lists the harmonic and corrected frequencies, the ZPE with and
+    without the correction, and warnings:
+
+    * frequencies near the switches, where the map is discontinuous (raw
+      98-125 and 2400-2600 cm\ :sup:`-1` for PM7: 124 stays 124 but 126 becomes
+      99.1; 2499 becomes 2486.3 but 2501 becomes 2129.8);
+    * stretches of hydrogen bonded to elements outside the fit set (C, H, N and O
+      for PM7), found from the normal modes;
+    * frequencies above the range of the fit, which are left uncorrected (PM7:
+      above a raw 2900 cm\ :sup:`-1`, where experiment ends at about 3700; its H2
+      stretch would otherwise become 14400 cm\ :sup:`-1`). The species is marked
+      ``partly not applicable``.
+
+    Without thermal corrections (``none (the energy is the enthalpy)``) the
+    frequencies are not used and the correction does nothing, which the output
+    says. The correction's tag goes into the frequency fingerprint of the
+    species' thermal data, so corrected and uncorrected values are never mixed in
+    the fragment store.
+
+Correct
+    With a frequency correction: ``full`` (default), the correction as published,
+    or ``high-frequency only``, leaving out the branches the source calls
+    optional (for PM7, the 0.6 % change below 2500 cm\ :sup:`-1`).
 
 CBH rungs
     ``all usable`` (default for ``custom``), or a list such as ``1, 2``.
