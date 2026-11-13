@@ -558,6 +558,33 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Maximum frequencies to print:",
             "help_text": "Whether to print the frequencies of vibration.",
         },
+        "frequency correction": {
+            "default": "from the table",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("from the table", "none"),
+            "format_string": "",
+            "description": "Frequency correction:",
+            "help_text": (
+                "A correction applied to each harmonic frequency before the ZPE and "
+                "the thermal functions, from the table of corrections for the "
+                "frequency level (PM7: Rozanska et al. 2014, eq 1), or none. A level "
+                "with a correction gets no ZPE scale factor."
+            ),
+        },
+        "frequency correction range": {
+            "default": "full",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("full", "high-frequency only"),
+            "format_string": "",
+            "description": "Correct:",
+            "help_text": (
+                "All of the correction as published, or only the branches the "
+                "source calls necessary (for PM7, the X-H stretches above "
+                "2500 cm^-1)."
+            ),
+        },
         "T": {
             "default": "200, 250, 298.15, 300:1000:50",
             "kind": "string",

@@ -226,6 +226,105 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
             note="Main reference for ASE.",
         )
 
+    def frequency_correction(self, _P):
+        """The correction of the frequencies for this step's frequency level.
+
+        Returns
+        -------
+        (FrequencyCorrection or None, str, str)
+            The correction, the range to apply ("full" or "high-frequency
+            only"), and a note to print when there is none.
+        """
+        choice = str(_P.get("frequency correction", "from the table") or "")
+        fc_range = str(_P.get("frequency correction range", "full") or "full")
+        if choice == "none":
+            return None, fc_range, "The frequencies are not corrected (as asked)."
+        from seamm_thermochemistry import frequency_correction
+
+        model = getattr(self, "model", None)
+        correction = frequency_correction(model) if model else None
+        if correction is None:
+            if model and ":SQM@" in model.upper():
+                # Semiempirical frequencies are poor; say that this one has no
+                # correction (e.g. PM6-ORG: PM7's does not carry over)
+                return (
+                    None,
+                    fc_range,
+                    f"No frequency correction is available for {model}, so its "
+                    "frequencies are used as they are.",
+                )
+            return None, fc_range, ""
+        return correction, fc_range, ""
+
+    def _frequency_correction_text(
+        self, _P, correction, fc_range, raw, corrected, atoms, n_imaginary
+    ):
+        """What a frequency correction did, with its warnings."""
+        text = (
+            f"The frequencies are corrected for {correction.method} "
+            f"({correction.citation}), "
+            + ("as published" if fc_range == "full" else "the necessary branches only")
+            + ":\n"
+        )
+        for line in correction.describe(fc_range):
+            text += f"    {line}\n"
+        n_max = _P.get("print frequencies", "all")
+        if isinstance(n_max, str):
+            n_max = (
+                0
+                if "no" in n_max.lower()
+                else len(raw) if "all" in n_max.lower() else int(n_max)
+            )
+        if n_max > 0 and len(raw) <= n_max:
+            text += "     harmonic   corrected (cm^-1)\n"
+            for nu, nu_c in zip(raw, corrected):
+                text += f"    {nu:9.1f}   {nu_c:9.1f}\n"
+        outside = correction.not_applicable(raw)
+        if outside:
+            text += (
+                f"\n*** WARNING: {len(outside)} frequencies are above "
+                f"{correction.valid_max:g} cm^-1, outside the range the correction "
+                "was fitted for, and are NOT corrected: "
+                + ", ".join(f"{nu:.1f}" for nu in outside)
+                + " cm^-1. The correction is only partly applicable to this "
+                "species. ***\n"
+            )
+        flagged = correction.in_unvalidated_windows(raw)
+        if flagged:
+            windows = " and ".join(
+                f"{lo:g}-{hi:g}" for lo, hi in correction.unvalidated
+            )
+            text += (
+                f"\nWarning: {len(flagged)} frequencies lie where the correction is "
+                f"discontinuous or not validated ({windows} cm^-1): "
+                + ", ".join(f"{nu:.1f}" for nu in flagged)
+                + ". Small changes in them change the corrected values a lot.\n"
+            )
+        xh = _xh_stretches(
+            self._vibrations, n_imaginary, raw, atoms, correction.fitted_elements
+        )
+        if xh:
+            text += (
+                "\nWarning: these modes are stretches of hydrogen bonded to elements "
+                f"outside the fit set ({', '.join(correction.fitted_elements)}), for "
+                "which the correction was not validated: "
+                + ", ".join(f"{nu:.1f} ({bond})" for nu, bond in xh)
+                + " cm^-1.\n"
+            )
+        if correction.note:
+            text += f"\n{correction.note}\n"
+        return text + "\n"
+
+    def _cite_frequency_correction(self, correction):
+        if correction.bibtex:
+            self.references.cite(
+                raw=correction.bibtex,
+                alias=correction.id,
+                module="thermochemistry_step",
+                level=1,
+                note=f"The correction of the {correction.method} frequencies.",
+            )
+
     def harmonic_thermochemistry(
         self, _P, Ts, Tunits, Ps, Punits, print_frequencies=True
     ):
@@ -400,10 +499,41 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         if n_imaginary == 1:
             data["transition state frequency"] = imaginary_frequencies[0]
 
+        # A correction of each frequency, for a level that has one (e.g. PM7),
+        # before the ZPE and the thermal functions
+        vib_energies = np.real(real_energies)
+        ZPE_uncorrected = None
+        correction, fc_range, fc_note = self.frequency_correction(_P)
+        if correction is not None and len(real_frequencies) > 0:
+            corrected = np.asarray(correction(real_frequencies, fc_range), dtype=float)
+            vib_energies = corrected * Q_(1.0, "1/cm").m_as("eV")
+            ZPE_uncorrected = Q_(
+                0.5 * float(np.sum(np.real(real_energies))), "eV"
+            ).m_as("kJ/mol")
+            text += self._frequency_correction_text(
+                _P,
+                correction,
+                fc_range,
+                real_frequencies,
+                corrected,
+                atoms,
+                n_imaginary,
+            )
+            data["corrected vibrational frequencies"] = list(corrected)
+            data["frequency correction"] = correction.tag(fc_range)
+            data["frequency correction status"] = (
+                "partly not applicable"
+                if correction.not_applicable(real_frequencies)
+                else "applied"
+            )
+            self._cite_frequency_correction(correction)
+        elif fc_note and len(real_frequencies) > 0:
+            text += fc_note + "\n\n"
+
         # The thermodynamic functions, relative to the electronic energy (ASE
         # works in eV). The ZPE is included in ASE's U, H and G.
         thermo = IdealGasThermo(
-            vib_energies=np.real(real_energies),
+            vib_energies=vib_energies,
             potentialenergy=0.0,
             atoms=atoms,
             geometry=geometry,
@@ -414,11 +544,18 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
 
         # The ZPE from the true vibrations only, excluding the nominally zero
         # translations and rotations and any imaginary modes
-        ZPE = Q_(0.5 * float(np.sum(np.real(real_energies))), "eV").to("kJ/mol")
+        ZPE = Q_(0.5 * float(np.sum(vib_energies)), "eV").to("kJ/mol")
         printer.important(__(text, indent=4 * " "))
         text = f"Zero-point energy (ZPE) = {ZPE:.2f~#P} ({ZPE.to('kcal/mol'):.2f~#P})"
         ZPE = ZPE.magnitude
         data["ZPE"] = ZPE
+        if ZPE_uncorrected is not None:
+            data["ZPE uncorrected"] = ZPE_uncorrected
+            text += (
+                f"\n    from the corrected frequencies; uncorrected "
+                f"{ZPE_uncorrected:.2f} kJ/mol, so the correction changes it by "
+                f"{ZPE - ZPE_uncorrected:+.2f} kJ/mol"
+            )
 
         # The electronic energy of the undisplaced structure, from the
         # subflowchart's first calculation
@@ -827,3 +964,62 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         while node is not None:
             node = node.set_id((*node_id, str(n)))
             n += 1
+
+
+def _xh_stretches(vibrations, n_imaginary, raw, atoms, fitted_elements, cutoff=0.3):
+    """The real modes that are mostly stretches of hydrogen bonded to an element
+    outside ``fitted_elements``, as [(frequency cm^-1, "X-H")].
+
+    A mode counts when the stretch of one such X-H bond carries at least
+    ``cutoff`` of the mode's squared (mass-weighted) displacement. Without the
+    normal modes, every frequency above 1500 cm^-1 of a molecule with such a bond
+    is listed.
+    """
+    from ase.data import covalent_radii
+
+    symbols = atoms.get_chemical_symbols()
+    positions = atoms.positions
+    numbers = atoms.numbers
+    bonds = []
+    for h, sym in enumerate(symbols):
+        if sym != "H":
+            continue
+        for x, xsym in enumerate(symbols):
+            if x == h or xsym in fitted_elements:
+                continue
+            r = np.linalg.norm(positions[h] - positions[x])
+            if r < 1.3 * (covalent_radii[1] + covalent_radii[numbers[x]]):
+                bonds.append((x, h, f"{xsym}-H"))
+    if not bonds:
+        return []
+    try:
+        _, modes = vibrations.get_energies_and_modes()
+    except Exception:
+        return [(nu, "X-H") for nu in raw if nu > 1500.0]
+    n_real = len(raw)
+    modes = np.asarray(modes)[-n_real:] if n_real else []
+    masses = atoms.get_masses()
+    found = []
+    for nu, mode in zip(raw, modes):
+        mode = np.real(np.asarray(mode)).reshape(-1, 3)
+        weighted = mode * np.sqrt(masses)[:, None]
+        total = float(np.sum(weighted**2))
+        if total <= 0.0:
+            continue
+        # The share of the mode in the stretches of these bonds, in the
+        # mass-weighted metric of each X-H pair (the bond's reduced mass), summed
+        # so that a symmetric stretch spread over several bonds counts too
+        share = 0.0
+        labels = set()
+        for x, h, label in bonds:
+            u = positions[h] - positions[x]
+            u /= np.linalg.norm(u)
+            stretch = float(np.dot(mode[h] - mode[x], u))
+            mu = masses[x] * masses[h] / (masses[x] + masses[h])
+            part = mu * stretch**2 / total
+            share += part
+            if part >= 0.05:
+                labels.add(label)
+        if share >= cutoff:
+            found.append((float(nu), "/".join(sorted(labels)) or bonds[0][2]))
+    return found

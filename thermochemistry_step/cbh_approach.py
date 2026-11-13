@@ -238,6 +238,7 @@ class CBHApproach:
 
         _P = self.apply_preset(_P)
         self._reset_fingerprints()
+        self._set_frequency_correction(_P)
         preset = _P.get("preset", "custom")
         system_db = self.get_variable("_system_db")
         target_system, target_configuration = self.get_system_configuration()
@@ -1773,6 +1774,16 @@ class CBHApproach:
         """(factor, source, caution) for the ZPEs: a number given, or the table's
         factor for the geometry level, or 1 with a caution if it has none."""
         value = str(_P.get("ZPE scale factor", "from the table") or "").strip()
+        tag = getattr(self, "_frequency_correction_tag", None)
+        if tag:
+            if value and value not in ("from the table", "1", "1.0"):
+                raise ValueError(
+                    f"The frequencies of {self.model} are corrected one by one "
+                    f"({tag}), so the ZPE cannot also be scaled by {value}. Set the "
+                    "ZPE scale factor to 'from the table' or the frequency correction "
+                    "to 'none'."
+                )
+            return 1.0, f"not scaled: the frequencies are corrected ({tag})", ""
         if value and value != "from the table":
             try:
                 return float(value), "as given", ""
@@ -2506,6 +2517,29 @@ class CBHApproach:
     # program predicts for IT (seamm_exec.expected_fingerprints). The target's
     # fingerprints are the fallback only for programs that cannot predict.
 
+    def _set_frequency_correction(self, _P):
+        """The frequency correction for the geometry level, if it has one: its tag
+        goes into the frequency fingerprints. Without thermal corrections the
+        frequencies are not used, so a correction does nothing; say so."""
+        self._frequency_correction_tag = None
+        correction, fc_range, _ = self.frequency_correction(_P)
+        if correction is None:
+            # Each species' harmonic analysis says so
+            return
+        if _P.get("thermal corrections", "harmonic") != "harmonic":
+            printer.important(
+                __(
+                    f"The frequency correction for {correction.method} "
+                    f"({correction.citation}) does nothing here: there are no thermal "
+                    "corrections, so the frequencies are not used.",
+                    indent=4 * " ",
+                    wrap=True,
+                    dedent=False,
+                )
+            )
+            return
+        self._frequency_correction_tag = correction.tag(fc_range)
+
     def _reset_fingerprints(self):
         """Forget the previous run's fingerprints (a Loop runs this node again)."""
         self._settings_fingerprint = None
@@ -2592,7 +2626,18 @@ class CBHApproach:
             energy = [self._settings_fingerprint]
         if frequency is None and getattr(self, "_frequency_fingerprint", None):
             frequency = [self._frequency_fingerprint]
+        if frequency is not None:
+            frequency = [self._corrected_fingerprint(fp) for fp in frequency]
         return energy, frequency
+
+    def _corrected_fingerprint(self, fingerprint):
+        """A frequency fingerprint with the frequency correction's tag when one
+        is applied, so corrected and uncorrected thermal data never share a key
+        in the fragment store."""
+        tag = getattr(self, "_frequency_correction_tag", None)
+        if not tag or not fingerprint:
+            return fingerprint
+        return f"{fingerprint}+{tag}"
 
     def _check_prediction(self, can, configuration, kind, record, mc=None):
         """The self-check: warn when a computed species' fingerprint is not one
@@ -2683,6 +2728,13 @@ class CBHApproach:
                         configuration, f"H(298.15 K)#Thermochemistry#{model}", "kJ/mol"
                     )
                     if ZPE is None or H is None:
+                        continue
+                    applied = self._property(
+                        configuration, f"frequency correction#Thermochemistry#{model}"
+                    )
+                    if (applied or None) != (
+                        getattr(self, "_frequency_correction_tag", None) or None
+                    ):
                         continue
                     frequencies = self._property(
                         configuration, f"frequencies#Thermochemistry#{model}"
@@ -2783,6 +2835,7 @@ class CBHApproach:
             ):
                 if prefix and name.startswith("frequency settings"):
                     name = "frequency fingerprint"
+                    value = self._corrected_fingerprint(value)
                 full = f"{name}#Thermochemistry#{model}"
                 if not properties.exists(full):
                     properties.add(full, kind, units=None, description=name)
@@ -2837,6 +2890,22 @@ class CBHApproach:
         extras = [
             ("frequencies", data.get("vibrational frequencies"), "json", "cm^-1"),
             ("symmetry number", data.get("symmetry number"), "int", None),
+            # A frequency correction (e.g. PM7's): the frequencies the ZPE and
+            # H(298.15 K) above were computed from, and which correction
+            (
+                "corrected frequencies",
+                data.get("corrected vibrational frequencies"),
+                "json",
+                "cm^-1",
+            ),
+            ("frequency correction", data.get("frequency correction"), "str", None),
+            (
+                "frequency correction status",
+                data.get("frequency correction status"),
+                "str",
+                None,
+            ),
+            ("ZPE uncorrected", data.get("ZPE uncorrected"), "float", "kJ/mol"),
         ]
         try:
             moments = self.ase_atoms(configuration).get_moments_of_inertia().tolist()

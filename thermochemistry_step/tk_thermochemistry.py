@@ -184,6 +184,7 @@ class TkThermochemistry(seamm.TkNode):
             "supplementary references",
             "initial conformer",
             "target conformer",
+            "frequency correction",
         ):
             widget = self[key]
             combobox = widget.combobox if hasattr(widget, "combobox") else widget
@@ -195,6 +196,13 @@ class TkThermochemistry(seamm.TkNode):
         self.reset_dialog()
 
         self.setup_results()
+
+    def _frequency_correction_keys(self):
+        """The frequency-correction widgets: the range only with a correction."""
+        keys = ["frequency correction"]
+        if self["frequency correction"].get() != "none":
+            keys.append("frequency correction range")
+        return keys
 
     def reset_dialog(self, widget=None):
         """Layout the widgets in the dialog.
@@ -282,6 +290,7 @@ class TkThermochemistry(seamm.TkNode):
                 "T",
                 "P",
                 "print frequencies",
+                *self._frequency_correction_keys(),
             ):
                 self[key].grid(row=row, column=0, columnspan=2, sticky=tk.EW)
                 widgets.append(self[key])
@@ -340,6 +349,7 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("hessian route")
             if harmonic or preset != "custom":
                 keys += ["step size", "print frequencies"]
+                keys += self._frequency_correction_keys()
             keys.append("fragment store")
             if self["fragment store"].get() != "ignore":
                 keys.append("fragment store file")
@@ -386,6 +396,7 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("hessian route")
             if harmonic:
                 keys += ["step size", "print frequencies"]
+                keys += self._frequency_correction_keys()
             if engine == "subflowchart":
                 keys += ["on success", "on error"]
         keys.append("fragment store")
