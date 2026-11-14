@@ -99,6 +99,7 @@ def test_a_fragment_that_changed_is_flagged(node, ethanol):
     assert flags == {
         "CBH unconverged species": "C",
         "CBH changed fragments": "CCO",
+        "CBH saddle-point species": "",
     }
 
 

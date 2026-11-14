@@ -406,6 +406,15 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH saddle-point species": {
+        "description": (
+            "The species (target or fragments) left at a saddle point, with an "
+            "imaginary mode above 20i cm^-1; empty if none"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "CBH unconverged species": {
         "description": (
             "The species (target or fragments) whose optimization did not converge, "

@@ -346,6 +346,8 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]
+                if harmonic or preset != "custom":
+                    keys.append("saddle points")
             keys.append("hessian route")
             if harmonic or preset != "custom":
                 keys += ["step size", "print frequencies"]
@@ -395,6 +397,8 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]
+                if harmonic:
+                    keys.append("saddle points")
             keys.append("hessian route")
             if harmonic:
                 keys += ["step size", "print frequencies"]

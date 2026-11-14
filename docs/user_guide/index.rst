@@ -324,7 +324,13 @@ Fragments start from, Target starts from
     anti), as CBH-ANL starts every species from its lowest rotamer; a single
     embedding of a long chain is often gauche. The target is kept as given
     unless told to be rebuilt the same way. The chosen chain dihedrals are
-    printed.
+    printed. Conformers with atoms too close together or bonds pulled apart are
+    skipped. Species the force fields build wrongly, those with a metal centre
+    or an atom with more than four electron domains (SF\ :sub:`6`, PF\ :sub:`6`\
+    :sup:`-`, ClF\ :sub:`3`, bridged Al\ :sub:`2`\ Cl\ :sub:`2`), keep the
+    structure built from the SMILES, or the given one; the output says so. A
+    starting structure with atoms on top of each other is not computed: the
+    species fails with a message instead of crashing the program.
 
 Thermal corrections
     ``harmonic`` (default), or ``none`` when the engine's energy is already an
@@ -470,6 +476,16 @@ Each computed species is checked after its optimization:
   (dimethyl sulfate falling apart to SO\ :sub:`2` and CH\ :sub:`3`\ OOCH\ :sub:`3`,
   say) fails, since its energy would be that of other molecules. A fragment that
   does so is used, listed in ``CBH changed fragments`` and not added to the store.
+* A species whose Hessian has an imaginary mode above 20i cm\ :sup:`-1` is at a
+  saddle point (a planar CH\ :sub:`3`\ :sup:`-`, an eclipsed methyl), and lacks
+  that mode's share of the enthalpy, about RT. With *Saddle points*
+  ``displace and re-optimize`` (the default) it is displaced along the mode until
+  the atom moving most has moved 0.3 Å, optimized again to a fifth of the
+  convergence, and its Hessian recomputed; if it is still a saddle point, the
+  same is done in the other direction. A species that remains a saddle point, or
+  any with ``keep and flag``, is used, listed in ``CBH saddle-point species`` and
+  not added to the fragment store. Each attempt costs an optimization and a
+  Hessian.
 
 Results
 =======
