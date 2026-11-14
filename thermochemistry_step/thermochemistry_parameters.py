@@ -270,7 +270,11 @@ class ThermochemistryParameters(seamm.Parameters):
             "help_text": (
                 "The starting structure of each fragment built from its SMILES: the "
                 "lowest MMFF94 conformer of several RDKit embeddings (all-anti chains, "
-                "as CBH-ANL starts from the lowest rotamer), or a single embedding."
+                "as CBH-ANL starts from the lowest rotamer), or a single embedding. "
+                "Conformers with atoms too close or bonds pulled apart are skipped, "
+                "and species with a metal centre or an atom with more than four "
+                "electron domains (SF6, PF6-, bridged Al2Cl2), which the force "
+                "fields build wrongly, keep the structure built from the SMILES."
             ),
         },
         "conformer embeddings": {
@@ -341,6 +345,21 @@ class ThermochemistryParameters(seamm.Parameters):
             "format_string": "",
             "description": "Maximum optimization steps:",
             "help_text": "The maximum number of optimization steps per species.",
+        },
+        "saddle points": {
+            "default": "displace and re-optimize",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("displace and re-optimize", "keep and flag"),
+            "format_string": "",
+            "description": "Saddle points:",
+            "help_text": (
+                "A species that optimizes to a saddle point (an imaginary mode above "
+                "20i cm^-1, e.g. a planar CH3- or an eclipsed methyl) misses that "
+                "mode's enthalpy. Displace it along the mode, both ways if need be, "
+                "and optimize again more tightly to reach a minimum; or keep it, "
+                "flagged in the results and not added to the fragment store."
+            ),
         },
         "energy property": {
             "default": "total energy#*#*",

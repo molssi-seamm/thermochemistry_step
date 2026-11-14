@@ -1,6 +1,22 @@
 =======
 History
 =======
+2026.11.13.4 -- Bugfix: saddle points are re-optimized; force-field-broken species
+    * A species that optimized to a saddle point (an imaginary mode above 20i
+      cm^-1, such as a planar CH3- or an eclipsed methyl) was only flagged, and
+      missed about RT of enthalpy. With the new "Saddle points" option
+      ("displace and re-optimize", the default) it is displaced along the mode,
+      optimized again more tightly and its Hessian recomputed, in the other
+      direction too if need be. One that remains a saddle point is used, listed in
+      the new result "CBH saddle-point species" and not added to the fragment
+      store. PPE1694's first phase had 15 such fragments.
+    * Species with a metal centre or an atom with more than four electron domains
+      (SF6, PF6-, bridged Al2Cl2) are no longer rebuilt from force-field
+      conformers, which broke them (two chlorines on one spot, and the program
+      crashed); they keep the structure built from the SMILES. A starting
+      structure with atoms on top of each other now fails with a clear message.
+      Needs seamm-thermochemistry 2026.11.13.4.
+
 2026.11.13.3 -- A target already in the fragment store is reused
     * The CBH approach computed the target every time, even when the fragment store
       held it. Now, with "Reuse a stored target" ("if the structure matches", the

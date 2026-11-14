@@ -102,6 +102,7 @@ def test_cbh_layout(tk_node):
     # no property names
     assert _mapped(tk_node["cbh rungs"]) and _mapped(tk_node["ATcT version"])
     assert _mapped(tk_node["fragment convergence"])
+    assert _mapped(tk_node["saddle points"])
     assert _mapped(tk_node["step size"])
     assert _mapped(tk_node["hessian route"])
     assert _mapped(tk_node["initial conformer"])
@@ -131,12 +132,14 @@ def test_cbh_layout(tk_node):
     tk_node.reset_dialog()
     assert not _mapped(tk_node["step size"])
     assert _mapped(tk_node["fragment convergence"])
+    assert not _mapped(tk_node["saddle points"])  # no Hessian, no saddle points
 
     # No optimization: no convergence settings
     tk_node["optimize fragments"].set("no")
     tk_node.reset_dialog()
     assert not _mapped(tk_node["fragment convergence"])
     assert not _mapped(tk_node["fragment max steps"])
+    assert not _mapped(tk_node["saddle points"])
 
     # Existing results: the property names, the ZPE/enthalpy ones only when
     # harmonic
@@ -191,6 +194,7 @@ def test_cbh_species_only_layout(tk_node):
     for key in (
         "target conformer",
         "optimize fragments",
+        "saddle points",
         "hessian route",
         "step size",
         "fragment store",

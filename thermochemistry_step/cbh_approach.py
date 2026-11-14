@@ -53,6 +53,14 @@ printer = printing.getPrinter("Thermochemistry")
 
 T_REF = 298.15
 
+#: Imaginary modes up to this (cm^-1) are numerical noise, as in the fragment store
+IMAGINARY_TOLERANCE = 20.0
+#: A saddle point is displaced along its imaginary mode until the atom moving
+#: most has moved this far (Å), and re-optimized to SADDLE_TIGHTENING of the
+#: convergence (a methyl torsion re-converges to the saddle at the usual one)
+SADDLE_DISPLACEMENT = 0.3
+SADDLE_TIGHTENING = 0.2
+
 #: The presets of the CBH approach (thermo's defaults, adopted 2026-11-08): the
 #: composite recipe (composite_step), and its geometry/frequency level and energy
 #: level (None: the geometry level). With composite_step installed the levels come
@@ -1512,9 +1520,21 @@ class CBHApproach:
         charge and spin multiplicity, and say what was found."""
         from seamm_thermochemistry import cbh
 
-        mol, symbols, xyz, energies, best = cbh.lowest_conformer(
-            smiles, n=n, return_mol=True
-        )
+        try:
+            mol, symbols, xyz, energies, best = cbh.lowest_conformer(
+                smiles, n=n, return_mol=True
+            )
+        except cbh.ConformerError as e:
+            printer.important(
+                __(
+                    f"    not from force-field conformers: {e} The structure built "
+                    "from the SMILES (or given) is kept.",
+                    indent=4 * " ",
+                    wrap=False,
+                    dedent=False,
+                )
+            )
+            return
         charge = configuration.charge
         multiplicity = configuration.spin_multiplicity
         configuration.from_RDKMol(mol, properties="none")
@@ -2501,6 +2521,7 @@ class CBHApproach:
         system_db.system = system
         system.configuration = configuration
         self._working_configuration = configuration
+        self._check_start(can, configuration)
 
         label = can.replace("/", "_").replace("\\", "_")
         self._subdirectory = f"species_{label}"
@@ -2521,39 +2542,47 @@ class CBHApproach:
                 result = {"H298": E, "E": E}
                 self._store_species_energy(configuration, E)
             else:
-                converged = None
-                if _yes(_P["optimize fragments"]) and configuration.n_atoms > 1:
-                    converged = self._optimize(configuration, _P, can)
-                self._XYZ0 = np.array(
-                    configuration.atoms.get_coordinates(fractionals=False)
-                )
-                self._E0 = None
-                XYZ_save = configuration.atoms.coordinates
-                self._vibrations = self.run_ase_Hessian(
-                    step_size=_P["step size"].m_as("Å"),
-                    on_error=_P["on error"],
-                    on_success=_P["on success"],
-                )
-                configuration.atoms.coordinates = XYZ_save
-                data = self.harmonic_thermochemistry(
-                    _P, [T_REF], "K", [1.0], "bar", print_frequencies=False
-                )
-                if "total_energy" not in data:
-                    raise RuntimeError(
-                        f"No energy for the undisplaced structure of {can}"
+
+                def harmonic(fmax):
+                    converged = None
+                    if _yes(_P["optimize fragments"]) and configuration.n_atoms > 1:
+                        converged = self._optimize(configuration, _P, can, fmax=fmax)
+                    self._XYZ0 = np.array(
+                        configuration.atoms.get_coordinates(fractionals=False)
                     )
-                E = Q_(data["total_energy"], "E_h").m_as("kJ/mol")
-                result = {
-                    "E": E,
-                    "ZPE": data["ZPE"],
-                    "H0": E + data["ZPE"],
-                    "H298": E + data["H thermal"][0][0],
-                }
-                result["imaginary"] = data.get("N saddle modes", 0)
-                if converged is not None:
-                    result["converged"] = converged
-                # Keep them on the configuration for "existing results" runs
-                self._store_species_properties(configuration, data)
+                    self._E0 = None
+                    XYZ_save = configuration.atoms.coordinates
+                    self._vibrations = self.run_ase_Hessian(
+                        step_size=_P["step size"].m_as("Å"),
+                        on_error=_P["on error"],
+                        on_success=_P["on success"],
+                    )
+                    configuration.atoms.coordinates = XYZ_save
+                    data = self.harmonic_thermochemistry(
+                        _P, [T_REF], "K", [1.0], "bar", print_frequencies=False
+                    )
+                    if "total_energy" not in data:
+                        raise RuntimeError(
+                            f"No energy for the undisplaced structure of {can}"
+                        )
+                    E = Q_(data["total_energy"], "E_h").m_as("kJ/mol")
+                    result = {
+                        "E": E,
+                        "ZPE": data["ZPE"],
+                        "H0": E + data["ZPE"],
+                        "H298": E + data["H thermal"][0][0],
+                    }
+                    result["imaginary"] = data.get("N saddle modes", 0)
+                    if converged is not None:
+                        result["converged"] = converged
+                    # Keep them on the configuration for "existing results" runs
+                    self._store_species_properties(configuration, data)
+                    return result
+
+                fmax = _P["fragment convergence"].m_as("eV/Å")
+                result = self._escape_saddle(
+                    _P, can, configuration, harmonic(fmax), harmonic
+                )
         finally:
             self._subdirectory = None
         try:
@@ -2665,40 +2694,48 @@ class CBHApproach:
                 result["converged"] = converged
             return result
         delta_bohr = Q_(_P["step size"].m_as("Å"), "Å").m_as("bohr")
-        (E0, hessian, how), converged = self._run_optimization(
-            can,
-            lambda: self.optimize_and_hessian(
-                configuration, delta_bohr, optimize=optimize, fmax=fmax, max_steps=steps
-            ),
-            optimize,
-            steps,
-        )
-        from ase.vibrations import VibrationsData
 
-        atoms = self.ase_atoms(configuration)
-        n = len(atoms)
-        hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
-        self._vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
-        self._E0 = Q_(E0, "kJ/mol").m_as("eV")
-        printer.important(
-            __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
-        )
-        data = self.harmonic_thermochemistry(
-            _P, [T_REF], "K", [1.0], "bar", print_frequencies=False
-        )
-        E = Q_(data["total_energy"], "E_h").m_as("kJ/mol")
-        result = {
-            "E": E,
-            "ZPE": data["ZPE"],
-            "H0": E + data["ZPE"],
-            "H298": E + data["H thermal"][0][0],
-            "imaginary": data.get("N saddle modes", 0),
-        }
-        if converged is not None:
-            result["converged"] = converged
-        self._store_species_properties(configuration, data)
-        self._store_fingerprints(configuration, how, can)
-        return result
+        def harmonic(fmax):
+            (E0, hessian, how), converged = self._run_optimization(
+                can,
+                lambda: self.optimize_and_hessian(
+                    configuration,
+                    delta_bohr,
+                    optimize=optimize,
+                    fmax=fmax,
+                    max_steps=steps,
+                ),
+                optimize,
+                steps,
+            )
+            from ase.vibrations import VibrationsData
+
+            atoms = self.ase_atoms(configuration)
+            n = len(atoms)
+            hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
+            self._vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
+            self._E0 = Q_(E0, "kJ/mol").m_as("eV")
+            printer.important(
+                __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
+            )
+            data = self.harmonic_thermochemistry(
+                _P, [T_REF], "K", [1.0], "bar", print_frequencies=False
+            )
+            E = Q_(data["total_energy"], "E_h").m_as("kJ/mol")
+            result = {
+                "E": E,
+                "ZPE": data["ZPE"],
+                "H0": E + data["ZPE"],
+                "H298": E + data["H thermal"][0][0],
+                "imaginary": data.get("N saddle modes", 0),
+            }
+            if converged is not None:
+                result["converged"] = converged
+            self._store_species_properties(configuration, data)
+            self._store_fingerprints(configuration, how, can)
+            return result
+
+        return self._escape_saddle(_P, can, configuration, harmonic(fmax), harmonic)
 
     # -- fingerprints of each species (P5a of the fragment store) ---------------
     #
@@ -3044,14 +3081,15 @@ class CBHApproach:
                     properties.add(full, kind, units=None, description=name)
                 properties.put(full, value)
 
-    def _optimize(self, configuration, _P, can="the species"):
+    def _optimize(self, configuration, _P, can="the species", fmax=None):
         """Optimize the structure with ASE's BFGS through the subflowchart,
         continuing once for as many steps again if it has not converged.
         Returns whether it converged."""
         from ase.optimize import BFGS
 
         atoms = self.ase_atoms(configuration)
-        fmax = _P["fragment convergence"].m_as("eV/Å")
+        if fmax is None:
+            fmax = _P["fragment convergence"].m_as("eV/Å")
         steps = int(_P["fragment max steps"])
         converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
         if not converged:
@@ -3059,6 +3097,114 @@ class CBHApproach:
             converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
         configuration.atoms.set_coordinates(atoms.positions, fractionals=False)
         return bool(converged)
+
+    def _check_start(self, can, configuration):
+        """Refuse a starting structure with atoms on top of each other, which
+        would only crash the engine (PPE1694: bridged Al2Cl2 from UFF)."""
+        if configuration.n_atoms < 2:
+            return
+        from seamm_thermochemistry import cbh
+
+        problem = cbh.geometry_problem(
+            configuration.atoms.symbols,
+            configuration.atoms.get_coordinates(fractionals=False),
+        )
+        if problem is not None:
+            raise RuntimeError(
+                f"The starting structure of {can} is broken ({problem}), so it is "
+                "not computed."
+            )
+
+    def _largest_imaginary_mode(self):
+        """The largest imaginary frequency (cm^-1) of ``self._vibrations`` above
+        IMAGINARY_TOLERANCE and its mode, scaled so that the atom moving most
+        moves SADDLE_DISPLACEMENT Å; (None, None) for a minimum."""
+        from ase.units import invcm
+
+        vibrations = getattr(self, "_vibrations", None)
+        if vibrations is None:
+            return None, None
+        energies, modes = vibrations.get_energies_and_modes(all_atoms=True)
+        imaginary = np.abs(np.imag(energies)) / invcm
+        imaginary[np.abs(np.imag(energies)) <= np.abs(np.real(energies))] = 0.0
+        index = int(np.argmax(imaginary))
+        frequency = float(imaginary[index])
+        if frequency <= IMAGINARY_TOLERANCE:
+            return None, None
+        mode = np.real(modes[index])
+        largest = np.max(np.linalg.norm(mode, axis=1))
+        if largest == 0.0:
+            return None, None
+        return frequency, mode * (SADDLE_DISPLACEMENT / largest)
+
+    def _escape_saddle(self, _P, can, configuration, result, harmonic):
+        """A species optimized to a saddle point (an imaginary mode above
+        IMAGINARY_TOLERANCE) is displaced along the mode, + then -, and
+        optimized again to SADDLE_TIGHTENING of the convergence with its
+        Hessian (``harmonic(fmax)``), until one reaches a minimum. Returns the
+        result of the structure the configuration is left at: the minimum, or,
+        if neither displacement reaches one, the last attempt (flagged)."""
+        frequency, mode = self._largest_imaginary_mode()
+        if frequency is None:
+            return result
+        choice = _P.get("saddle points", "displace and re-optimize")
+        if (
+            not str(choice).startswith("displace")
+            or not _yes(_P["optimize fragments"])
+            or configuration.n_atoms < 3
+        ):
+            result["saddle"] = frequency
+            return result
+        fmax = _P["fragment convergence"].m_as("eV/Å") * SADDLE_TIGHTENING
+        start = np.array(configuration.atoms.get_coordinates(fractionals=False))
+        E_saddle = result["E"]
+        printer.important(
+            __(
+                f"    {can} optimized to a saddle point ({frequency:.0f}i cm^-1), "
+                f"so it is displaced along that mode by up to {SADDLE_DISPLACEMENT} "
+                f"Å and optimized again (to {fmax:.4f} eV/Å).",
+                indent=4 * " ",
+                wrap=False,
+                dedent=False,
+            )
+        )
+        for sign in (1.0, -1.0):
+            configuration.atoms.set_coordinates(start + sign * mode, fractionals=False)
+            result = harmonic(fmax)
+            left, _ = self._largest_imaginary_mode()
+            direction = "+" if sign > 0 else "-"
+            if left is None:
+                result["imaginary"] = 0
+                printer.important(
+                    __(
+                        f"    displaced {direction}: a minimum, "
+                        f"{E_saddle - result['E']:.2f} kJ/mol below the saddle point.",
+                        indent=4 * " ",
+                        wrap=False,
+                        dedent=False,
+                    )
+                )
+                return result
+            printer.important(
+                __(
+                    f"    displaced {direction}: still a saddle point "
+                    f"({left:.0f}i cm^-1).",
+                    indent=4 * " ",
+                    wrap=False,
+                    dedent=False,
+                )
+            )
+        result["saddle"] = left
+        printer.important(
+            __(
+                f"    Warning: {can} remains a saddle point. Its energy is used and "
+                "flagged in the results, and it is not added to the fragment store.",
+                indent=4 * " ",
+                wrap=False,
+                dedent=False,
+            )
+        )
+        return result
 
     def _say_continuing(self, can, steps):
         printer.important(
@@ -3220,9 +3366,15 @@ class CBHApproach:
             for can, e in energies.items()
             if isinstance(e, dict) and e.get("broken")
         ]
+        saddles = [
+            can
+            for can, e in energies.items()
+            if isinstance(e, dict) and e.get("saddle")
+        ]
         return {
             "CBH unconverged species": ", ".join(unconverged),
             "CBH changed fragments": ", ".join(broken),
+            "CBH saddle-point species": ", ".join(saddles),
         }
 
     def _check_species(self, can, configuration, result):

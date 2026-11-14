@@ -206,6 +206,7 @@ def test_species_only(split, monkeypatch):
         "CBH geometry level": LOW,
         "CBH unconverged species": "",
         "CBH changed fragments": "",
+        "CBH saddle-point species": "",
     }
     assert "DfH 298K" not in data
     _, configuration = split.get_system_configuration()
