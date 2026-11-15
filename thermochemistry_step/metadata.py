@@ -426,10 +426,20 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH failed rungs": {
+        "description": (
+            "The CBH rungs that failed because a fragment's optimization did not "
+            "converge, with the fragments; empty or absent if none"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
     "CBH unconverged species": {
         "description": (
             "The fragments whose optimization did not converge, even after "
-            "continuing it; empty if none (such a target fails)"
+            "continuing it, which fail the rungs that need them; empty if none "
+            "(such a target fails)"
         ),
         "dimensionality": "scalar",
         "type": "string",

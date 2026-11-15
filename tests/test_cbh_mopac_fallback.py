@@ -87,3 +87,93 @@ def test_no_rung_with_mopac_computes_the_target(node, monkeypatch):
     assert data["CBH reaction"] == cbh_approach.MOPAC_OWN_LABEL
     assert "CBH DfH 298K" not in data and "CBH rung" not in data
     assert data["CBH unconverged species"] == ""
+
+
+def _reactions():
+    """CBH-1 needs CF; CBH-2 needs CF and CCC; CBH-3 needs neither."""
+    return {
+        1: SimpleNamespace(coefficients={"T": -1, "C": -1, "CF": 1, "CC": 1}),
+        2: SimpleNamespace(coefficients={"T": -1, "CF": 1, "CCC": 1}),
+        3: SimpleNamespace(coefficients={"T": -1, "CCO": 1}),
+    }
+
+
+def test_an_unconverged_fragment_fails_its_rungs(node):
+    energies = {
+        "T": {"E": 1.0, "converged": False},  # the target is not a fragment
+        "C": {"E": 1.0, "converged": True},
+        "CF": {"E": 1.0, "converged": False},
+        "CC": {"E": 1.0},
+        "CCC": {"E": 1.0, "converged": False},
+        "CCO": {"E": 1.0, "converged": True},
+    }
+    failed = node._failed_rungs("T", [1, 2, 3], _reactions(), energies)
+    assert failed == {1: ["CF"], 2: ["CCC", "CF"]}
+    assert node._failed_rungs_text(failed) == (
+        "CBH-1: CF did not converge; CBH-2: CCC, CF did not converge"
+    )
+    # Converged in the extra steps: nothing fails
+    energies["CF"]["converged"] = energies["CCC"]["converged"] = True
+    assert node._failed_rungs("T", [1, 2, 3], _reactions(), energies) == {}
+
+
+def test_a_failed_rung_falls_back_to_the_next_lower(node, monkeypatch):
+    """The fixture's CBH-1 needs CF; with CBH-0 as well, CF failing leaves
+    CBH-0."""
+    node.model = "ORCA:DFT@r2SCAN-3c"
+    real = node._energies_from_properties
+
+    def energies(P, configuration, can):
+        result = real(P, configuration, can)
+        if can == "CF":
+            result["converged"] = False
+        return result
+
+    monkeypatch.setattr(node, "_energies_from_properties", energies)
+    # CBH-0 (CCF + 2 H2 -> 2 C + F) needs HF and H2 as well
+    from tests.conftest import PROPERTY
+
+    db = node._test_db
+    current = db.system
+    for smiles, E in (("F", -280.0), ("[H][H]", -10.0)):
+        system = db.create_system(name=f"CBH:{smiles}", make_current=True)
+        configuration = system.create_configuration(name="initial", make_current=True)
+        configuration.from_smiles(smiles)
+        configuration.properties.add(PROPERTY, "float", units="kJ/mol", noerror=True)
+        configuration.properties.put(PROPERTY, E)
+    db.system = current
+    data = node.run_cbh(_parameters(node, **{"cbh rungs": "0, 1"}))
+    assert data["CBH rung"] == 0
+    assert data["CBH failed rungs"] == "CBH-1: CF did not converge"
+    assert data["CBH unconverged species"] == "CF"
+
+
+def test_with_mopac_a_failed_last_rung_gives_its_own_value(node, monkeypatch):
+    node.model = MOPAC
+    real = node._energies_from_properties
+
+    def energies(P, configuration, can):
+        result = real(P, configuration, can)
+        if can == "CF":
+            result["converged"] = False
+        return result
+
+    monkeypatch.setattr(node, "_energies_from_properties", energies)
+    data = node.run_cbh(_parameters(node))
+    assert data["CBH reaction"] == cbh_approach.MOPAC_OWN_LABEL
+    assert data["DfH 298K"] == pytest.approx(ENERGIES["CCF"])
+    assert data["CBH failed rungs"] == "CBH-1: CF did not converge"
+
+
+def test_convergence_is_recorded_for_the_harvest(node, ethanol):  # noqa: F811
+    node.model = MOPAC
+    name = f"optimization converged#Thermochemistry#{MOPAC}"
+    for result, P, expected in (
+        ({"converged": True}, {}, "yes"),
+        ({"converged": False}, {}, "no"),
+        ({}, {"optimize fragments": "no"}, "not optimized"),
+        ({"converged": None}, {"optimize fragments": "yes"}, "unknown"),
+    ):
+        configuration = ethanol("CBH:CCO")
+        node._record_convergence(P, configuration, result)
+        assert configuration.properties.get(name)[name]["value"] == expected

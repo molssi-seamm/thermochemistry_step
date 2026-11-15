@@ -1,6 +1,17 @@
 =======
 History
 =======
+2026.11.15.1 -- Unconverged fragments fail their rungs and never reach the store
+    * A fragment whose optimization had not converged, even after continuing it,
+      was used and only flagged. It now fails every CBH rung that needs it, and the
+      result comes from the highest rung left (with MOPAC below CBH-2, MOPAC's own
+      enthalpy of formation; with no rung left, the target fails). The new result
+      "CBH failed rungs" names the rungs and the fragments.
+    * Each computed species records whether its optimization converged, and a job
+      that cannot write the fragment store says so in its list of species to
+      harvest, so that the harvest when it returns to its JobServer refuses
+      unconverged species (with seamm-thermochemistry 2026.11.15).
+
 2026.11.15 -- Unconverged targets fail; MOPAC's own enthalpy of formation below CBH-2
     * A target whose optimization had not converged, even after continuing it, was
       used and only flagged. Like a target whose bonds changed, it now fails, so
