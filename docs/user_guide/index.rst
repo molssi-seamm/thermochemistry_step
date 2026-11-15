@@ -337,7 +337,16 @@ Thermal corrections
     enthalpy of formation at 298.15 K, as for MOPAC and other NDDO methods:
     then no Hessian is calculated and only the 298.15 K result is available.
     Note that with NDDO methods CBH-0 is of no use, since their H2 is far from
-    experiment.
+    experiment, and CBH-1 is worse than the method's own enthalpy of formation
+    (PPE1694 with PM7: mean absolute errors CBH-0 353, CBH-1 35, MOPAC's own
+    13-24, CBH-2 and up about 9 kJ/mol). So with a MOPAC model chemistry, when
+    no rung from CBH-2 up is usable, the result is MOPAC's own enthalpy of
+    formation of the target: ``CBH reaction`` says ``MOPAC ΔHf (no CBH rung
+    ≥2)``, the best rung's CBH value is kept as ``CBH DfH 298K``, and there is
+    no uncertainty, since MOPAC's value comes from its parametrization against
+    experiment. When no rung is usable at all, only the target is computed.
+    MOPAC computes open-shell species with UHF, the default; OPEN(1,1) (RHF)
+    gives enthalpies of formation 2-8 kJ/mol higher.
 
 Reference values
     ``ATcT`` for every reference species; ``laddered``: a CBH-ANL reference
@@ -468,10 +477,11 @@ written, since their structures are not computed here.
 Each computed species is checked after its optimization:
 
 * An optimization that has not converged in *Fragment max steps* continues from
-  where it stopped for as many steps again. One that still has not converged is
-  used, but listed in the result ``CBH unconverged species`` (empty when all
-  converged), marked ``optimization converged: no`` in its SDF file, and not added
-  to the fragment store.
+  where it stopped for as many steps again. A target that still has not converged
+  fails, since its energy is not that of a minimum. A fragment that still has not
+  converged is used, but listed in the result ``CBH unconverged species`` (empty
+  when all converged), marked ``optimization converged: no`` in its SDF file, and
+  not added to the fragment store.
 * A target whose bonds are no longer those of its SMILES after the optimization
   (dimethyl sulfate falling apart to SO\ :sub:`2` and CH\ :sub:`3`\ OOCH\ :sub:`3`,
   say) fails, since its energy would be that of other molecules. A fragment that

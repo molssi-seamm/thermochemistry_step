@@ -355,6 +355,17 @@ metadata["results"] = {
         "type": "string",
         "format": "",
     },
+    "CBH DfH 298K": {
+        "description": (
+            "With a MOPAC model chemistry and no CBH rung of 2 or higher, the result "
+            "is MOPAC's own enthalpy of formation; this is the best rung's CBH value "
+            "at 298.15 K, for comparison"
+        ),
+        "dimensionality": "scalar",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".2f",
+    },
     "DfH 0K (geometry level)": {
         "description": (
             "The enthalpy of formation at 0 K from the same reactions with the "
@@ -417,8 +428,8 @@ metadata["results"] = {
     },
     "CBH unconverged species": {
         "description": (
-            "The species (target or fragments) whose optimization did not converge, "
-            "even after continuing it; empty if none"
+            "The fragments whose optimization did not converge, even after "
+            "continuing it; empty if none (such a target fails)"
         ),
         "dimensionality": "scalar",
         "type": "string",

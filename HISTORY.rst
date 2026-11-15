@@ -1,6 +1,21 @@
 =======
 History
 =======
+2026.11.15 -- Unconverged targets fail; MOPAC's own enthalpy of formation below CBH-2
+    * A target whose optimization had not converged, even after continuing it, was
+      used and only flagged. Like a target whose bonds changed, it now fails, so
+      its energy never enters results unseen. Unconverged fragments are still
+      used, flagged and kept out of the fragment store.
+    * With a MOPAC model chemistry, when no CBH rung from CBH-2 up is usable, the
+      result is now MOPAC's own enthalpy of formation of the target, which is
+      better there than CBH-0 or CBH-1 (PPE1694 with PM7: mean absolute errors
+      CBH-1 35, MOPAC's own 13-24 kJ/mol). "CBH reaction" says "MOPAC ΔHf (no CBH
+      rung ≥2)" and the best rung's value is kept as the new result "CBH DfH
+      298K". A target with no usable rung at all, which used to fail, is computed
+      for its own value.
+    * The documentation notes that MOPAC computes open-shell species with UHF,
+      the default; OPEN(1,1) gives values 2-8 kJ/mol higher.
+
 2026.11.13.4 -- Bugfix: saddle points are re-optimized; force-field-broken species
     * A species that optimized to a saddle point (an imaginary mode above 20i
       cm^-1, such as a planar CH3- or an eclipsed methyl) was only flagged, and
