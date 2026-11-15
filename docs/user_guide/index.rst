@@ -479,9 +479,15 @@ Each computed species is checked after its optimization:
 * An optimization that has not converged in *Fragment max steps* continues from
   where it stopped for as many steps again. A target that still has not converged
   fails, since its energy is not that of a minimum. A fragment that still has not
-  converged is used, but listed in the result ``CBH unconverged species`` (empty
-  when all converged), marked ``optimization converged: no`` in its SDF file, and
-  not added to the fragment store.
+  converged fails every rung that needs it, and the result comes from the highest
+  rung left (with MOPAC below CBH-2, MOPAC's own value; with no rung left, the
+  target fails). The fragment is listed in the result ``CBH unconverged species``
+  (empty when all converged), the rungs and fragments in ``CBH failed rungs``; it
+  is marked ``optimization converged: no`` in its SDF file and is never added to
+  the fragment store. Each computed species records whether its optimization
+  converged (the property ``optimization converged#Thermochemistry#<level>``),
+  and the store's harvest refuses one that did not, also when a job on a cluster
+  is harvested on its return.
 * A target whose bonds are no longer those of its SMILES after the optimization
   (dimethyl sulfate falling apart to SO\ :sub:`2` and CH\ :sub:`3`\ OOCH\ :sub:`3`,
   say) fails, since its energy would be that of other molecules. A fragment that

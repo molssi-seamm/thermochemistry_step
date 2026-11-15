@@ -106,8 +106,8 @@ def test_a_fragment_that_changed_is_flagged(node, ethanol):
 def test_unconverged_species_are_flagged_and_not_stored(
     adding, monkeypatch  # noqa: F811
 ):
-    """A fragment whose optimization did not converge is used, flagged in the
-    results, and not written back."""
+    """A fragment whose optimization did not converge fails the rungs that need
+    it, and is not written back (the others are)."""
     from seamm_thermochemistry import FragmentStore
 
     def compute(P, can, generated, system=None, configuration=None, embed=False):
@@ -119,9 +119,10 @@ def test_unconverged_species_are_flagged_and_not_stored(
 
     monkeypatch.setattr(adding, "_compute_species", compute)
     FakeEvaluator.calls = []
-    data = adding.run_cbh(dict(adding._P))
-    assert data["CBH unconverged species"] == "CF"
-    assert data["CBH changed fragments"] == ""
+    # CF fails CBH-1, the only rung (Paul, 2026-11-15: fragments at the step limit
+    # fail their rungs, as targets fail)
+    with pytest.raises(RuntimeError, match="CBH-1: CF did not converge"):
+        adding.run_cbh(dict(adding._P))
     with FragmentStore(adding._store) as store:
         species = {
             r[0] for r in store._connect().execute("SELECT species FROM fragment")

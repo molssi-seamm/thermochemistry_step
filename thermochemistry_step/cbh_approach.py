@@ -800,8 +800,33 @@ class CBHApproach:
                 if "H298" in e:
                     e["H298"] += shift
 
+        # A fragment whose optimization did not converge, even after continuing,
+        # fails every rung that needs it: the result comes from the highest rung
+        # left
+        failed_rungs = self._failed_rungs(target, usable, reactions, energies)
+        if failed_rungs:
+            usable = [r for r in usable if r not in failed_rungs]
+            if not usable:
+                own = energies.get(target, {}).get("H298")
+                if self._is_mopac(energy_mc) and own is not None:
+                    data = self._mopac_own_result(own)
+                    data["CBH energy level"] = (
+                        energy_mc["level"] if energy_mc is not None else self.model
+                    )
+                    data["CBH geometry level"] = self.model
+                    data["ATcT version"] = tables.version
+                    data["CBH failed rungs"] = self._failed_rungs_text(failed_rungs)
+                    data.update(self._flags(energies))
+                    return data
+                raise RuntimeError(
+                    "Every usable CBH rung needs a fragment whose optimization did "
+                    "not converge: " + self._failed_rungs_text(failed_rungs) + "."
+                )
+
         # Combine
         data = {}
+        if failed_rungs:
+            data["CBH failed rungs"] = self._failed_rungs_text(failed_rungs)
         rows = []
         table = self.get_table("CBH")
         for column, coltype in (
@@ -1647,7 +1672,12 @@ class CBHApproach:
 
         def not_written(why):
             if root is not None:
-                hooks.write_marker(root, list(species), why)
+                try:
+                    hooks.write_marker(
+                        root, list(species), why, convergence_recorded=True
+                    )
+                except TypeError:  # an older seamm-thermochemistry
+                    hooks.write_marker(root, list(species), why)
             text = (
                 f"\nThe computed species were not added to the fragment store: {why}. "
                 "The job will be harvested into the store when it returns to its "
@@ -2603,6 +2633,7 @@ class CBHApproach:
                 )
         finally:
             self._subdirectory = None
+        self._record_convergence(_P, configuration, result)
         try:
             self._write_species_sdf(configuration, can, result)
         except Exception as e:
@@ -2611,6 +2642,31 @@ class CBHApproach:
         # After the structure is written, so a broken one can be looked at
         self._check_species(can, configuration, result)
         return result
+
+    def _record_convergence(self, _P, configuration, result):
+        """Record on the species whether its optimization converged ("yes",
+        "no", "not optimized" or "unknown"), for the fragment store's harvest,
+        which refuses "no"."""
+        if not self.model:
+            return
+        if "converged" in result and result["converged"] is not None:
+            value = "yes" if result["converged"] else "no"
+        elif not _yes(_P.get("optimize fragments", "yes")):
+            value = "not optimized"
+        else:
+            value = "unknown"
+        name = f"optimization converged#Thermochemistry#{self.model}"
+        try:
+            properties = configuration.properties
+            if not properties.exists(name):
+                properties.add(
+                    name,
+                    "str",
+                    description="whether the optimization converged",
+                )
+            properties.put(name, value)
+        except Exception as e:  # a record must never fail the species
+            logger.warning(f"Could not record the convergence: {e}")
 
     def _species_directory(self):
         """The step's directory, or None when it has none (outside a flowchart)."""
@@ -3347,6 +3403,45 @@ class CBHApproach:
         )
         return text + "\n"
 
+    @staticmethod
+    def _failed_rungs(target, usable, reactions, energies):
+        """{rung: [fragments]}: the usable rungs that need a fragment whose
+        optimization did not converge, even after continuing. Prints them."""
+        unconverged = {
+            can
+            for can, e in energies.items()
+            if can != target and isinstance(e, dict) and e.get("converged") is False
+        }
+        failed = {}
+        for rung in usable:
+            needs = sorted(unconverged & set(reactions[rung].coefficients))
+            if needs:
+                failed[rung] = needs
+        if failed:
+            left = [r for r in usable if r not in failed]
+            text = (
+                "\nThe optimization of "
+                + ", ".join(sorted({c for v in failed.values() for c in v}))
+                + " did not converge, even after continuing, so "
+                + ", ".join(f"CBH-{r}" for r in failed)
+                + (" fails" if len(failed) == 1 else " fail")
+                + (
+                    f"; the result comes from CBH-{left[-1]}."
+                    if left
+                    else ", and no rung is left."
+                )
+            )
+            printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+        return failed
+
+    @staticmethod
+    def _failed_rungs_text(failed):
+        """'CBH-2, CBH-3: CF did not converge' for the results."""
+        return "; ".join(
+            f"CBH-{rung}: {', '.join(cans)} did not converge"
+            for rung, cans in failed.items()
+        )
+
     def _is_mopac(self, energy_mc):
         """Whether the energies are MOPAC's, whose energy is the enthalpy of
         formation at 298.15 K."""
@@ -3472,7 +3567,8 @@ class CBHApproach:
         """After a species is computed: a target whose bonds are no longer its
         SMILES' has become another molecule, and fails, as does a target whose
         optimization did not converge; a fragment that did either is flagged
-        ("broken", "converged") and kept out of the fragment store."""
+        ("broken", "converged") and kept out of the fragment store, and an
+        unconverged one fails the rungs that need it."""
         problem = None
         try:
             from seamm_thermochemistry.fragment_store import check_structure
@@ -3519,8 +3615,8 @@ class CBHApproach:
             printer.important(
                 __(
                     f"    Warning: the optimization of the fragment {can} did not "
-                    "converge, even after continuing. Its energy is used and flagged "
-                    "in the results, and it is not added to the fragment store.",
+                    "converge, even after continuing. The rungs that need it fail, "
+                    "and it is not added to the fragment store.",
                     indent=4 * " ",
                     wrap=True,
                     dedent=False,
