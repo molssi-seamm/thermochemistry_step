@@ -224,3 +224,65 @@ def test_library_target_checked_by_a_rung(node, monkeypatch):
     assert data["CBH - library"] == pytest.approx(3.053, abs=1e-6)
     assert data["library check"].startswith("differs by more than twice")
     assert "ATcT DfH 298K" not in data
+
+
+def _computed_library(node, smiles, formula, value, multiplicity=1):
+    """A computed value (a source of kind 'computed', as SEAMM's tier-A layer)."""
+    lib = references.ReferenceLibrary(
+        node._test_base.parent / "references-official.db",
+        create=True,
+        layer="official",
+    )
+    lib.add_source("SEAMM-tierA", "computed", 90)
+    sid = lib.add_species(smiles, formula=formula, multiplicity=multiplicity)
+    lib.add_measurement(
+        sid,
+        "SEAMM-tierA",
+        dfh_298k=value,
+        uncertainty=4.0,
+        unc_level="2 sigma",
+        citation="SEAMM job 5738",
+        status="computed",
+    )
+    lib.choose(sid, "SEAMM-tierA")
+    lib.close()
+
+
+def test_a_computed_target_is_neither_result_nor_check(node, monkeypatch, caplog):
+    """Fluoroethane, not in ATcT, with only a computed library value: the CBH
+    value is the result and is not compared with the computed one."""
+    real = A.ATcT.lookup
+
+    def lookup(self, smiles=None, **kwargs):
+        if smiles is not None and A.canonical_smiles(smiles) == "CCF":
+            raise A.MissingEntry(f"No ATcT entry for {smiles}")
+        return real(self, smiles, **kwargs)
+
+    monkeypatch.setattr(A.ATcT, "lookup", lookup)
+    _computed_library(node, "CCF", "C2H5F", -250.0)
+    data = node.run_cbh(
+        _parameters(node, **{"supplementary references": "compilations and computed"})
+    )
+    assert data["DfH 298K"] == pytest.approx(-244.947 - 2.0, abs=1e-6)
+    assert "library DfH 298K" not in data and "CBH - library" not in data
+    assert "It is a computed value, not a reference" in " ".join(
+        _printed(caplog).split()
+    )
+
+
+def test_computed_references_are_marked(node, no_cf, caplog):
+    _computed_library(node, "CF", "CH3F", -234.0)
+    data = node.run_cbh(
+        _parameters(node, **{"supplementary references": "compilations and computed"})
+    )
+    assert data["CBH rung"] == 1
+    assert data["CBH references"] == "computed references"
+    text = " ".join(_printed(caplog).split())
+    assert "CF: SEAMM-tierA, SEAMM job 5738 -- a COMPUTED value" in text
+    assert "CBH-1 uses computed reference values for CF" in text
+    # Experimental only: no reference for CF, so no rung (fluoroethane's own
+    # ATcT value is the result)
+    data = node.run_cbh(
+        _parameters(node, **{"supplementary references": "compilations"})
+    )
+    assert data["CBH reaction"].startswith("target is a reference species (ATcT")
