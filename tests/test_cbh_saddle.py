@@ -21,17 +21,57 @@ SYMBOLS = "OHH"
 START = np.array([[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]])
 
 
-def _vibrations(saddle):
-    """VibrationsData for water-shaped atoms whose Hessian is diagonal, with a
-    negative curvature along the oxygen's z for a saddle point."""
+def _hessian(saddle, rotation=-0.05, k=40.0, curvature=-1.0):
+    """A Cartesian Hessian (eV/Å^2) for water-shaped atoms: zero along the
+    translations and rotations except for a spurious negative curvature
+    `rotation` (eV/Å^2/amu) along one rotation, as real Hessians have (CaH2,
+    20.1i), and `k` along the vibrations, with `curvature` along one vibration
+    (mostly the oxygen moving along x) for a saddle point. Returns (Hessian,
+    the saddle direction in Cartesian coordinates)."""
+    from ase import Atoms
+
+    atoms = Atoms(SYMBOLS, positions=START)
+    m = np.repeat(atoms.get_masses(), 3)
+    sqrt_m = np.sqrt(m)
+    r = START - atoms.get_center_of_mass()
+    q = []
+    for axis in np.eye(3):
+        q.append((np.tile(axis, 3) * sqrt_m))  # translations
+    for axis in np.eye(3):
+        q.append((np.cross(axis, r).ravel() * sqrt_m))  # rotations
+    Q, _ = np.linalg.qr(np.array(q).T)
+    Q = Q[:, :6]
+    P = np.eye(9) - Q @ Q.T
+    d = np.zeros(9)
+    d[0] = 1.0  # the oxygen along x
+    d = P @ d
+    d /= np.linalg.norm(d)
+    H = k * P
+    if saddle:
+        H += (curvature - k) * np.outer(d, d)
+    rot = Q[:, 5] - Q[:, :3] @ (Q[:, :3].T @ Q[:, 5])
+    rot /= np.linalg.norm(rot)
+    H += rotation * np.outer(rot, rot)
+    cartesian = sqrt_m[:, None] * H * sqrt_m[None, :]
+    direction = (d / sqrt_m).reshape(3, 3)
+    return cartesian, direction
+
+
+def _vibrations(saddle, **kwargs):
+    """VibrationsData for water-shaped atoms (see _hessian)."""
     from ase import Atoms
     from ase.vibrations import VibrationsData
 
     atoms = Atoms(SYMBOLS, positions=START)
-    diagonal = np.ones(9)
-    if saddle:
-        diagonal[2] = -0.5  # eV/Å^2: about 92i cm^-1
-    return VibrationsData(atoms, np.diag(diagonal).reshape(3, 3, 3, 3))
+    hessian, _ = _hessian(saddle, **kwargs)
+    return VibrationsData(atoms, hessian.reshape(3, 3, 3, 3))
+
+
+def _expected_frequency():
+    """The saddle point's imaginary frequency (cm^-1), with no spurious
+    rotation, from ASE."""
+    frequencies = _vibrations(saddle=True, rotation=0.0).get_frequencies()
+    return max(abs(f.imag) for f in frequencies)
 
 
 class FakeAtoms:
@@ -60,25 +100,63 @@ def _P(**changes):
 
 
 def test_the_largest_imaginary_mode(node):
+    expected = _expected_frequency()
+    assert expected > 2 * cbh_approach.IMAGINARY_TOLERANCE
     node._vibrations = _vibrations(saddle=True)
     frequency, mode = node._largest_imaginary_mode()
-    assert frequency == pytest.approx(92, abs=3)
-    # Along the oxygen's z only, its largest atomic displacement 0.3 Å
-    assert np.abs(mode[0, 2]) == pytest.approx(cbh_approach.SADDLE_DISPLACEMENT)
-    assert np.abs(mode).sum() == pytest.approx(cbh_approach.SADDLE_DISPLACEMENT)
+    assert frequency == pytest.approx(expected, rel=1e-6)
+    # Along the saddle direction, the atom moving most moving 0.3 Å
+    _, direction = _hessian(saddle=True)
+    cosine = np.vdot(mode, direction) / np.linalg.norm(mode) / np.linalg.norm(direction)
+    assert abs(cosine) == pytest.approx(1.0, abs=1e-6)
+    assert np.max(np.linalg.norm(mode, axis=1)) == pytest.approx(
+        cbh_approach.SADDLE_DISPLACEMENT
+    )
     node._vibrations = _vibrations(saddle=False)
     assert node._largest_imaginary_mode() == (None, None)
 
 
+def test_translations_and_rotations_are_not_saddle_modes(node):
+    """A minimum whose near-zero rotation is imaginary above the tolerance
+    (CaH2, ChemAI 5739: 20.1i among the six that should be zero) is not a saddle
+    point."""
+    from ase.units import invcm
+
+    node._vibrations = _vibrations(saddle=False, rotation=-0.1)
+    energies = node._vibrations.get_energies()
+    assert max(abs(e.imag) for e in energies) / invcm > (
+        cbh_approach.IMAGINARY_TOLERANCE
+    )
+    assert node._largest_imaginary_mode() == (None, None)
+
+
+def test_zero_modes_of_linear_species_and_atoms():
+    from ase import Atoms
+    from ase.vibrations import VibrationsData
+
+    def count(symbols, positions):
+        atoms = Atoms(symbols, positions=positions)
+        n = 3 * len(atoms)
+        return cbh_approach._n_zero_modes(
+            VibrationsData(atoms, np.eye(n).reshape(len(atoms), 3, len(atoms), 3))
+        )
+
+    assert count("Ca", [[0, 0, 0]]) == 3
+    assert count("HCaH", [[0, 0, -2.0], [0, 0, 0], [0, 0, 2.0]]) == 5
+    assert count(SYMBOLS, START) == 6
+
+
 def _harmonic(node, configuration, minimum_when):
-    """A stand-in for optimize + Hessian: a minimum when `minimum_when(z)` for
-    the oxygen's z after displacement; records the convergence asked for."""
+    """A stand-in for optimize + Hessian: a minimum when `minimum_when(x)` for
+    the oxygen's x displacement; records the convergence asked for and the
+    largest atomic displacement."""
     calls = []
 
     def harmonic(fmax):
-        z = configuration.atoms.xyz[0, 2]
+        delta = configuration.atoms.xyz - START
+        z = delta[0, 0]
         minimum = minimum_when(z)
-        calls.append((fmax, z))
+        calls.append((fmax, z, np.max(np.linalg.norm(delta, axis=1))))
         node._vibrations = _vibrations(saddle=not minimum)
         return {"E": -10.0 if minimum else 0.0, "imaginary": 0 if minimum else 1}
 
@@ -101,9 +179,13 @@ def test_a_saddle_is_displaced_to_a_minimum(node):
     result = node._escape_saddle(_P(), "[CH3-]", configuration, saddle, harmonic)
     assert len(calls) == 2  # + stayed a saddle, - reached the minimum
     assert calls[0][1] == pytest.approx(-calls[1][1])
-    assert abs(calls[0][1]) == pytest.approx(cbh_approach.SADDLE_DISPLACEMENT)
+    assert calls[0][1] != 0.0
+    assert all(
+        moved == pytest.approx(cbh_approach.SADDLE_DISPLACEMENT)
+        for _, _, moved in calls
+    )
     tight = 0.005 * cbh_approach.SADDLE_TIGHTENING
-    assert all(fmax == pytest.approx(tight) for fmax, _ in calls)
+    assert all(fmax == pytest.approx(tight) for fmax, _, _ in calls)
     assert result["E"] == -10.0 and result["imaginary"] == 0
     assert "saddle" not in result
     assert node._flags({"[CH3-]": result})["CBH saddle-point species"] == ""
@@ -127,7 +209,7 @@ def test_a_saddle_that_stays_is_flagged(node):
         _P(), "F[C](F)F", configuration, {"E": 0.0, "imaginary": 1}, harmonic
     )
     assert len(calls) == 2
-    assert result["saddle"] == pytest.approx(92, abs=3)
+    assert result["saddle"] == pytest.approx(_expected_frequency(), rel=1e-6)
     flags = node._flags({"F[C](F)F": result, "C": {"E": 1.0}})
     assert flags["CBH saddle-point species"] == "F[C](F)F"
 
@@ -142,7 +224,9 @@ def test_keep_and_flag_does_not_displace(node):
         _P(**{"optimize fragments": "no"}),
     ):
         result = node._escape_saddle(P, "[CH2]O", configuration, dict(saddle), harmonic)
-        assert calls == [] and result["saddle"] == pytest.approx(92, abs=3)
+        assert calls == [] and result["saddle"] == pytest.approx(
+            _expected_frequency(), rel=1e-6
+        )
 
 
 def test_a_minimum_is_left_alone(node):

@@ -3219,9 +3219,10 @@ class CBHApproach:
             )
 
     def _largest_imaginary_mode(self):
-        """The largest imaginary frequency (cm^-1) of ``self._vibrations`` above
-        IMAGINARY_TOLERANCE and its mode, scaled so that the atom moving most
-        moves SADDLE_DISPLACEMENT Å; (None, None) for a minimum."""
+        """The largest imaginary vibrational frequency (cm^-1) of
+        ``self._vibrations`` above IMAGINARY_TOLERANCE, ignoring the
+        translations and rotations, and its mode, scaled so that the atom moving
+        most moves SADDLE_DISPLACEMENT Å; (None, None) for a minimum."""
         from ase.units import invcm
 
         vibrations = getattr(self, "_vibrations", None)
@@ -3230,6 +3231,10 @@ class CBHApproach:
         energies, modes = vibrations.get_energies_and_modes(all_atoms=True)
         imaginary = np.abs(np.imag(energies)) / invcm
         imaginary[np.abs(np.imag(energies)) <= np.abs(np.real(energies))] = 0.0
+        # Only the vibrations: the translations and rotations, the 6 (5 for a
+        # linear species, 3 for an atom) modes of smallest magnitude, should be
+        # zero but are often a few tens of cm^-1, imaginary or not (CaH2: 20.1i)
+        imaginary[np.argsort(np.abs(energies))[: _n_zero_modes(vibrations)]] = 0.0
         index = int(np.argmax(imaginary))
         frequency = float(imaginary[index])
         if frequency <= IMAGINARY_TOLERANCE:
@@ -3949,6 +3954,18 @@ def _any_rows(counts):
     return any(
         counts[k] for k in ("inserted", "duplicate", "logged", "superseded")
     ) or any(counts[t] for t in ("geometry", "energy"))
+
+
+def _n_zero_modes(vibrations):
+    """The number of translations and rotations: 3 for an atom, 5 for a linear
+    species, else 6 (as the step's frequency analysis counts them)."""
+    atoms = vibrations.get_atoms()
+    if len(atoms) == 1:
+        return 3
+    moments = atoms.get_moments_of_inertia()
+    if moments[0] < 0.01 and abs(moments[2] - moments[1]) < 0.01:
+        return 5
+    return 6
 
 
 def _yes(value):
