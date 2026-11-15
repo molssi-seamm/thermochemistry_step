@@ -55,6 +55,10 @@ T_REF = 298.15
 
 #: Imaginary modes up to this (cm^-1) are numerical noise, as in the fragment store
 IMAGINARY_TOLERANCE = 20.0
+
+#: The 'CBH reaction' of a MOPAC result that is MOPAC's own enthalpy of formation
+MOPAC_OWN_LABEL = "MOPAC ΔHf (no CBH rung ≥2)"
+
 #: A saddle point is displaced along its imaginary mode until the atom moving
 #: most has moved this far (Å), and re-optimized to SADDLE_TIGHTENING of the
 #: convergence (a methyl torsion re-converges to the saddle at the usual one)
@@ -599,6 +603,13 @@ class CBHApproach:
             if library_target is not None:
                 return self._library_species_result(
                     target, library_target, tables, resolver
+                )
+            if (
+                self._is_mopac(self._energy_level(_P))
+                and _P["cbh energies"] != "existing results (run nothing)"
+            ):
+                return self._mopac_only_result(
+                    _P, smiles, target, target_system, target_configuration, tables
                 )
             if resolver is not None:
                 raise RuntimeError(
@@ -1203,6 +1214,13 @@ class CBHApproach:
             data["DfH 298K"] = best["DfH 298.15 K"]
         data["DfH uncertainty"] = best["uncertainty"]
         data["DfH uncertainty method"] = best["uncertainty method"]
+        if best["rung"] < 2 and self._is_mopac(energy_mc):
+            own = energies.get(target, {})
+            own = own.get("H298") if isinstance(own, dict) else None
+            if own is not None:
+                data.pop("DfH 0K", None)
+                data.pop("DfH uncertainty", None)
+                data.update(self._mopac_own_result(own, best))
         if geometry_results:
             geometry_best = geometry_results.get(best["rung"], {})
             data["CBH geometry level preset"] = self._geometry_level_preset() or ""
@@ -3329,6 +3347,79 @@ class CBHApproach:
         )
         return text + "\n"
 
+    def _is_mopac(self, energy_mc):
+        """Whether the energies are MOPAC's, whose energy is the enthalpy of
+        formation at 298.15 K."""
+        level = energy_mc["level"] if energy_mc is not None else self.model
+        return str(level or "").upper().startswith("MOPAC:")
+
+    @staticmethod
+    def _mopac_own_result(own, best=None):
+        """The results when MOPAC's own enthalpy of formation of the target is
+        used, because no CBH rung of 2 or higher is usable: below CBH-2, CBH with
+        MOPAC is worse than MOPAC's own value (PPE1694, PM7: mean absolute error
+        CBH-0 353, CBH-1 35, own 13-24 kJ/mol). `best` is the best rung's result,
+        if any, which is kept as "CBH DfH 298K"."""
+        text = (
+            "\nNo CBH rung of 2 or higher is usable, and below CBH-2 CBH with "
+            "MOPAC is worse than MOPAC's own enthalpy of formation, so the result "
+            f"is MOPAC's own value, {own:.2f} kJ/mol at 298.15 K. It comes from "
+            "MOPAC's parametrization against experiment, so it is not an "
+            "independent check, and it has no uncertainty estimate."
+        )
+        if best is not None and "DfH 298.15 K" in best:
+            text += (
+                f" CBH-{best['rung']} gives {best['DfH 298.15 K']:.2f} kJ/mol, "
+                "kept as 'CBH DfH 298K'."
+            )
+        printer.important(__(text, indent=4 * " ", wrap=True, dedent=False))
+        data = {
+            "CBH reaction": MOPAC_OWN_LABEL,
+            "DfH 298K": own,
+            "DfH uncertainty method": "none: MOPAC's own enthalpy of formation",
+        }
+        if best is not None and "DfH 298.15 K" in best:
+            data["CBH DfH 298K"] = best["DfH 298.15 K"]
+        return data
+
+    def _mopac_only_result(self, _P, smiles, target, system, configuration, tables):
+        """No CBH rung is usable with a MOPAC model chemistry: compute the target
+        and report MOPAC's own enthalpy of formation."""
+        printer.important(
+            __(
+                "\nNo CBH rung is usable, so only the target is computed, for "
+                "MOPAC's own enthalpy of formation.",
+                indent=4 * " ",
+                wrap=False,
+                dedent=False,
+            )
+        )
+        result = self._compute_species(
+            _P,
+            target,
+            smiles,
+            system,
+            configuration,
+            embed=str(_P.get("target conformer", "as given")).startswith("lowest"),
+        )
+        own = result.get("H298") if isinstance(result, dict) else None
+        if own is None:
+            raise RuntimeError(
+                f"No CBH rung is usable and MOPAC gave no enthalpy of formation for "
+                f"{target}."
+            )
+        data = self._mopac_own_result(own)
+        data["CBH energy level"] = self.model
+        data["CBH geometry level"] = self.model
+        data["ATcT version"] = tables.version
+        data.update(self._flags({target: result}))
+        if self._storable(target, result):
+            self._write_back(_P, {target: configuration})
+        system_db = self.get_variable("_system_db")
+        system_db.system = system
+        system.configuration = configuration
+        return data
+
     @staticmethod
     def _storable(can, result):
         """Whether a computed species may go into the fragment store: not one
@@ -3379,9 +3470,9 @@ class CBHApproach:
 
     def _check_species(self, can, configuration, result):
         """After a species is computed: a target whose bonds are no longer its
-        SMILES' has become another molecule, and fails; a fragment that did so,
-        or that did not converge, is flagged ("broken", "converged") and kept
-        out of the fragment store."""
+        SMILES' has become another molecule, and fails, as does a target whose
+        optimization did not converge; a fragment that did either is flagged
+        ("broken", "converged") and kept out of the fragment store."""
         problem = None
         try:
             from seamm_thermochemistry.fragment_store import check_structure
@@ -3418,11 +3509,18 @@ class CBHApproach:
                 )
             )
         if result.get("converged") is False:
+            if target:
+                raise RuntimeError(
+                    f"The optimization of {can} did not converge, even after "
+                    "continuing it for as many steps again ('fragment max steps'), "
+                    "so its energy is not that of a minimum. Allow more steps or "
+                    "start from a better structure."
+                )
             printer.important(
                 __(
-                    f"    Warning: the optimization of {can} did not converge, even "
-                    "after continuing. Its energy is used and flagged in the "
-                    "results, and it is not added to the fragment store.",
+                    f"    Warning: the optimization of the fragment {can} did not "
+                    "converge, even after continuing. Its energy is used and flagged "
+                    "in the results, and it is not added to the fragment store.",
                     indent=4 * " ",
                     wrap=True,
                     dedent=False,
