@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.11.15.3 -- Bugfix: rotations were taken for saddle-point modes
+    * The saddle-point check looked at all 3N modes, so a translation or rotation
+      that came out slightly imaginary (20.1i for CaH2, among the six that should
+      be zero) made a minimum look like a saddle point: it was displaced along a
+      rotation and optimized again for nothing, and a floppy species could be
+      flagged as a saddle point. Only the vibrations are now considered, as in the
+      step's frequency analysis.
+
 2026.11.15.2 -- Computed reference values are marked and never taken for experiment
     * The reference library's computed values (W4-17's, and SEAMM's own tier-A
       calculations in the computed layer) are used only with "compilations and
