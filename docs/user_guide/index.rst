@@ -412,12 +412,19 @@ Supplementary references, Use my own references
     and many organic parents) can come from the reference library, which is
     installed beside the ATcT data. It holds evaluated compilations and
     measurements: printed JANAF, CODATA, the NBS tables of 1982, spectroscopic
-    D\ :sub:`0`, W4-17 and measurements from the NIST WebBook, each cited to its
-    original source, and computed references.
+    D\ :sub:`0` and measurements from the NIST WebBook, each cited to its
+    original source. It also holds computed values: W4-17's, and SEAMM's own
+    tier-A calculations in a separate computed layer (``references-computed.db``)
+    when that is installed.
 
     - ``compilations and computed``, the default, uses all of them;
-      ``compilations`` leaves out the computed references; ``none`` uses ATcT
-      only.
+      ``compilations`` uses only experimental values; ``none`` uses ATcT only.
+    - An experimental value always wins over a computed one. The output marks
+      each computed reference value and names the rungs that use one, and the
+      result's ``CBH references`` says ``computed references``.
+    - A target whose only library value is computed is not given that value as
+      its result, and its CBH result is not compared with it; the value is only
+      printed.
     - ATcT always comes first. The library is used only with ATcT as the
       reference values, not with a ladder.
     - For an element that ATcT lacks, all its references are taken from one

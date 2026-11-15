@@ -557,6 +557,7 @@ class CBHApproach:
         # A target that ATcT lacks but the reference library has: its library
         # value is reported, and checked against the CBH value when a rung works
         library_target = None
+        computed_target = None
         if resolver is not None:
             check_atct = target_entry
             if check_atct is None and not _yes(_P["compare with ATcT"]):
@@ -564,7 +565,21 @@ class CBHApproach:
             if check_atct is None:
                 own, _, _, _ = resolver.resolve([target])
                 if target in own and own[target].get("source") != "ATcT":
-                    library_target = own[target]
+                    # A computed value of the target is not a reference: it is
+                    # neither the result nor a check of it
+                    if own[target].get("computed"):
+                        computed_target = own[target]
+                    else:
+                        library_target = own[target]
+        if computed_target is not None:
+            printer.important(
+                __(
+                    self._computed_target_text(computed_target),
+                    indent=4 * " ",
+                    wrap=True,
+                    dedent=False,
+                )
+            )
 
         # Report the reactions
         lines = []
@@ -1137,9 +1152,23 @@ class CBHApproach:
             text += "\nReference values from the reference library:\n"
             for can, entry in used_library.items():
                 text += f"    {can}: {entry['source']}, {entry['citation']}"
+                if entry.get("computed"):
+                    text += f" -- a COMPUTED value ({entry.get('layer', '')} layer)"
                 if entry.get("override_reason"):
                     text += f" (replaces an earlier source: {entry['override_reason']})"
                 text += ".\n"
+            for rung in usable:
+                computed = [
+                    can
+                    for can in reactions[rung].references
+                    if entries[can].get("computed")
+                ]
+                if computed:
+                    text += (
+                        f"CBH-{rung} uses computed reference values for "
+                        + ", ".join(computed)
+                        + ", not experimental ones.\n"
+                    )
             if converted:
                 text += (
                     "* Converted between 0 K and 298.15 K with this calculation's "
@@ -3440,6 +3469,23 @@ class CBHApproach:
         return "; ".join(
             f"CBH-{rung}: {', '.join(cans)} did not converge"
             for rung, cans in failed.items()
+        )
+
+    @staticmethod
+    def _computed_target_text(entry):
+        """The note for a target that the reference library holds only as a
+        computed value: it is printed, never used."""
+        parts = []
+        if entry.get("dfH0_0K") is not None:
+            parts.append(f"ΔfH°(0 K) = {entry['dfH0_0K']:.2f}")
+        if entry.get("dfH0_298K") is not None:
+            parts.append(f"ΔfH°(298.15 K) = {entry['dfH0_298K']:.2f}")
+        return (
+            "\nThe reference library has a computed value for the target "
+            f"({entry['source']}: {entry['citation']}): "
+            + " and ".join(parts)
+            + " kJ/mol. It is a computed value, not a reference, so it is neither "
+            "the result nor compared with it."
         )
 
     def _is_mopac(self, energy_mc):

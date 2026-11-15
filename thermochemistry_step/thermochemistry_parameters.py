@@ -503,9 +503,12 @@ class ThermochemistryParameters(seamm.Parameters):
             "help_text": (
                 "For reference species ATcT lacks, use the reference library: "
                 "evaluated compilations and measurements (JANAF, CODATA, "
-                "spectroscopic D0, W4-17, the NIST WebBook), and also computed "
-                "references if chosen. 'none' uses ATcT only. Used only with ATcT "
-                "as the reference values."
+                "spectroscopic D0, the NIST WebBook), and with 'compilations and "
+                "computed' also computed values (W4-17, SEAMM's own tier-A "
+                "calculations), which are used only when no experimental value "
+                "exists and are marked in the output. 'compilations' is "
+                "experimental only; 'none' uses ATcT only. Used only with ATcT as "
+                "the reference values."
             ),
         },
         "use my own references": {

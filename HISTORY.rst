@@ -1,6 +1,16 @@
 =======
 History
 =======
+2026.11.15.2 -- Computed reference values are marked and never taken for experiment
+    * The reference library's computed values (W4-17's, and SEAMM's own tier-A
+      calculations in the computed layer) are used only with "compilations and
+      computed" (the default) and only where no experimental value exists. The
+      output marks each computed reference value and names the CBH rungs that use
+      one; "compilations" is now experimental only (needs seamm-thermochemistry
+      2026.11.15.2).
+    * A target whose only library value is computed is no longer given that value
+      as its result, nor is its CBH result compared with it; the value is printed.
+
 2026.11.15.1 -- Unconverged fragments fail their rungs and never reach the store
     * A fragment whose optimization had not converged, even after continuing it,
       was used and only flagged. It now fails every CBH rung that needs it, and the
