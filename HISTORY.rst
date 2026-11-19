@@ -1,6 +1,15 @@
 =======
 History
 =======
+2026.11.19.1 -- Clearer table of the candidate conformers
+    * The table of candidate conformers in the output showed only the dihedrals of
+      chains of heavy atoms, which were blank for species whose conformers differ in
+      where hydrogens point (diarsine, ethanol's OH). It now gives the dihedrals about
+      each rotatable bond, with hydrogens where a side has no heavy atom: e.g.
+      As1-As2 87/87/180/180 for trans diarsine and C2-O3 60 for gauche ethanol.
+    * Its energies are labelled: the energy E of each optimized structure at the
+      geometry level, without the ZPE, relative to the lowest.
+
 2026.11.19 -- Bugfix: CBH species were not always built in their lowest conformer
     * Each species built from its SMILES started from the lowest force-field
       conformer, but the conformers came from embeddings pruned by their heavy
