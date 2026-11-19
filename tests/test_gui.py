@@ -228,3 +228,34 @@ def test_reference_library_layout(tk_node):
     tk_node.reset_dialog()
     assert not _mapped(tk_node["supplementary references"])
     assert not _mapped(tk_node["use my own references"])
+
+
+def test_conformers_optimized_only_when_it_applies(tk_node):
+    tk_node.create_dialog()
+    approaches = [
+        a
+        for a in tk_node.node.parameters["approach"].enumeration
+        if a.startswith("Isodesmic")
+    ]
+    tk_node["approach"].set(approaches[0])
+    tk_node["preset"].set("custom")
+    tk_node["cbh energies"].set(tk_node.node.parameters["cbh energies"].enumeration[0])
+    tk_node["optimize fragments"].set("yes")
+    tk_node["initial conformer"].set("lowest of the embeddings (MMFF)")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["conformer embeddings"])
+    assert _mapped(tk_node["conformers optimized"])
+    # nothing optimized: the force field's lowest, so no candidates to optimize
+    tk_node["optimize fragments"].set("no")
+    tk_node.reset_dialog()
+    assert not _mapped(tk_node["conformers optimized"])
+    tk_node["optimize fragments"].set("yes")
+    # neither the fragments nor the target from the embeddings
+    tk_node["initial conformer"].set("single embedding")
+    tk_node["target conformer"].set("as given")
+    tk_node.reset_dialog()
+    assert not _mapped(tk_node["conformer embeddings"])
+    assert not _mapped(tk_node["conformers optimized"])
+    tk_node["target conformer"].set("lowest of the embeddings (MMFF)")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["conformers optimized"])

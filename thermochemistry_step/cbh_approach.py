@@ -1586,15 +1586,21 @@ class CBHApproach:
 
     # -----------------------------------------------------------------------
 
-    def _embed_lowest(self, configuration, smiles, n=20):
+    def _embed_lowest(self, configuration, smiles, n=20, keep=1):
         """Rebuild the configuration's atoms and coordinates as the lowest
-        MMFF94 conformer of `n` RDKit embeddings of `smiles`, keeping its
-        charge and spin multiplicity, and say what was found."""
+        force-field conformer of `n` RDKit embeddings of `smiles`, keeping its
+        charge and spin multiplicity, and say what was found.
+
+        Returns the candidates, up to `keep` of the lowest distinct conformers
+        (see seamm_thermochemistry.cbh.conformer_candidates), as [(force-field
+        energy in kJ/mol above the lowest, coordinates in Å)] in the
+        configuration's atom order, the first being the one the configuration
+        now has; or None if there is only one, or the structure is kept."""
         from seamm_thermochemistry import cbh
 
         try:
-            mol, symbols, xyz, energies, best = cbh.lowest_conformer(
-                smiles, n=n, return_mol=True
+            conformers = cbh.conformer_candidates(
+                smiles, n=n, max_candidates=max(1, int(keep))
             )
         except cbh.ConformerError as e:
             printer.important(
@@ -1606,22 +1612,143 @@ class CBHApproach:
                     dedent=False,
                 )
             )
-            return
+            return None
         charge = configuration.charge
         multiplicity = configuration.spin_multiplicity
-        configuration.from_RDKMol(mol, properties="none")
+        configuration.from_RDKMol(conformers.mol_of(0), properties="none")
         configuration.charge = charge
         configuration.spin_multiplicity = multiplicity
+        energies = conformers.all_energies
         spread = max(energies) - min(energies)
+        field = conformers.field
+        text = (
+            f"    starting from the lowest of {conformers.n_distinct} distinct "
+            f"{field} conformers of {conformers.n_embeddings} embeddings (spread "
+            f"{spread:.1f} kcal/mol)"
+            + self._chain_dihedrals(conformers.symbols, conformers.coordinates[0])
+        )
+        if len(conformers) > 1:
+            text += (
+                f"; the lowest {len(conformers)} (up to "
+                f"{conformers.energies[-1]:.1f} kJ/mol above it) are candidates"
+            )
+        printer.important(__(text, indent=4 * " ", wrap=False, dedent=False))
+        if len(conformers) < 2:
+            return None
+        if list(configuration.atoms.symbols) != list(conformers.symbols):
+            # The candidates' coordinates are in RDKit's atom order
+            logger.warning(f"The atoms of {smiles} were reordered: one conformer.")
+            return None
+        return list(zip(conformers.energies, conformers.coordinates))
+
+    def _lowest_at_geometry_level(self, _P, can, configuration, candidates):
+        """Optimize each candidate conformer at the geometry level (the energy
+        only, no Hessian) and leave the configuration at the lowest, since the
+        force fields do not always rank conformers right (UFF puts gauche
+        diarsine below trans). The structure chosen is then computed as usual,
+        starting from its optimized geometry.
+
+        `candidates`: [(force-field energy in kJ/mol, coordinates in Å)], as
+        from _embed_lowest. Returns the index of the conformer chosen."""
+        fmax = _P["fragment convergence"].m_as("eV/Å")
+        steps = int(_P["fragment max steps"])
+        mc_mode = getattr(self, "_engine_mode", "subflowchart") == "Model Chemistry"
         printer.important(
             __(
-                f"    starting from the lowest of {len(energies)} MMFF94 conformers "
-                f"(spread {spread:.1f} kcal/mol)" + self._chain_dihedrals(symbols, xyz),
+                f"    optimizing the {len(candidates)} candidate conformers at "
+                f"{self.model or 'the geometry level'}:",
                 indent=4 * " ",
                 wrap=False,
                 dedent=False,
             )
         )
+        rows = []
+        for i, (ff, xyz) in enumerate(candidates):
+            configuration.atoms.set_coordinates(
+                np.asarray(xyz, dtype=float), fractionals=False
+            )
+            if mc_mode:
+                E, converged = self._run_optimization(
+                    can,
+                    lambda: self.optimize_and_energy(
+                        configuration, optimize=True, fmax=fmax, max_steps=steps
+                    ),
+                    True,
+                    steps,
+                )
+                if converged is None:
+                    # No engine to optimize with (the Model Chemistry runs as
+                    # separate tasks): the energies would be of force-field
+                    # structures, so keep the force field's lowest
+                    printer.important(
+                        __(
+                            "    the candidates cannot be optimized without an "
+                            "engine, so the force field's lowest is used.",
+                            indent=4 * " ",
+                            wrap=False,
+                            dedent=False,
+                        )
+                    )
+                    configuration.atoms.set_coordinates(
+                        np.asarray(candidates[0][1], dtype=float), fractionals=False
+                    )
+                    return 0
+            else:
+                converged = self._optimize(configuration, _P, can, fmax=fmax)
+                E = self._last_energy
+            xyz = np.array(configuration.atoms.get_coordinates(fractionals=False))
+            rows.append((i, ff, E, converged, xyz))
+        best = min(rows, key=lambda row: row[2])
+        E0 = best[2]
+        table = []
+        for i, ff, E, converged, xyz in rows:
+            dihedrals = self._chain_dihedrals(configuration.atoms.symbols, xyz)
+            table.append(
+                (
+                    f"{i + 1}" + (" *" if i == best[0] else ""),
+                    f"{ff:.2f}",
+                    f"{E - E0:.2f}",
+                    "yes" if converged else "no",
+                    dihedrals.split(") ")[-1] if dihedrals else "",
+                )
+            )
+        text = tabulate(
+            table,
+            headers=(
+                "conformer",
+                "force field (kJ/mol)",
+                "optimized (kJ/mol)",
+                "converged",
+                "heavy-atom dihedrals",
+            ),
+            tablefmt="rounded_outline",
+            disable_numparse=True,
+            colalign=("left", "decimal", "decimal", "center", "left"),
+        )
+        printer.important(__(text, indent=8 * " ", wrap=False, dedent=False))
+        configuration.atoms.set_coordinates(best[4], fractionals=False)
+        if best[0] != 0:
+            printer.important(
+                __(
+                    f"    conformer {best[0] + 1} is the lowest at this level, not "
+                    "the force field's lowest, so it is used.",
+                    indent=4 * " ",
+                    wrap=False,
+                    dedent=False,
+                )
+            )
+        return best[0]
+
+    def _conformers_to_optimize(self, _P):
+        """How many candidate conformers to optimize at the geometry level: 1
+        (the force field's lowest only) unless the species are optimized there,
+        by the Model Chemistry or the subflowchart with harmonic corrections."""
+        if not _yes(_P.get("optimize fragments", "yes")):
+            return 1
+        mc_mode = getattr(self, "_engine_mode", "subflowchart") == "Model Chemistry"
+        if not mc_mode and _P.get("thermal corrections", "harmonic") != "harmonic":
+            return 1  # the subflowchart's energy is taken as it is, not optimized
+        return max(1, int(_P.get("conformers optimized", 3)))
 
     @staticmethod
     def _chain_dihedrals(symbols, xyz):
@@ -2573,9 +2700,13 @@ class CBHApproach:
             __(f"\nSpecies {can}:", indent=4 * " ", wrap=False, dedent=False)
         )
         system_db = self.get_variable("_system_db")
+        candidates = None
         if configuration is not None and embed:
-            self._embed_lowest(
-                configuration, generated, int(_P.get("conformer embeddings", 20))
+            candidates = self._embed_lowest(
+                configuration,
+                generated,
+                int(_P.get("conformer embeddings", 20)),
+                keep=self._conformers_to_optimize(_P),
             )
         if configuration is None:
             configuration = self._find_fragment(system_db, can)
@@ -2588,10 +2719,11 @@ class CBHApproach:
                 configuration.charge = cbh_charge(generated)
                 configuration.spin_multiplicity = cbh_multiplicity(generated)
                 if str(_P.get("initial conformer", "lowest")).startswith("lowest"):
-                    self._embed_lowest(
+                    candidates = self._embed_lowest(
                         configuration,
                         generated,
                         int(_P.get("conformer embeddings", 20)),
+                        keep=self._conformers_to_optimize(_P),
                     )
             else:
                 system = configuration.system
@@ -2603,6 +2735,8 @@ class CBHApproach:
         label = can.replace("/", "_").replace("\\", "_")
         self._subdirectory = f"species_{label}"
         try:
+            if candidates is not None:
+                self._lowest_at_geometry_level(_P, can, configuration, candidates)
             if getattr(self, "_engine_mode", "subflowchart") == "Model Chemistry":
                 result = self._compute_species_mc(_P, can, configuration)
             elif _P["thermal corrections"] != "harmonic":
@@ -3187,7 +3321,8 @@ class CBHApproach:
     def _optimize(self, configuration, _P, can="the species", fmax=None):
         """Optimize the structure with ASE's BFGS through the subflowchart,
         continuing once for as many steps again if it has not converged.
-        Returns whether it converged."""
+        Returns whether it converged; its energy (kJ/mol) is left in
+        ``self._last_energy``."""
         from ase.optimize import BFGS
 
         atoms = self.ase_atoms(configuration)
@@ -3199,6 +3334,8 @@ class CBHApproach:
             self._say_continuing(can, steps)
             converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
         configuration.atoms.set_coordinates(atoms.positions, fractionals=False)
+        # The energy (kJ/mol) of the optimized structure, already computed
+        self._last_energy = Q_(atoms.get_potential_energy(), "eV").m_as("kJ/mol")
         return bool(converged)
 
     def _check_start(self, can, configuration):
