@@ -37,6 +37,7 @@ so the 0 K comparison is the cleaner one for a single-conformer calculation.
 from collections import Counter
 import json
 import logging
+import textwrap
 import math
 import os
 from pathlib import Path
@@ -1700,30 +1701,40 @@ class CBHApproach:
             rows.append((i, ff, E, converged, xyz))
         best = min(rows, key=lambda row: row[2])
         E0 = best[2]
+        symbols = list(configuration.atoms.symbols)
+        index = {_id: k for k, _id in enumerate(configuration.atoms.ids)}
+        bonds = [(index[r["i"]], index[r["j"]]) for r in configuration.bonds.bonds()]
         table = []
         for i, ff, E, converged, xyz in rows:
-            dihedrals = self._chain_dihedrals(configuration.atoms.symbols, xyz)
             table.append(
                 (
                     f"{i + 1}" + (" *" if i == best[0] else ""),
                     f"{ff:.2f}",
                     f"{E - E0:.2f}",
                     "yes" if converged else "no",
-                    dihedrals.split(") ")[-1] if dihedrals else "",
+                    self._rotamer_dihedrals(symbols, bonds, xyz),
                 )
             )
         text = tabulate(
             table,
             headers=(
                 "conformer",
-                "force field (kJ/mol)",
-                "optimized (kJ/mol)",
+                "force field ΔE",
+                "ΔE at this level",
                 "converged",
-                "heavy-atom dihedrals",
+                "dihedrals (°)",
             ),
             tablefmt="rounded_outline",
             disable_numparse=True,
             colalign=("left", "decimal", "decimal", "center", "left"),
+        )
+        text += "\n" + textwrap.fill(
+            "ΔE in kJ/mol above the lowest: the force field's energy, and the "
+            "energy E of the optimized structure at this level (no ZPE; MOPAC's is "
+            "its heat of formation). The dihedrals are X-A-B-Y about each rotatable "
+            "bond A-B, with A's and B's heavy neighbors X and Y, or their "
+            "hydrogens if they have none (methyl-like rotors left out).",
+            width=88,
         )
         printer.important(__(text, indent=8 * " ", wrap=False, dedent=False))
         configuration.atoms.set_coordinates(best[4], fractionals=False)
@@ -1749,6 +1760,72 @@ class CBHApproach:
         if not mc_mode and _P.get("thermal corrections", "harmonic") != "harmonic":
             return 1  # the subflowchart's energy is taken as it is, not optimized
         return max(1, int(_P.get("conformers optimized", 3)))
+
+    @staticmethod
+    def _rotamer_dihedrals(symbols, bonds, xyz, max_bonds=4):
+        """The dihedrals that tell a species' rotamers apart, as text, e.g.
+        'As1-As2 87/87/180/180' for trans diarsine or 'C2-O3 180' for anti
+        ethanol.
+
+        For each rotatable bond A-B (both atoms with other neighbors, not in a
+        ring, neither side a methyl-like rotor of three hydrogens), the absolute
+        X-A-B-Y dihedrals with A's neighbors X and B's neighbors Y: the heavy
+        ones if a side has any, else its hydrogens. At most `max_bonds` bonds.
+        """
+        import numpy as np
+
+        p = np.asarray(xyz, dtype=float)
+        neighbors = {k: set() for k in range(len(symbols))}
+        for i, j in bonds:
+            neighbors[i].add(j)
+            neighbors[j].add(i)
+
+        def in_ring(a, b):
+            seen = {a}
+            stack = [a]
+            while stack:
+                k = stack.pop()
+                for n in neighbors[k]:
+                    if (k, n) in ((a, b), (b, a)):
+                        continue
+                    if n == b:
+                        return True
+                    if n not in seen:
+                        seen.add(n)
+                        stack.append(n)
+            return False
+
+        def side(a, b):
+            others = sorted(neighbors[a] - {b})
+            heavy = [k for k in others if symbols[k] != "H"]
+            if heavy:
+                return heavy
+            if len(others) >= 3:
+                return None  # a methyl-like rotor: no rotamers
+            return others
+
+        def dihedral(a, b, c, d):
+            b0, b1, b2 = p[a] - p[b], p[c] - p[b], p[d] - p[c]
+            b1n = b1 / np.linalg.norm(b1)
+            v = b0 - np.dot(b0, b1n) * b1n
+            w = b2 - np.dot(b2, b1n) * b1n
+            x = np.dot(v, w)
+            y = np.dot(np.cross(b1n, v), w)
+            return abs(np.degrees(np.arctan2(y, x)))
+
+        text = []
+        for a, b in sorted(tuple(sorted(bond)) for bond in bonds):
+            xs, ys = side(a, b), side(b, a)
+            if not xs or not ys or in_ring(a, b):
+                continue
+            angles = sorted(dihedral(x, a, b, y) for x in xs for y in ys)
+            text.append(
+                f"{symbols[a]}{a + 1}-{symbols[b]}{b + 1} "
+                + "/".join(f"{d:.0f}" for d in angles)
+            )
+        if len(text) > max_bonds:
+            text = text[:max_bonds] + ["..."]
+        return "; ".join(text)
 
     @staticmethod
     def _chain_dihedrals(symbols, xyz):

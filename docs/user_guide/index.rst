@@ -331,7 +331,10 @@ Fragments start from, Target starts from, Number of embeddings, Conformers optim
     species are optimized, the lowest three candidates within 10 kJ/mol of the
     force field's lowest (15 with UFF) are each optimized at the geometry level,
     and the lowest there is computed. The output gives a table of the
-    candidates' energies by the force field and at the geometry level. Species
+    candidates: their energies by the force field and at the geometry level (the
+    energy E of the optimized structure, without ZPE), and the dihedrals about
+    each rotatable bond, hydrogens included where a side has no heavy atom, so
+    that e.g. trans and gauche diarsine can be told apart. Species
     with one conformer cost nothing more; each other candidate costs one
     optimization, without a Hessian. "Conformers optimized" sets how many (1
     takes the force field's lowest). When the Model Chemistry runs as separate

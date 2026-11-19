@@ -171,3 +171,33 @@ def test_a_fragment_is_computed_in_its_lowest_conformer(node, monkeypatch):
     monkeypatch.setattr(node, "_find_fragment", lambda db, can: None)
     node._compute_species(_P(**{"conformers optimized": 1}), DIARSINE, DIARSINE)
     assert computed == [False]
+
+
+def test_the_table_shows_rotamers_of_hydrogens(node):
+    """The candidates' dihedrals include hydrogens, so trans and gauche diarsine,
+    and anti and gauche ethanol, can be told apart (thermo, 5837)."""
+    configuration = _diarsine(node)
+    candidates = node._embed_lowest(configuration, DIARSINE, 20, keep=3)
+    symbols = list(configuration.atoms.symbols)
+    index = {_id: k for k, _id in enumerate(configuration.atoms.ids)}
+    bonds = [(index[r["i"]], index[r["j"]]) for r in configuration.bonds.bonds()]
+    texts = [node._rotamer_dihedrals(symbols, bonds, xyz) for _, xyz in candidates]
+    assert any(t.startswith("As1-As2 ") and t.endswith("/180/180") for t in texts)
+    assert any(not t.endswith("/180/180") for t in texts)
+    # Ethanol: only C-C-O-H; the methyl rotor and the ring-free C-H bonds are left out
+    symbols = ["C", "C", "O", "H", "H", "H", "H", "H", "H"]
+    bonds = [(0, 1), (1, 2), (0, 3), (0, 4), (0, 5), (1, 6), (1, 7), (2, 8)]
+    xyz = [
+        [0.0, 0.0, 0.0],
+        [1.52, 0.0, 0.0],
+        [2.0, 1.35, 0.0],
+        [-0.4, 1.0, 0.0],
+        [-0.4, -0.5, 0.87],
+        [-0.4, -0.5, -0.87],
+        [1.9, -0.5, 0.87],
+        [1.9, -0.5, -0.87],
+        [2.97, 1.35, 0.0],
+    ]
+    assert node._rotamer_dihedrals(symbols, bonds, xyz) == "C2-O3 180"
+    # and a ring bond is no rotor
+    assert node._rotamer_dihedrals(["C"] * 3, [(0, 1), (1, 2), (0, 2)], xyz[:3]) == ""
