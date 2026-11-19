@@ -269,8 +269,13 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Fragments start from:",
             "help_text": (
                 "The starting structure of each fragment built from its SMILES: the "
-                "lowest MMFF94 conformer of several RDKit embeddings (all-anti chains, "
-                "as CBH-ANL starts from the lowest rotamer), or a single embedding. "
+                "lowest conformer of several RDKit embeddings minimized with MMFF94 "
+                "(UFF where MMFF94 has no parameters), as CBH-ANL starts from the "
+                "lowest rotamer, or a single embedding. When the fragments are "
+                "optimized, the lowest few distinct conformers are optimized at the "
+                "geometry level and the lowest there is used, since the force fields "
+                "do not always rank them right (UFF puts gauche diarsine below "
+                "trans). "
                 "Conformers with atoms too close or bonds pulled apart are skipped, "
                 "and species with a metal centre or an atom with more than four "
                 "electron domains (SF6, PF6-, bridged Al2Cl2), which the force "
@@ -278,13 +283,31 @@ class ThermochemistryParameters(seamm.Parameters):
             ),
         },
         "conformer embeddings": {
-            "default": 20,
+            "default": 50,
             "kind": "integer",
             "default_units": "",
             "enumeration": tuple(),
             "format_string": "",
             "description": "Number of embeddings:",
-            "help_text": "How many RDKit embeddings to rank by MMFF94.",
+            "help_text": (
+                "How many RDKit embeddings to minimize with the force field. Their "
+                "distinct minima, lowest first, are the candidate conformers."
+            ),
+        },
+        "conformers optimized": {
+            "default": 3,
+            "kind": "integer",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Conformers optimized:",
+            "help_text": (
+                "How many of the lowest distinct force-field conformers (within 10 "
+                "kJ/mol of the lowest, 15 with UFF) to optimize at the geometry "
+                "level; the lowest there is the species' conformer. Species with "
+                "one conformer cost nothing more; 1 keeps the lowest by the force "
+                "field."
+            ),
         },
         "target conformer": {
             "default": "as given",
@@ -295,8 +318,9 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Target starts from:",
             "help_text": (
                 "Keep the target structure as given, or rebuild it from its SMILES "
-                "as the lowest MMFF94 conformer of several embeddings before the "
-                "optimization (a single embedding of a long chain is often gauche)."
+                "as the lowest conformer of several embeddings before the "
+                "optimization (a single embedding of a long chain is often gauche), "
+                "ranking the lowest few at the geometry level as for the fragments."
             ),
         },
         "reuse stored target": {

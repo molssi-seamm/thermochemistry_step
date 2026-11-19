@@ -1,6 +1,22 @@
 =======
 History
 =======
+2026.11.19 -- Bugfix: CBH species were not always built in their lowest conformer
+    * Each species built from its SMILES started from the lowest force-field
+      conformer, but the conformers came from embeddings pruned by their heavy
+      atoms, which merged rotamers that differ only in where hydrogens point, and
+      the force fields do not always rank conformers right. Diarsine was always
+      built gauche, although trans is its ground state (1.4 kJ/mol lower at
+      CCSD(T)), which shifted the CBH results whose reactions use diarsine, e.g.
+      that of (CH3As)5 by about 1.5 kJ/mol.
+    * Now the lowest few distinct force-field conformers ("Conformers optimized",
+      3 by default, within 10 kJ/mol of the lowest, 15 with UFF) are each
+      optimized at the geometry level, and the lowest there is computed. The
+      output lists the candidates with their energies. Species with one
+      conformer cost nothing more; each other candidate costs one optimization,
+      without a Hessian. 50 embeddings are now made by default (20 before).
+    * Needs seamm-thermochemistry 2026.11.19.
+
 2026.11.15.3 -- Bugfix: rotations were taken for saddle-point modes
     * The saddle-point check looked at all 3N modes, so a translation or rotation
       that came out slightly imaginary (20.1i for CaH2, among the six that should

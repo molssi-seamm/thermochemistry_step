@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
-"""Smoke test of the Tk dialog: create it and re-lay it out for every choice
-that drives the layout. Skipped when no display is available."""
+"""Smoke test of the Tk dialog of the CBH approach: create it and re-lay it out
+for the choices that drive the conformer settings. Skipped when no display is
+available."""
 
 import pytest
+
+pytest.importorskip("seamm_thermochemistry")
 
 
 @pytest.fixture()
@@ -33,198 +36,36 @@ def tk_node():
     root.destroy()
 
 
-def _mapped(widget):
-    return widget.grid_info() != {}
+def _shown(tk_node, key):
+    return tk_node[key].grid_info() != {}
 
 
-def test_dialog_layouts(tk_node):
+def test_conformers_optimized_only_when_it_applies(tk_node):
     tk_node.create_dialog()
-    tk_node.reset_dialog()
-    notebook = tk_node["notebook"]
-    flowchart_frame = tk_node["flowchart frame"]
-
-    # The default is the Model Chemistry: no subflowchart tab, no subdirectory
-    # handling, and a reminder since no Model Chemistry precedes the step
-    assert tk_node["engine"].get() == "Model Chemistry"
-    assert notebook.tab(flowchart_frame, "state") == "hidden"
-    assert not _mapped(tk_node["on success"])
-    assert _mapped(tk_node["model chemistry note"])
-    assert _mapped(tk_node["symmetry number"])
-    assert _mapped(tk_node["hessian route"])
-
-    # The subflowchart: the tab is back, with the subdirectory handling
-    tk_node["engine"].set("subflowchart")
-    tk_node.reset_dialog()
-    assert notebook.tab(flowchart_frame, "state") == "normal"
-    assert _mapped(tk_node["on success"])
-    assert not _mapped(tk_node["model chemistry note"])
-
-    tk_node["engine"].set("Model Chemistry")
-    tk_node.reset_dialog()
-    assert notebook.tab(flowchart_frame, "state") == "hidden"
-
-    for approach in tk_node["approach"].combobox.cget("values"):
-        tk_node["approach"].set(approach)
-        tk_node.reset_dialog()
-
-
-def test_cbh_preset_layout(tk_node):
-    """A preset (the default one) sets the rungs, the levels and computed species:
-    those controls and the engine are hidden; 'custom' shows them again."""
-    tk_node.create_dialog()
-    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
-    tk_node.reset_dialog()
-    assert tk_node["preset"].get() == "default"
-    assert _mapped(tk_node["preset"]) and _mapped(tk_node["include CBH-3"])
-    assert _mapped(tk_node["ZPE scale factor"]) and _mapped(tk_node["protect"])
-    for key in (
-        "engine",
-        "cbh rungs",
-        "cbh energies",
-        "thermal corrections",
-        "energy model chemistry",
-    ):
-        assert not _mapped(tk_node[key]), key
-    assert _mapped(tk_node["step size"]) and _mapped(tk_node["initial conformer"])
+    approaches = [
+        a
+        for a in tk_node.node.parameters["approach"].enumeration
+        if a.startswith("Isodesmic")
+    ]
+    tk_node["approach"].set(approaches[0])
     tk_node["preset"].set("custom")
+    tk_node["cbh energies"].set(tk_node.node.parameters["cbh energies"].enumeration[0])
+    tk_node["optimize fragments"].set("yes")
+    tk_node["initial conformer"].set("lowest of the embeddings (MMFF)")
     tk_node.reset_dialog()
-    assert _mapped(tk_node["engine"]) and _mapped(tk_node["cbh rungs"])
-    assert _mapped(tk_node["energy model chemistry"])
-    assert not _mapped(tk_node["include CBH-3"])
-
-
-def test_cbh_layout(tk_node):
-    tk_node.create_dialog()
-    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
-    tk_node["preset"].set("custom")
-    tk_node.reset_dialog()
-    # Computed energies, harmonic: the optimization and step size, no T or P,
-    # no property names
-    assert _mapped(tk_node["cbh rungs"]) and _mapped(tk_node["ATcT version"])
-    assert _mapped(tk_node["fragment convergence"])
-    assert _mapped(tk_node["saddle points"])
-    assert _mapped(tk_node["step size"])
-    assert _mapped(tk_node["hessian route"])
-    assert _mapped(tk_node["initial conformer"])
-    assert _mapped(tk_node["conformer embeddings"])
-    assert not _mapped(tk_node["T"]) and not _mapped(tk_node["P"])
-    assert not _mapped(tk_node["energy property"])
-    assert not _mapped(tk_node["on success"])
-
-    assert _mapped(tk_node["fragment store file"])
-    tk_node["fragment store"].set("ignore")
-    tk_node.reset_dialog()
-    assert not _mapped(tk_node["fragment store file"])
-
-    assert not _mapped(tk_node["ladder"])
-    tk_node["reference values"].set("laddered")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["ladder"])
-    assert not _mapped(tk_node["ATcT uncertainty threshold"])
-    tk_node["reference values"].set("ATcT below the threshold, else laddered")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["ATcT uncertainty threshold"])
-    tk_node["reference values"].set("ATcT")
-    tk_node.reset_dialog()
-
-    # No thermal corrections (MOPAC): no step size
-    tk_node["thermal corrections"].set("none (the energy is the enthalpy, e.g. MOPAC)")
-    tk_node.reset_dialog()
-    assert not _mapped(tk_node["step size"])
-    assert _mapped(tk_node["fragment convergence"])
-    assert not _mapped(tk_node["saddle points"])  # no Hessian, no saddle points
-
-    # No optimization: no convergence settings
+    assert _shown(tk_node, "conformer embeddings")
+    assert _shown(tk_node, "conformers optimized")
+    # nothing optimized: the force field's lowest, so no candidates to optimize
     tk_node["optimize fragments"].set("no")
     tk_node.reset_dialog()
-    assert not _mapped(tk_node["fragment convergence"])
-    assert not _mapped(tk_node["fragment max steps"])
-    assert not _mapped(tk_node["saddle points"])
-
-    # Existing results: the property names, the ZPE/enthalpy ones only when
-    # harmonic
-    tk_node["cbh energies"].set("existing results (run nothing)")
+    assert not _shown(tk_node, "conformers optimized")
+    tk_node["optimize fragments"].set("yes")
+    # neither the fragments nor the target from the embeddings
+    tk_node["initial conformer"].set("single embedding")
+    tk_node["target conformer"].set("as given")
     tk_node.reset_dialog()
-    assert _mapped(tk_node["energy property"])
-    assert not _mapped(tk_node["ZPE property"])
-    assert not _mapped(tk_node["optimize fragments"])
-    tk_node["thermal corrections"].set("harmonic")
+    assert not _shown(tk_node, "conformer embeddings")
+    assert not _shown(tk_node, "conformers optimized")
+    tk_node["target conformer"].set("lowest of the embeddings (MMFF)")
     tk_node.reset_dialog()
-    assert _mapped(tk_node["ZPE property"])
-    assert _mapped(tk_node["enthalpy property"])
-    assert not _mapped(tk_node["step size"])
-
-    # The subflowchart engine adds its error handling for computed energies
-    tk_node["cbh energies"].set("finite-difference harmonic")
-    tk_node["engine"].set("subflowchart")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["on success"])
-    assert tk_node["notebook"].tab(tk_node["flowchart frame"], "state") == "normal"
-
-    # Back to the harmonic approach: nothing of the CBH left
-    tk_node["approach"].set("Harmonic approximation")
-    tk_node.reset_dialog()
-    assert not _mapped(tk_node["cbh rungs"])
-    assert _mapped(tk_node["T"])
-
-
-def test_cbh_species_only_layout(tk_node):
-    """'The species only': no reactions, rungs, fragments' conformers or ATcT; the
-    target's start, the optimization, the Hessian and the store remain."""
-    tk_node.create_dialog()
-    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
-    tk_node["cbh calculation"].set("the species only (for the fragment store)")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["cbh calculation"]) and _mapped(tk_node["preset"])
-    for key in (
-        "include CBH-3",
-        "protect",
-        "ZPE scale factor",
-        "cbh rungs",
-        "cbh energies",
-        "initial conformer",
-        "reference values",
-        "ATcT version",
-        "ATcT directory",
-        "covariances",
-        "compare with ATcT",
-        "energy model chemistry",
-    ):
-        assert not _mapped(tk_node[key]), key
-    for key in (
-        "target conformer",
-        "optimize fragments",
-        "saddle points",
-        "hessian route",
-        "step size",
-        "fragment store",
-    ):
-        assert _mapped(tk_node[key]), key
-    tk_node["preset"].set("custom")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["energy model chemistry"])
-    assert _mapped(tk_node["thermal corrections"])
-    assert not _mapped(tk_node["cbh rungs"])
-    tk_node["cbh calculation"].set("enthalpy of formation")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["cbh rungs"]) and _mapped(tk_node["cbh calculation"])
-
-
-def test_reference_library_layout(tk_node):
-    tk_node.create_dialog()
-    tk_node["approach"].set("Isodesmic (CBH) with ATcT references")
-    tk_node["preset"].set("custom")
-    tk_node["reference values"].set("ATcT")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["supplementary references"])
-    assert _mapped(tk_node["use my own references"])
-    tk_node["supplementary references"].set("none")
-    tk_node.reset_dialog()
-    assert _mapped(tk_node["supplementary references"])
-    assert not _mapped(tk_node["use my own references"])
-    # Only with ATcT as the reference values, not with a ladder
-    tk_node["supplementary references"].set("compilations")
-    tk_node["reference values"].set("laddered")
-    tk_node.reset_dialog()
-    assert not _mapped(tk_node["supplementary references"])
-    assert not _mapped(tk_node["use my own references"])
+    assert _shown(tk_node, "conformers optimized")

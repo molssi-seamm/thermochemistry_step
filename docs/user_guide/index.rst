@@ -318,14 +318,27 @@ Energies at
     that ``seamm-thermochemistry-fragments harvest`` files them in the store's
     geometry and energy tables.
 
-Fragments start from, Target starts from
-    Each fragment built from its SMILES starts, by default, from the lowest
-    MMFF94 conformer of 20 RDKit embeddings (an n-alkane all-anti, ethanol
-    anti), as CBH-ANL starts every species from its lowest rotamer; a single
-    embedding of a long chain is often gauche. The target is kept as given
-    unless told to be rebuilt the same way. The chosen chain dihedrals are
-    printed. Conformers with atoms too close together or bonds pulled apart are
-    skipped. Species the force fields build wrongly, those with a metal centre
+Fragments start from, Target starts from, Number of embeddings, Conformers optimized
+    Each fragment built from its SMILES starts, by default, from its lowest
+    conformer, as CBH-ANL starts every species from its lowest rotamer; a single
+    embedding of a long chain is often gauche. 50 RDKit embeddings are minimized
+    with MMFF94 (UFF where MMFF94 has no parameters, e.g. for As or Se), and
+    their distinct minima are the candidates: mirror images count once, but
+    rotamers that differ only in where hydrogens point (gauche and trans
+    diarsine, the OH rotamers of ethanol) are distinct. The force fields do not
+    always rank these right (UFF puts gauche diarsine 0.2 kJ/mol below trans,
+    but trans is the ground state, 1.4 kJ/mol lower at CCSD(T)), so when the
+    species are optimized, the lowest three candidates within 10 kJ/mol of the
+    force field's lowest (15 with UFF) are each optimized at the geometry level,
+    and the lowest there is computed. The output gives a table of the
+    candidates' energies by the force field and at the geometry level. Species
+    with one conformer cost nothing more; each other candidate costs one
+    optimization, without a Hessian. "Conformers optimized" sets how many (1
+    takes the force field's lowest). When the Model Chemistry runs as separate
+    tasks, with no engine to optimize with, the force field's lowest is used.
+    The target is kept as given unless told to be rebuilt the same way. The
+    chosen chain dihedrals are printed. Conformers with atoms too close together
+    or bonds pulled apart are skipped. Species the force fields build wrongly, those with a metal centre
     or an atom with more than four electron domains (SF\ :sub:`6`, PF\ :sub:`6`\
     :sup:`-`, ClF\ :sub:`3`, bridged Al\ :sub:`2`\ Cl\ :sub:`2`), keep the
     structure built from the SMILES, or the given one; the output says so. A
