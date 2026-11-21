@@ -1671,8 +1671,8 @@ class CBHApproach:
             if mc_mode:
                 E, converged = self._run_optimization(
                     can,
-                    lambda: self.optimize_and_energy(
-                        configuration, optimize=True, fmax=fmax, max_steps=steps
+                    lambda **kw: self.optimize_and_energy(
+                        configuration, optimize=True, fmax=fmax, max_steps=steps, **kw
                     ),
                     True,
                     steps,
@@ -2987,8 +2987,8 @@ class CBHApproach:
         if _P["thermal corrections"] != "harmonic":
             E, converged = self._run_optimization(
                 can,
-                lambda: self.optimize_and_energy(
-                    configuration, optimize=optimize, fmax=fmax, max_steps=steps
+                lambda **kw: self.optimize_and_energy(
+                    configuration, optimize=optimize, fmax=fmax, max_steps=steps, **kw
                 ),
                 optimize,
                 steps,
@@ -3012,12 +3012,13 @@ class CBHApproach:
         def harmonic(fmax):
             (E0, hessian, how), converged = self._run_optimization(
                 can,
-                lambda: self.optimize_and_hessian(
+                lambda **kw: self.optimize_and_hessian(
                     configuration,
                     delta_bohr,
                     optimize=optimize,
                     fmax=fmax,
                     max_steps=steps,
+                    **kw,
                 ),
                 optimize,
                 steps,
@@ -3541,17 +3542,22 @@ class CBHApproach:
 
     def _run_optimization(self, can, run, optimize, steps):
         """Run an optimization over the Model Chemistry (`run`, e.g.
-        optimize_and_energy) and, if it did not converge, once more from where
-        it stopped. Returns (run's result, converged), converged None when the
+        optimize_and_energy) which, if it does not converge in `steps`, continues
+        once from where it stopped, in the same engine session, so that what
+        follows the optimization (the energy, the Hessian) is computed once, at
+        the final structure. (Calling `run` again computed a Hessian at the
+        unconverged structure and threw it away: Thermochemistry 5874,
+        2026-11-21.) Returns (run's result, converged), converged None when the
         driver does not say (nothing optimized, or an older seamm-exec)."""
         self._last_optimization = None
-        result = run()
-        status = self._last_optimization
-        if optimize and status is not None and not status.get("converged", True):
-            self._say_continuing(can, steps)
-            self._last_optimization = None
+        if optimize:
+            result = run(
+                continuations=1,
+                on_continue=lambda n: self._say_continuing(can, n),
+            )
+        else:
             result = run()
-            status = self._last_optimization
+        status = self._last_optimization
         if not optimize or status is None:
             return result, None
         return result, bool(status.get("converged", True))

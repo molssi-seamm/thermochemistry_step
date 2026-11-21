@@ -101,7 +101,9 @@ def test_the_model_chemistry_ranks_them_too(node, monkeypatch):
     candidates = node._embed_lowest(configuration, DIARSINE, 20, keep=3)
     node._engine_mode = "Model Chemistry"
 
-    def optimize_and_energy(configuration, optimize=True, fmax=0.005, max_steps=200):
+    def optimize_and_energy(
+        configuration, optimize=True, fmax=0.005, max_steps=200, **kwargs
+    ):
         node._last_optimization = {"converged": True}
         return _energy(configuration)
 
@@ -118,7 +120,7 @@ def test_without_an_engine_the_force_field_lowest_is_kept(node, monkeypatch):
     node._engine_mode = "Model Chemistry"
     calls = []
 
-    def energy_only(configuration, optimize=True, fmax=0.005, max_steps=200):
+    def energy_only(configuration, optimize=True, fmax=0.005, max_steps=200, **kw):
         calls.append(1)
         return _energy(configuration)
 
@@ -149,7 +151,9 @@ def test_a_fragment_is_computed_in_its_lowest_conformer(node, monkeypatch):
     candidates, and computes the lowest."""
     node._engine_mode = "Model Chemistry"
 
-    def optimize_and_energy(configuration, optimize=True, fmax=0.005, max_steps=200):
+    def optimize_and_energy(
+        configuration, optimize=True, fmax=0.005, max_steps=200, **kwargs
+    ):
         node._last_optimization = {"converged": True}
         return _energy(configuration)
 

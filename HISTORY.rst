@@ -1,6 +1,18 @@
 =======
 History
 =======
+2026.11.21 -- Bugfix: no Hessian at an unconverged structure
+    * When the optimization of a species through the Model Chemistry did not converge
+      in *Fragment max steps* and was continued, a full Hessian was first computed at
+      the unconverged structure and thrown away, then again at the final one. For
+      a large target with an analytic Hessian this cost up to an hour, and could
+      push a job past its time limit. The optimization now continues in the same
+      engine session and the Hessian is computed once, at the final structure. The
+      optimization is as before (a fresh BFGS from where the first block stopped),
+      so the results agree to within the SCF convergence; a species that converges
+      in the first block is computed exactly as before.
+    * Needs seamm-exec 2026.11.21.
+
 2026.11.19.1 -- Clearer table of the candidate conformers
     * The table of candidate conformers in the output showed only the dihedrals of
       chains of heavy atoms, which were blank for species whose conformers differ in

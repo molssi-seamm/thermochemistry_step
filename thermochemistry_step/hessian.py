@@ -67,22 +67,46 @@ class ModelChemistryHessian:
         return self.optimize_and_hessian(configuration, delta_bohr, optimize=False)
 
     def optimize_and_energy(
-        self, configuration, optimize=True, fmax=0.005, max_steps=200
+        self,
+        configuration,
+        optimize=True,
+        fmax=0.005,
+        max_steps=200,
+        continuations=0,
+        on_continue=None,
     ):
         """Optionally optimize the structure over the warm engine, then its
-        energy (kJ/mol). With no engine (tasks) the energy only."""
+        energy (kJ/mol). With no engine (tasks) the energy only. With
+        `continuations` an unconverged optimization continues in the same engine
+        session, calling ``on_continue(max_steps)`` first."""
         driver = self._hessian_driver()
         try:
-            return driver.optimize_and_energy(configuration, optimize, fmax, max_steps)
+            return driver.optimize_and_energy(
+                configuration,
+                optimize,
+                fmax,
+                max_steps,
+                continuations=continuations,
+                on_continue=on_continue,
+            )
         finally:
             self._fingerprints = driver.fingerprints
             self._last_optimization = getattr(driver, "last_optimization", None)
 
     def optimize_and_hessian(
-        self, configuration, delta_bohr=0.01, optimize=True, fmax=0.005, max_steps=200
+        self,
+        configuration,
+        delta_bohr=0.01,
+        optimize=True,
+        fmax=0.005,
+        max_steps=200,
+        continuations=0,
+        on_continue=None,
     ):
         """Optionally optimize the structure (ASE BFGS over the warm engine),
-        then the energy and Hessian, in one engine session.
+        then the energy and Hessian, in one engine session. With
+        `continuations` an unconverged optimization continues in the same
+        session, so the Hessian is computed once, at the final structure.
 
         Returns
         -------
@@ -92,7 +116,13 @@ class ModelChemistryHessian:
         driver = self._hessian_driver()
         try:
             return driver.optimize_and_hessian(
-                configuration, delta_bohr, optimize, fmax, max_steps
+                configuration,
+                delta_bohr,
+                optimize,
+                fmax,
+                max_steps,
+                continuations=continuations,
+                on_continue=on_continue,
             )
         finally:
             self._fingerprints = driver.fingerprints
