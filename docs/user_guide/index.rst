@@ -500,7 +500,8 @@ written, since their structures are not computed here.
 Each computed species is checked after its optimization:
 
 * An optimization that has not converged in *Fragment max steps* continues from
-  where it stopped for as many steps again. A target that still has not converged
+  where it stopped for as many steps again, with the same engine; the Hessian is
+  computed once, at the final structure. A target that still has not converged
   fails, since its energy is not that of a minimum. A fragment that still has not
   converged fails every rung that needs it, and the result comes from the highest
   rung left (with MOPAC below CBH-2, MOPAC's own value; with no rung left, the

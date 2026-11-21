@@ -22,29 +22,44 @@ from tests.test_cbh_energy_level import (  # noqa: E402,F401
 
 
 def test_an_unconverged_optimization_is_continued(node):
+    """The continuation is the driver's (in the same engine session, so the
+    Hessian is computed once, at the final structure: 5874, 2026-11-21): `run`
+    is called once, asked for one continuation, which is announced."""
     calls = []
+    said = []
+    node._say_continuing = lambda can, n: said.append((can, n))
 
     def run(converged):
-        def once():
-            calls.append(1)
-            node._last_optimization = {"converged": converged.pop(0)}
+        def once(continuations=0, on_continue=None):
+            calls.append(continuations)
+            # The driver: blocks until converged or out of continuations
+            for block in range(continuations + 1):
+                ok = converged.pop(0)
+                if ok or block == continuations:
+                    break
+                on_continue(200)
+            node._last_optimization = {"converged": ok}
             return len(calls)
 
         return once
 
-    # Converges when continued: the second run's result, converged
-    assert node._run_optimization("CCO", run([False, True]), True, 200) == (2, True)
+    # Converges when continued: one call, converged, the continuation said
+    assert node._run_optimization("CCO", run([False, True]), True, 200) == (1, True)
+    assert calls == [1] and said == [("CCO", 200)]
     # Still not converged after continuing: flagged
-    calls.clear()
-    assert node._run_optimization("CCO", run([False, False]), True, 200) == (2, False)
-    # Converged at once: one run
-    calls.clear()
+    calls.clear(), said.clear()
+    assert node._run_optimization("CCO", run([False, False]), True, 200) == (1, False)
+    assert calls == [1] and said == [("CCO", 200)]
+    # Converged at once: nothing said
+    calls.clear(), said.clear()
     assert node._run_optimization("CCO", run([True]), True, 200) == (1, True)
-    # Nothing optimized, or a driver that does not say: unknown, one run
-    calls.clear()
+    assert calls == [1] and said == []
+    # Nothing optimized: no continuation asked for; unknown
+    calls.clear(), said.clear()
     assert node._run_optimization("CCO", run([True]), False, 200) == (1, None)
+    assert calls == [0]
 
-    def silent():
+    def silent(**kwargs):
         node._last_optimization = None
         return 7
 
