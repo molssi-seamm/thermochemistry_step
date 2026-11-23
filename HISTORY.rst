@@ -14,7 +14,7 @@ History
       run's own factor once. Properties without a scale factor (from earlier
       versions, or other steps) are taken as unscaled, as before.
     * The fragment store's harvest must know the new convention: use
-      seamm-thermochemistry 2026.11.23.1 or later. [P5: version to be confirmed]
+      seamm-thermochemistry 2026.11.23.1 or later (now required).
     * New results ``E thermal(298.15 K)`` and ``H thermal(298.15 K)``: U(T) − E and
       H(T) − E at 298.15 K and 1 bar, both including the ZPE, in kJ/mol, whenever
       298.15 K and 1 bar are among the conditions computed.
