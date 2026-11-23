@@ -9,6 +9,11 @@ History
     * ``ZPE scale factor`` and ``ZPE scale factor source`` can now be stored as
       properties of the configuration, as well as in variables and tables.
     * All four are keyed ``#Thermochemistry#{model}``, matching the PM-8 data records.
+    * The CBH approach stores the spin contamination of each open-shell species it
+      optimizes over a warm engine that gives it (ORCA's, with seamm-exec, seamm-mdi
+      and orca-step 2026.11.23 or later): ``S^2#ORCA#{model}``, <S**2> at the final
+      structure, and ``S^2 ideal#ORCA#{model}``, S(S+1). Before, it was lost with the
+      engine's output.
 
 2026.11.21 --Bugfix: no Hessian at an unconverged structure
     * When the optimization of a species through the Model Chemistry did not converge

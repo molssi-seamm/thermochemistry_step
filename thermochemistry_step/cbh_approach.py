@@ -3949,6 +3949,18 @@ class CBHApproach:
             if not properties.exists(name):
                 properties.add(name, "float", units=units, description=description)
             properties.put(name, value)
+        # The spin contamination of an open-shell species optimized over the warm
+        # engine: <S**2> at the final structure and its ideal value S(S+1). Taken
+        # once, so it cannot go with a later species.
+        spin, self._spin = getattr(self, "_spin", None), None
+        if spin is not None and None not in spin:
+            for name, value, description in (
+                (f"S^2#ORCA#{model}", spin[0], "<S**2> of the final structure"),
+                (f"S^2 ideal#ORCA#{model}", spin[1], "the ideal value S(S+1)"),
+            ):
+                if not properties.exists(name):
+                    properties.add(name, "float", units="", description=description)
+                properties.put(name, float(value))
         # For the fragment store's geometry rows: the frequencies (imaginary ones
         # negative), the rotational symmetry number and the moments of inertia
         extras = [

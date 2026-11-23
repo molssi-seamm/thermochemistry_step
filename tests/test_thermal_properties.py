@@ -90,3 +90,48 @@ def test_definitions():
             assert results[name]["units"] == "kJ/mol" and row["Units"] == "kJ/mol"
             assert row["Type"] == "float"
     assert rows["ZPE scale factor source#Thermochemistry#{model}"]["Type"] == "str"
+
+
+# <S**2> of open-shell species from the warm engine (item 1 of 8e49882f)
+def _species(harmonic):  # noqa: F811
+    node = harmonic(["C", "H", "H", "H", "H"], CH4_XYZ, CH4_PM7)
+    data = node.harmonic_thermochemistry(_P(), [298.15], "K", [1.0], "bar")
+    data["total_energy"] = -40.0
+    return node, data
+
+
+def test_spin_stored_for_an_open_shell(harmonic):  # noqa: F811
+    node, data = _species(harmonic)
+    node._spin = (0.7556, 0.75)
+    configuration = node._working_configuration
+    node._store_species_properties(configuration, data)
+    values = configuration.properties.get("*")
+    assert values[f"S^2#ORCA#{node.model}"]["value"] == pytest.approx(0.7556)
+    assert values[f"S^2 ideal#ORCA#{node.model}"]["value"] == pytest.approx(0.75)
+    assert node._spin is None  # taken once: not given to the next species
+
+
+@pytest.mark.parametrize("spin", [None, (None, None)])
+def test_no_spin_for_a_closed_shell_or_without_it(harmonic, spin):  # noqa: F811
+    node, data = _species(harmonic)
+    node._spin = spin
+    configuration = node._working_configuration
+    node._store_species_properties(configuration, data)
+    names = configuration.properties.get("*").keys()
+    assert not any(name.startswith("S^2") for name in names)
+
+
+def test_the_driver_spin_reaches_the_step(node, monkeypatch):
+    """The Hessian mixin copies the driver's final <S**2>, like its fingerprints."""
+
+    class Driver:
+        fingerprints = None
+        last_optimization = None
+        spin = (2.01, 2.0)
+
+        def optimize_and_energy(self, *args, **kwargs):
+            return -1.0
+
+    monkeypatch.setattr(node, "_hessian_driver", lambda: Driver())
+    node.optimize_and_energy(None)
+    assert node._spin == (2.01, 2.0)
