@@ -1,7 +1,16 @@
 =======
 History
 =======
-2026.11.21 -- Bugfix: no Hessian at an unconverged structure
+2026.11.23 -- The thermal corrections and the ZPE scale factor as properties
+    * New results ``E thermal(298.15 K)`` and ``H thermal(298.15 K)``: U(T) − E and
+      H(T) − E at 298.15 K and 1 bar, both including the ZPE, in kJ/mol, whenever
+      298.15 K and 1 bar are among the conditions computed. The isodesmic (CBH)
+      approach stores both on every species it computes, with its E, ZPE and H.
+    * ``ZPE scale factor`` and ``ZPE scale factor source`` can now be stored as
+      properties of the configuration, as well as in variables and tables.
+    * All four are keyed ``#Thermochemistry#{model}``, matching the PM-8 data records.
+
+2026.11.21 --Bugfix: no Hessian at an unconverged structure
     * When the optimization of a species through the Model Chemistry did not converge
       in *Fragment max steps* and was continued, a full Hessian was first computed at
       the unconverged structure and thrown away, then again at the final one. For

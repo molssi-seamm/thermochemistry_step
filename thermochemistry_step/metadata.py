@@ -511,12 +511,14 @@ metadata["results"] = {
     "ZPE scale factor": {
         "description": "The factor the harmonic ZPEs were scaled by",
         "dimensionality": "scalar",
+        "property": "ZPE scale factor#Thermochemistry#{model}",
         "type": "float",
         "format": ".4f",
     },
     "ZPE scale factor source": {
         "description": "Where the ZPE scale factor comes from, and any caution",
         "dimensionality": "scalar",
+        "property": "ZPE scale factor source#Thermochemistry#{model}",
         "type": "string",
         "format": "",
     },
@@ -600,6 +602,28 @@ metadata["results"] = {
         "dimensionality": "scalar",
         "type": "integer",
         "format": "",
+    },
+    "E thermal(298.15 K)": {
+        "description": (
+            "U(298.15 K) - E at 1 bar, the thermal correction to the electronic "
+            "energy, including the ZPE"
+        ),
+        "dimensionality": "scalar",
+        "property": "E thermal(298.15 K)#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".6f",
+    },
+    "H thermal(298.15 K)": {
+        "description": (
+            "H(298.15 K) - E at 1 bar, the enthalpy correction to the electronic "
+            "energy, including the ZPE"
+        ),
+        "dimensionality": "scalar",
+        "property": "H thermal(298.15 K)#Thermochemistry#{model}",
+        "type": "float",
+        "units": "kJ/mol",
+        "format": ".6f",
     },
     "E thermal": {
         "description": (

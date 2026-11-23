@@ -3929,7 +3929,23 @@ class CBHApproach:
                 "kJ/mol",
                 "H(298.15 K)",
             ),
+            # The thermal corrections themselves (U - E and H - E, with the ZPE),
+            # at the 298.15 K and 1 bar the species are computed at
+            (
+                f"E thermal(298.15 K)#Thermochemistry#{model}",
+                data["E thermal"][0][0] if "E thermal" in data else None,
+                "kJ/mol",
+                "U(298.15 K) - E, including the ZPE",
+            ),
+            (
+                f"H thermal(298.15 K)#Thermochemistry#{model}",
+                data["H thermal"][0][0],
+                "kJ/mol",
+                "H(298.15 K) - E, including the ZPE",
+            ),
         ):
+            if value is None:
+                continue
             if not properties.exists(name):
                 properties.add(name, "float", units=units, description=description)
             properties.put(name, value)

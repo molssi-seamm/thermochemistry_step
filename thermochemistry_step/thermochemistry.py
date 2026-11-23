@@ -625,6 +625,18 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
             Gthermal.extend(Gtmp)
             Svalues.extend(Stmp)
 
+        # The corrections at 298.15 K and 1 bar as single values, the ones a
+        # record keeps, when they were computed
+        for iP, Porig in enumerate(Ps):
+            if abs(Pfac * Porig - 1.0e5) > 1.0e-6 * 1.0e5:
+                continue
+            for iT, Torig in enumerate(Ts):
+                if abs(Tfac * Torig - 298.15) < 1.0e-6:
+                    data["E thermal(298.15 K)"] = data["E thermal"][iP][iT]
+                    data["H thermal(298.15 K)"] = data["H thermal"][iP][iT]
+                    break
+            break
+
         table = {}
         if len(Ps) == 1:
             title = (
