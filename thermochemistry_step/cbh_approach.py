@@ -35,6 +35,7 @@ so the 0 K comparison is the cleaner one for a single-conformer calculation.
 """
 
 from collections import Counter
+import glob
 import json
 import logging
 import textwrap
@@ -250,6 +251,8 @@ class CBHApproach:
         from .resonance import lookup_target
 
         _P = self.apply_preset(_P)
+        # The species' properties are stored with the ZPE scaled as this run uses it
+        self._cbh_P = _P
         self._reset_fingerprints()
         self._set_frequency_correction(_P)
         preset = _P.get("preset", "custom")
@@ -3289,6 +3292,12 @@ class CBHApproach:
                         -float(f) > IMAGINARY_TOLERANCE for f in frequencies
                     ):
                         continue
+                    # Stored scaled (with the scale factor) since 2026.11.23; the
+                    # run scales the unscaled values with its own factor
+                    scale = self._property(
+                        configuration, f"ZPE scale factor#Thermochemistry#{model}"
+                    )
+                    ZPE, H = _unscale(ZPE, H, scale)
                     result.update(ZPE=ZPE, H0=E + ZPE, H298=H)
                 else:
                     result["H298"] = E
@@ -3910,44 +3919,97 @@ class CBHApproach:
         properties.put(name, Q_(E, "kJ/mol").m_as("E_h"))
 
     def _store_species_properties(self, configuration, data):
-        """Store E, ZPE and H(298.15 K) on the configuration."""
+        """Store E, the ZPE, H(0 K), H(298.15 K) and the thermal corrections on
+        the configuration, with the ZPE scaled as the CBH uses it (pm8-data layout
+        §2c): ``ZPE`` is the scaled ZPE, ``ZPE uncorrected`` the ZPE from the
+        frequencies as computed (before a frequency correction too), and H(0 K),
+        H(298.15 K), E thermal and H thermal all include the scaled ZPE. The scale
+        factor and its source are stored with them, so that readers (the fragment
+        store's harvest, "existing results" runs) can recover the unscaled
+        values; a configuration without the scale factor holds unscaled values
+        (before 2026.11.23)."""
         model = self.model or "unknown"
         properties = configuration.properties
-        for name, value, units, description in (
-            (f"total energy#Thermochemistry#{model}", data["total_energy"], "E_h", "E"),
-            (f"ZPE#Thermochemistry#{model}", data["ZPE"], "kJ/mol", "ZPE"),
+        scale, source, flag = self._zpe_scale(getattr(self, "_cbh_P", None) or {})
+        if flag:
+            source += f" ({flag})"
+        shift = (scale - 1.0) * data["ZPE"]  # as the CBH applies it
+        E = Q_(data["total_energy"], "E_h").m_as("kJ/mol")
+        ZPE = data["ZPE"] + shift
+        H_thermal = data["H thermal"][0][0] + shift
+        E_thermal = data["E thermal"][0][0] + shift if "E thermal" in data else None
+        for name, value, kind, units, description in (
+            (
+                f"total energy#Thermochemistry#{model}",
+                data["total_energy"],
+                "float",
+                "E_h",
+                "E",
+            ),
+            (
+                f"ZPE#Thermochemistry#{model}",
+                ZPE,
+                "float",
+                "kJ/mol",
+                "the ZPE, scaled by the ZPE scale factor",
+            ),
+            (
+                f"ZPE uncorrected#Thermochemistry#{model}",
+                data.get("ZPE uncorrected", data["ZPE"]),
+                "float",
+                "kJ/mol",
+                "the ZPE from the frequencies as computed, neither scaled nor "
+                "corrected",
+            ),
+            (
+                f"ZPE scale factor#Thermochemistry#{model}",
+                scale,
+                "float",
+                "",
+                "the factor the ZPE is scaled by",
+            ),
+            (
+                f"ZPE scale factor source#Thermochemistry#{model}",
+                source,
+                "str",
+                None,
+                "where the ZPE scale factor comes from",
+            ),
             (
                 f"H(0 K)#Thermochemistry#{model}",
-                Q_(data["total_energy"], "E_h").m_as("kJ/mol") + data["ZPE"],
+                E + ZPE,
+                "float",
                 "kJ/mol",
-                "H(0 K)",
+                "H(0 K) = E + the scaled ZPE",
             ),
             (
                 f"H(298.15 K)#Thermochemistry#{model}",
-                Q_(data["total_energy"], "E_h").m_as("kJ/mol")
-                + data["H thermal"][0][0],
+                E + H_thermal,
+                "float",
                 "kJ/mol",
-                "H(298.15 K)",
+                "H(298.15 K), with the scaled ZPE",
             ),
-            # The thermal corrections themselves (U - E and H - E, with the ZPE),
-            # at the 298.15 K and 1 bar the species are computed at
+            # The thermal corrections themselves (U - E and H - E, with the scaled
+            # ZPE), at the 298.15 K and 1 bar the species are computed at
             (
                 f"E thermal(298.15 K)#Thermochemistry#{model}",
-                data["E thermal"][0][0] if "E thermal" in data else None,
+                E_thermal,
+                "float",
                 "kJ/mol",
-                "U(298.15 K) - E, including the ZPE",
+                "U(298.15 K) - E, including the scaled ZPE",
             ),
             (
                 f"H thermal(298.15 K)#Thermochemistry#{model}",
-                data["H thermal"][0][0],
+                H_thermal,
+                "float",
                 "kJ/mol",
-                "H(298.15 K) - E, including the ZPE",
+                "H(298.15 K) - E, including the scaled ZPE",
             ),
         ):
             if value is None:
                 continue
             if not properties.exists(name):
-                properties.add(name, "float", units=units, description=description)
+                properties.add(name, kind, units=units, description=description)
             properties.put(name, value)
         # The spin contamination of an open-shell species optimized over the warm
         # engine: <S**2> at the final structure and its ideal value S(S+1). Taken
@@ -3981,7 +4043,6 @@ class CBHApproach:
                 "str",
                 None,
             ),
-            ("ZPE uncorrected", data.get("ZPE uncorrected"), "float", "kJ/mol"),
         ]
         try:
             moments = self.ase_atoms(configuration).get_moments_of_inertia().tolist()
@@ -4003,7 +4064,9 @@ class CBHApproach:
         properties = configuration.properties
         result = {}
 
-        def get(name):
+        matched = {}
+
+        def get(name, units="kJ/mol"):
             if name in ("", "none"):
                 return None
             values = properties.get(pattern=name, match="glob")
@@ -4014,10 +4077,26 @@ class CBHApproach:
                     f"Several properties of {can} match '{name}': {sorted(values)}"
                 )
             (key, value), *_ = values.items()
+            matched[name] = key
             if isinstance(value, dict):  # {"value": ..., "sid": ..., "cid": ...}
                 value = value["value"]
-            units = properties.units(key)
-            return Q_(float(value), units if units else "kJ/mol").m_as("kJ/mol")
+            if units is None:
+                return float(value)
+            stored = properties.units(key)
+            return Q_(float(value), stored if stored else units).m_as(units)
+
+        def scale_of(key, base):
+            """The scale factor stored with the step's own (scaled) ZPE or H,
+            or None for any other property, or one stored unscaled."""
+            if key is None or not key.startswith(base + "#Thermochemistry#"):
+                return None
+            model = key[len(base + "#Thermochemistry#") :]
+            return (
+                get(
+                    glob.escape(f"ZPE scale factor#Thermochemistry#{model}"), units=None
+                ),
+                model,
+            )
 
         E = get(_P["energy property"])
         if E is None:
@@ -4034,6 +4113,20 @@ class CBHApproach:
         E_low = get(_P["low-level energy property"])
         if E_low is None:
             E_low = E
+        # The step's own ZPE and H(298.15 K) are stored scaled since 2026.11.23,
+        # with the scale factor; the run scales the unscaled values itself
+        found = scale_of(matched.get(_P["ZPE property"]), "ZPE")
+        if ZPE is not None and found is not None and found[0]:
+            ZPE = ZPE / found[0]
+        found = scale_of(matched.get(_P["enthalpy property"]), "H(298.15 K)")
+        if H is not None and found is not None and found[0]:
+            scaled = get(glob.escape(f"ZPE#Thermochemistry#{found[1]}"))
+            if scaled is None:
+                raise RuntimeError(
+                    f"{can} has a scaled H(298.15 K) at {found[1]} but no ZPE to "
+                    "unscale it with."
+                )
+            _, H = _unscale(scaled, H, found[0])
         if ZPE is not None:
             result["ZPE"] = ZPE
             result["H0"] = E + ZPE
@@ -4214,6 +4307,17 @@ def _n_zero_modes(vibrations):
     if moments[0] < 0.01 and abs(moments[2] - moments[1]) < 0.01:
         return 5
     return 6
+
+
+def _unscale(ZPE, H, scale):
+    """The unscaled ZPE and H(298.15 K) from ones stored with the ZPE scaled by
+    `scale` (no change for None, i.e. stored unscaled, before 2026.11.23)."""
+    if not scale or ZPE is None:
+        return ZPE, H
+    unscaled = ZPE / scale
+    if H is not None:
+        H = H - ZPE + unscaled
+    return unscaled, H
 
 
 def _yes(value):

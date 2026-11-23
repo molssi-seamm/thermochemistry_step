@@ -187,7 +187,10 @@ metadata["results"] = {
         "format": ".6f",
     },
     "ZPE uncorrected": {
-        "description": "the zero point energy from the uncorrected frequencies",
+        "description": (
+            "the zero point energy from the frequencies as computed, neither "
+            "corrected nor scaled"
+        ),
         "dimensionality": "scalar",
         "property": "ZPE uncorrected#Thermochemistry#{model}",
         "type": "float",
