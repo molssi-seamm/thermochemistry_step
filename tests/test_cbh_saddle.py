@@ -375,6 +375,45 @@ def test_the_parameters(node, changes, calls_made):
     assert len(calls) == calls_made
 
 
+def _soft_saddle(frequency):
+    """VibrationsData with the saddle's imaginary frequency scaled to `frequency`
+    (cm^-1), keeping the rest of _vibrations' water-shaped Hessian."""
+    from ase import Atoms
+    from ase.vibrations import VibrationsData
+
+    curvature = -1.0 * (frequency / _expected_frequency()) ** 2
+    hessian, _ = _hessian(True, rotation=0.0, curvature=curvature)
+    return VibrationsData(Atoms(SYMBOLS, positions=START), hessian.reshape(3, 3, 3, 3))
+
+
+def test_the_default_threshold_is_30():
+    """Paul 2026-11-24: 30 cm^-1, the parameter and the code agree."""
+    from thermochemistry_step import ThermochemistryParameters
+
+    assert cbh_approach.SADDLE_THRESHOLD == 30.0
+    default = ThermochemistryParameters.parameters["saddle threshold"]["default"]
+    assert default == cbh_approach.SADDLE_THRESHOLD
+
+
+@pytest.mark.parametrize(
+    "threshold, calls_made",
+    [(None, 2), (Q_(50.0, "1/cm"), 0)],  # the default catches it; 50 would not
+)
+def test_a_soft_48i_saddle_is_caught_by_default(node, threshold, calls_made):
+    """The PM7 propyl nitrite control (thermo, job 5970) sat on a 48.1i saddle."""
+    configuration = _configuration()
+    node._vibrations = _soft_saddle(48.1)
+    frequency, _ = node._largest_imaginary_mode(cbh_approach.SADDLE_THRESHOLD)
+    assert frequency == pytest.approx(48.1, abs=0.5)
+    harmonic, calls = _harmonic(node, configuration, lambda z: True)
+    changes = {} if threshold is None else {"saddle threshold": threshold}
+    result = node._escape_saddle(
+        _P(**changes), "CCCON=O", configuration, {"E": 0.0, "imaginary": 1}, harmonic
+    )
+    assert len(calls) == calls_made
+    assert ("saddle re-optimized" in result) == (calls_made > 0)
+
+
 def test_the_displacement_parameter(node):
     configuration = _configuration()
     node._vibrations = _vibrations(saddle=True)

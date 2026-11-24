@@ -66,8 +66,9 @@ MOPAC_OWN_LABEL = "MOPAC ΔHf (no CBH rung ≥2)"
 #: convergence (a methyl torsion re-converges to the saddle at the usual one)
 SADDLE_DISPLACEMENT = 0.3
 SADDLE_TIGHTENING = 0.2
-#: The defaults of the 'saddle threshold' (cm^-1) and 'saddle rounds' parameters
-SADDLE_THRESHOLD = 50.0
+#: The defaults of the 'saddle threshold' (cm^-1) and 'saddle rounds' parameters.
+#: 30 cm^-1 (Paul 2026-11-24): the PM7 propyl nitrite control sat on a 48.1i saddle
+SADDLE_THRESHOLD = 30.0
 SADDLE_ROUNDS = 2
 
 #: The presets of the CBH approach (thermo's defaults, adopted 2026-11-08): the

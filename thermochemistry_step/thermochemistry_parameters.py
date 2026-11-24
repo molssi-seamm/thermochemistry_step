@@ -387,7 +387,7 @@ class ThermochemistryParameters(seamm.Parameters):
             ),
         },
         "saddle threshold": {
-            "default": 50.0,
+            "default": 30.0,
             "kind": "float",
             "default_units": "cm^-1",
             "enumeration": tuple(),
