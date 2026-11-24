@@ -66,6 +66,9 @@ MOPAC_OWN_LABEL = "MOPAC ΔHf (no CBH rung ≥2)"
 #: convergence (a methyl torsion re-converges to the saddle at the usual one)
 SADDLE_DISPLACEMENT = 0.3
 SADDLE_TIGHTENING = 0.2
+#: The defaults of the 'saddle threshold' (cm^-1) and 'saddle rounds' parameters
+SADDLE_THRESHOLD = 50.0
+SADDLE_ROUNDS = 2
 
 #: The presets of the CBH approach (thermo's defaults, adopted 2026-11-08): the
 #: composite recipe (composite_step), and its geometry/frequency level and energy
@@ -3442,11 +3445,13 @@ class CBHApproach:
                 "not computed."
             )
 
-    def _largest_imaginary_mode(self):
+    def _largest_imaginary_mode(
+        self, threshold=IMAGINARY_TOLERANCE, displacement=SADDLE_DISPLACEMENT
+    ):
         """The largest imaginary vibrational frequency (cm^-1) of
-        ``self._vibrations`` above IMAGINARY_TOLERANCE, ignoring the
-        translations and rotations, and its mode, scaled so that the atom moving
-        most moves SADDLE_DISPLACEMENT Å; (None, None) for a minimum."""
+        ``self._vibrations`` above `threshold`, ignoring the translations and
+        rotations, and its mode, scaled so that the atom moving most moves
+        `displacement` Å; (None, None) for a minimum."""
         from ase.units import invcm
 
         vibrations = getattr(self, "_vibrations", None)
@@ -3461,22 +3466,31 @@ class CBHApproach:
         imaginary[np.argsort(np.abs(energies))[: _n_zero_modes(vibrations)]] = 0.0
         index = int(np.argmax(imaginary))
         frequency = float(imaginary[index])
-        if frequency <= IMAGINARY_TOLERANCE:
+        if frequency <= threshold:
             return None, None
         mode = np.real(modes[index])
         largest = np.max(np.linalg.norm(mode, axis=1))
         if largest == 0.0:
             return None, None
-        return frequency, mode * (SADDLE_DISPLACEMENT / largest)
+        return frequency, mode * (displacement / largest)
 
     def _escape_saddle(self, _P, can, configuration, result, harmonic):
-        """A species optimized to a saddle point (an imaginary mode above
-        IMAGINARY_TOLERANCE) is displaced along the mode, + then -, and
-        optimized again to SADDLE_TIGHTENING of the convergence with its
-        Hessian (``harmonic(fmax)``), until one reaches a minimum. Returns the
-        result of the structure the configuration is left at: the minimum, or,
-        if neither displacement reaches one, the last attempt (flagged)."""
-        frequency, mode = self._largest_imaginary_mode()
+        """A species optimized to a saddle point (an imaginary mode above the
+        'saddle threshold') is displaced along the mode both ways by the 'saddle
+        displacement', and each is optimized again to SADDLE_TIGHTENING of the
+        convergence with its Hessian (``harmonic(fmax)``). The lower minimum is
+        kept; if neither is a minimum, the lower is displaced again along its own
+        mode, for at most 'saddle rounds' rounds. Returns the result of the
+        structure the configuration is left at: the minimum or, if none is
+        reached, the lowest attempt (flagged). What was done is recorded in the
+        result ("saddle re-optimized") and in the property
+        ``saddle re-optimization#Thermochemistry#{model}``."""
+        threshold = _magnitude(_P.get("saddle threshold", SADDLE_THRESHOLD), "1/cm")
+        displacement = _magnitude(
+            _P.get("saddle displacement", SADDLE_DISPLACEMENT), "Å"
+        )
+        rounds = max(1, int(_P.get("saddle rounds", SADDLE_ROUNDS)))
+        frequency, mode = self._largest_imaginary_mode(threshold, displacement)
         if frequency is None:
             return result
         choice = _P.get("saddle points", "displace and re-optimize")
@@ -3489,48 +3503,122 @@ class CBHApproach:
             return result
         fmax = _P["fragment convergence"].m_as("eV/Å") * SADDLE_TIGHTENING
         start = np.array(configuration.atoms.get_coordinates(fractionals=False))
-        E_saddle = result["E"]
+        record = {
+            "threshold (cm^-1)": threshold,
+            "displacement (Å)": displacement,
+            "convergence (eV/Å)": fmax,
+            "rounds": [],
+        }
+        current = {"E": result["E"], "frequency": frequency, "mode": mode}
         printer.important(
             __(
                 f"    {can} optimized to a saddle point ({frequency:.0f}i cm^-1), "
-                f"so it is displaced along that mode by up to {SADDLE_DISPLACEMENT} "
-                f"Å and optimized again (to {fmax:.4f} eV/Å).",
+                f"so it is displaced both ways along that mode by up to "
+                f"{displacement} Å and optimized again (to {fmax:.4f} eV/Å).",
                 indent=4 * " ",
                 wrap=False,
                 dedent=False,
             )
         )
-        for sign in (1.0, -1.0):
-            configuration.atoms.set_coordinates(start + sign * mode, fractionals=False)
-            result = harmonic(fmax)
-            left, _ = self._largest_imaginary_mode()
-            direction = "+" if sign > 0 else "-"
-            if left is None:
-                result["imaginary"] = 0
+        chosen = None
+        for n in range(1, rounds + 1):
+            attempts = []
+            for sign in (1.0, -1.0):
+                direction = "+" if sign > 0 else "-"
+                configuration.atoms.set_coordinates(
+                    start + sign * current["mode"], fractionals=False
+                )
+                attempt_result = harmonic(fmax)
+                left, left_mode = self._largest_imaginary_mode(threshold, displacement)
+                attempts.append(
+                    {
+                        "direction": direction,
+                        "result": attempt_result,
+                        "imaginary": left,
+                        "mode": left_mode,
+                        "xyz": np.array(
+                            configuration.atoms.get_coordinates(fractionals=False)
+                        ),
+                        "vibrations": getattr(self, "_vibrations", None),
+                        "properties": _snapshot_properties(configuration),
+                    }
+                )
+                what = (
+                    "a minimum"
+                    if left is None
+                    else f"still a saddle point ({left:.0f}i cm^-1)"
+                )
                 printer.important(
                     __(
-                        f"    displaced {direction}: a minimum, "
-                        f"{E_saddle - result['E']:.2f} kJ/mol below the saddle point.",
+                        f"    round {n}, displaced {direction}: {what}, "
+                        f"{current['E'] - attempt_result['E']:.2f} kJ/mol below the "
+                        "saddle point.",
                         indent=4 * " ",
                         wrap=False,
                         dedent=False,
                     )
                 )
-                return result
+            minima = [a for a in attempts if a["imaginary"] is None]
+            pool = minima if minima else attempts
+            best = min(pool, key=lambda a: a["result"]["E"])
+            record["rounds"].append(
+                {
+                    "imaginary frequency (cm^-1)": current["frequency"],
+                    "E start (kJ/mol)": current["E"],
+                    "attempts": [
+                        {
+                            "direction": a["direction"],
+                            "E (kJ/mol)": a["result"]["E"],
+                            "imaginary frequency (cm^-1)": a["imaginary"],
+                        }
+                        for a in attempts
+                    ],
+                    "chosen": best["direction"],
+                }
+            )
+            chosen = best
+            if minima:
+                break
+            start = best["xyz"]
+            current = {
+                "E": best["result"]["E"],
+                "frequency": best["imaginary"],
+                "mode": best["mode"],
+            }
+        # Leave the configuration at the chosen structure, with its Hessian and
+        # its stored properties, also when it was not the last attempt
+        if chosen is not attempts[-1]:
+            configuration.atoms.set_coordinates(chosen["xyz"], fractionals=False)
+            self._vibrations = chosen["vibrations"]
+            _restore_properties(configuration, chosen["properties"])
+        result = chosen["result"]
+        reached = chosen["imaginary"] is None
+        record["minimum reached"] = reached
+        record["E saddle (kJ/mol)"] = record["rounds"][0]["E start (kJ/mol)"]
+        record["E chosen (kJ/mol)"] = result["E"]
+        result["saddle re-optimized"] = record
+        _store_saddle_record(configuration, self.model, record)
+        if reached:
+            result["imaginary"] = 0
             printer.important(
                 __(
-                    f"    displaced {direction}: still a saddle point "
-                    f"({left:.0f}i cm^-1).",
+                    f"    Kept the minimum displaced {chosen['direction']} in round "
+                    f"{len(record['rounds'])}, "
+                    f"{record['E saddle (kJ/mol)'] - result['E']:.2f} kJ/mol below "
+                    "the saddle point.",
                     indent=4 * " ",
                     wrap=False,
                     dedent=False,
                 )
             )
-        result["saddle"] = left
+            return result
+        result["saddle"] = chosen["imaginary"]
         printer.important(
             __(
-                f"    Warning: {can} remains a saddle point. Its energy is used and "
-                "flagged in the results, and it is not added to the fragment store.",
+                f"    Warning: {can} remains a saddle point "
+                f"({chosen['imaginary']:.0f}i cm^-1) after {len(record['rounds'])} "
+                "round(s). The lowest structure is used and flagged in the results, "
+                "and it is not added to the fragment store.",
                 indent=4 * " ",
                 wrap=False,
                 dedent=False,
@@ -3837,10 +3925,16 @@ class CBHApproach:
             for can, e in energies.items()
             if isinstance(e, dict) and e.get("saddle")
         ]
+        reoptimized = [
+            can
+            for can, e in energies.items()
+            if isinstance(e, dict) and e.get("saddle re-optimized")
+        ]
         return {
             "CBH unconverged species": ", ".join(unconverged),
             "CBH changed fragments": ", ".join(broken),
             "CBH saddle-point species": ", ".join(saddles),
+            "CBH saddle re-optimized species": ", ".join(reoptimized),
         }
 
     def _check_species(self, can, configuration, result):
@@ -4318,6 +4412,49 @@ def _unscale(ZPE, H, scale):
     if H is not None:
         H = H - ZPE + unscaled
     return unscaled, H
+
+
+def _magnitude(value, units):
+    """A parameter's value in `units`, whether a quantity or a plain number."""
+    if hasattr(value, "m_as"):
+        return float(value.m_as(units))
+    return float(value)
+
+
+def _snapshot_properties(configuration):
+    """{name: value} of the configuration's properties (none for a stand-in
+    without properties), to restore those of an earlier attempt."""
+    properties = getattr(configuration, "properties", None)
+    if properties is None:
+        return None
+    try:
+        values = properties.get("*")
+    except Exception:  # pragma: no cover
+        return None
+    return {
+        k: (v["value"] if isinstance(v, dict) and "value" in v else v)
+        for k, v in values.items()
+    }
+
+
+def _restore_properties(configuration, snapshot):
+    """Put back the property values of `snapshot` (see _snapshot_properties)."""
+    if snapshot is None:
+        return
+    properties = configuration.properties
+    for name, value in snapshot.items():
+        properties.put(name, value)
+
+
+def _store_saddle_record(configuration, model, record):
+    """The record of a saddle point's re-optimization, as a JSON property."""
+    properties = getattr(configuration, "properties", None)
+    if properties is None:
+        return
+    name = f"saddle re-optimization#Thermochemistry#{model or 'unknown'}"
+    if not properties.exists(name):
+        properties.add(name, "json", description="saddle re-optimization")
+    properties.put(name, record)
 
 
 def _yes(value):

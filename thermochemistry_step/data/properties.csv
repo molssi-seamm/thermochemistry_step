@@ -28,3 +28,4 @@ ZPE scale factor#Thermochemistry#{model},float,,The factor the {model} harmonic 
 ZPE scale factor source#Thermochemistry#{model},str,,Where the {model} ZPE scale factor comes from and any caution,
 E thermal(298.15 K)#Thermochemistry#{model},float,kJ/mol,"The {model} thermal correction U(298.15 K) - E at 1 bar, including the ZPE (scaled where a ZPE scale factor is stored)",
 H thermal(298.15 K)#Thermochemistry#{model},float,kJ/mol,"The {model} enthalpy correction H(298.15 K) - E at 1 bar, including the ZPE (scaled where a ZPE scale factor is stored)",
+saddle re-optimization#Thermochemistry#{model},json,,"How a {model} saddle point was displaced and optimized again: the threshold, the displacement and, per round, the imaginary frequency, each attempt's energy and remaining imaginary mode, and the choice",

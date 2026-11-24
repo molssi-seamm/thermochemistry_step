@@ -1,6 +1,23 @@
 =======
 History
 =======
+2026.11.23.1 -- CBH saddle points: both ways, the lower minimum, two rounds
+    * A species (target or fragment) whose Hessian shows an imaginary mode above the
+      new *Saddle threshold* (default 50 cm^-1; it was a fixed 20 cm^-1) is now
+      displaced along the mode both ways, each re-optimized with its Hessian, and the
+      lower minimum is kept. Before, the first displacement that reached a minimum
+      was taken. If neither is a minimum, a second round starts from the lower one
+      along its own imaginary mode (*Saddle rounds*, default 2). The displacement is
+      a parameter too (*Saddle displacement*, default 0.3 Å, as before).
+    * What was done is recorded: in step.out, as the property
+      ``saddle re-optimization#Thermochemistry#{model}`` (the threshold, the
+      displacement and, per round, the imaginary frequency, each attempt's energy
+      and remaining imaginary mode, and the choice), and in the new result
+      ``CBH saddle re-optimized species``. A species left at a saddle point is
+      flagged in ``CBH saddle-point species`` as before.
+    * Motivated by methyl, OH and NH2 rotation saddles in PM7 starting structures,
+      which an exact mirror plane keeps a tight optimization on.
+
 2026.11.23 -- The CBH species store the ZPE as used; thermal corrections as properties
     * The isodesmic (CBH) approach now stores each species' ZPE scaled as it uses it,
       following the PM-8 data layout: ``ZPE`` is the scaled ZPE, ``ZPE uncorrected``
