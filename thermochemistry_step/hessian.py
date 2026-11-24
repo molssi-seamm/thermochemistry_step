@@ -92,6 +92,9 @@ class ModelChemistryHessian:
         finally:
             self._fingerprints = driver.fingerprints
             self._last_optimization = getattr(driver, "last_optimization", None)
+            # (<S**2>, S(S+1)) at the end of the optimization, when the engine
+            # gives them (ORCA's), for the species' properties
+            self._spin = getattr(driver, "spin", None)
 
     def optimize_and_hessian(
         self,
@@ -127,3 +130,6 @@ class ModelChemistryHessian:
         finally:
             self._fingerprints = driver.fingerprints
             self._last_optimization = getattr(driver, "last_optimization", None)
+            # (<S**2>, S(S+1)) at the end of the optimization, when the engine
+            # gives them (ORCA's), for the species' properties
+            self._spin = getattr(driver, "spin", None)

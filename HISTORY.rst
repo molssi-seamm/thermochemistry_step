@@ -1,7 +1,33 @@
 =======
 History
 =======
-2026.11.21 -- Bugfix: no Hessian at an unconverged structure
+2026.11.23 -- The CBH species store the ZPE as used; thermal corrections as properties
+    * The isodesmic (CBH) approach now stores each species' ZPE scaled as it uses it,
+      following the PM-8 data layout: ``ZPE`` is the scaled ZPE, ``ZPE uncorrected``
+      the ZPE from the frequencies as computed (neither corrected nor scaled), and
+      ``H(0 K)``, ``H(298.15 K)``, ``E thermal(298.15 K)`` and ``H thermal(298.15 K)``
+      all include the scaled ZPE, so they agree with the enthalpy of formation. The
+      ``ZPE scale factor`` and ``ZPE scale factor source`` are stored on every
+      species with them. Before, the stored ZPE and enthalpies were unscaled.
+    * Reusing them (a species already computed in the job, or "existing results")
+      recovers the unscaled values from the stored scale factor and applies the
+      run's own factor once. Properties without a scale factor (from earlier
+      versions, or other steps) are taken as unscaled, as before.
+    * The fragment store's harvest must know the new convention: use
+      seamm-thermochemistry 2026.11.23.1 or later (now required).
+    * New results ``E thermal(298.15 K)`` and ``H thermal(298.15 K)``: U(T) − E and
+      H(T) − E at 298.15 K and 1 bar, both including the ZPE, in kJ/mol, whenever
+      298.15 K and 1 bar are among the conditions computed.
+    * ``ZPE scale factor`` and ``ZPE scale factor source`` can now be stored as
+      properties of the configuration, as well as in variables and tables.
+    * All are keyed ``#Thermochemistry#{model}``, matching the PM-8 data records.
+    * The CBH approach stores the spin contamination of each open-shell species it
+      optimizes over a warm engine that gives it (ORCA's, with seamm-exec, seamm-mdi
+      and orca-step 2026.11.23 or later): ``S^2#ORCA#{model}``, <S**2> at the final
+      structure, and ``S^2 ideal#ORCA#{model}``, S(S+1). Before, it was lost with the
+      engine's output.
+
+2026.11.21 --Bugfix: no Hessian at an unconverged structure
     * When the optimization of a species through the Model Chemistry did not converge
       in *Fragment max steps* and was continued, a full Hessian was first computed at
       the unconverged structure and thrown away, then again at the final one. For
