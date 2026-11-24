@@ -115,6 +115,7 @@ def test_a_fragment_that_changed_is_flagged(node, ethanol):
         "CBH unconverged species": "C",
         "CBH changed fragments": "CCO",
         "CBH saddle-point species": "",
+        "CBH saddle re-optimized species": "",
     }
 
 

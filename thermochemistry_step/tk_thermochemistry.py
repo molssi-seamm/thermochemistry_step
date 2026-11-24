@@ -185,6 +185,7 @@ class TkThermochemistry(seamm.TkNode):
             "initial conformer",
             "target conformer",
             "frequency correction",
+            "saddle points",
         ):
             widget = self[key]
             combobox = widget.combobox if hasattr(widget, "combobox") else widget
@@ -350,6 +351,9 @@ class TkThermochemistry(seamm.TkNode):
                 keys += ["fragment convergence", "fragment max steps"]
                 if harmonic or preset != "custom":
                     keys.append("saddle points")
+                    if self["saddle points"].get().startswith("displace"):
+                        keys += ["saddle threshold", "saddle displacement"]
+                        keys.append("saddle rounds")
             keys.append("hessian route")
             if harmonic or preset != "custom":
                 keys += ["step size", "print frequencies"]
@@ -403,6 +407,9 @@ class TkThermochemistry(seamm.TkNode):
                 keys += ["fragment convergence", "fragment max steps"]
                 if harmonic:
                     keys.append("saddle points")
+                    if self["saddle points"].get().startswith("displace"):
+                        keys += ["saddle threshold", "saddle displacement"]
+                        keys.append("saddle rounds")
             keys.append("hessian route")
             if harmonic:
                 keys += ["step size", "print frequencies"]

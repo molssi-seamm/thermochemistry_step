@@ -191,14 +191,17 @@ def test_a_saddle_is_displaced_to_a_minimum(node):
     assert node._flags({"[CH3-]": result})["CBH saddle-point species"] == ""
 
 
-def test_one_try_is_enough_when_it_reaches_a_minimum(node):
+def test_both_ways_are_tried_even_when_the_first_is_a_minimum(node):
+    """Paul 2026-11-23: displace both ways and keep the lower minimum."""
     configuration = _configuration()
     node._vibrations = _vibrations(saddle=True)
     harmonic, calls = _harmonic(node, configuration, lambda z: True)
     result = node._escape_saddle(
         _P(), "[CH]=O", configuration, {"E": 0.0, "imaginary": 1}, harmonic
     )
-    assert len(calls) == 1 and result["imaginary"] == 0
+    assert len(calls) == 2 and result["imaginary"] == 0
+    record = result["saddle re-optimized"]
+    assert record["minimum reached"] and len(record["rounds"]) == 1
 
 
 def test_a_saddle_that_stays_is_flagged(node):
@@ -208,7 +211,9 @@ def test_a_saddle_that_stays_is_flagged(node):
     result = node._escape_saddle(
         _P(), "F[C](F)F", configuration, {"E": 0.0, "imaginary": 1}, harmonic
     )
-    assert len(calls) == 2
+    assert len(calls) == 4  # two rounds, both ways
+    assert len(result["saddle re-optimized"]["rounds"]) == 2
+    assert not result["saddle re-optimized"]["minimum reached"]
     assert result["saddle"] == pytest.approx(_expected_frequency(), rel=1e-6)
     flags = node._flags({"F[C](F)F": result, "C": {"E": 1.0}})
     assert flags["CBH saddle-point species"] == "F[C](F)F"
@@ -271,3 +276,290 @@ def test_a_broken_start_is_not_computed(tmp_path, node):
     configuration.atoms.set_coordinates(xyz, fractionals=False)
     with pytest.raises(RuntimeError, match="starting structure .* is broken"):
         node._check_start("[AlH2-]1[Cl+][AlH2-][Cl+]1", configuration)
+
+
+# The displaced re-optimization as Paul set it (2026-11-23): both ways, the lower
+# minimum kept, at most 'saddle rounds' rounds, recorded
+
+
+class FakeProperties:
+    def __init__(self):
+        self.values = {}
+
+    def exists(self, name):
+        return name in self.values
+
+    def add(self, name, *args, **kwargs):
+        self.values.setdefault(name, None)
+
+    def put(self, name, value):
+        self.values[name] = value
+
+    def get(self, pattern="*"):
+        return {k: {"value": v} for k, v in self.values.items()}
+
+
+def _configuration_with_properties():
+    configuration = _configuration()
+    configuration.properties = FakeProperties()
+    return configuration
+
+
+def test_the_lower_minimum_is_kept_and_restored(node):
+    """Both directions reach a minimum; the first (+) is lower, so the
+    configuration goes back to it: coordinates, Hessian and stored properties."""
+    node.model = "Fake:M"
+    configuration = _configuration_with_properties()
+    node._vibrations = _vibrations(saddle=True)
+    seen = []
+
+    def harmonic(fmax):
+        z = configuration.atoms.xyz[0, 0] - START[0, 0]
+        E = -12.0 if not seen else -10.0  # the first attempt is lower
+        seen.append(z)
+        node._vibrations = _vibrations(saddle=False)
+        configuration.properties.put("E#Thermochemistry#Fake:M", E)
+        return {"E": E, "imaginary": 0}
+
+    result = node._escape_saddle(
+        _P(), "CC=C", configuration, {"E": 0.0, "imaginary": 1}, harmonic
+    )
+    assert len(seen) == 2 and result["E"] == -12.0
+    assert configuration.atoms.xyz[0, 0] - START[0, 0] == pytest.approx(seen[0])
+    assert configuration.properties.values["E#Thermochemistry#Fake:M"] == -12.0
+    record = configuration.properties.values[
+        "saddle re-optimization#Thermochemistry#Fake:M"
+    ]
+    assert record["rounds"][0]["chosen"] == "+"
+    assert record["E chosen (kJ/mol)"] == -12.0 and record["minimum reached"]
+    flags = node._flags({"CC=C": result, "C": {"E": 1.0}})
+    assert flags["CBH saddle re-optimized species"] == "CC=C"
+    assert flags["CBH saddle-point species"] == ""
+
+
+def test_a_second_round_reaches_the_minimum(node):
+    configuration = _configuration()
+    node._vibrations = _vibrations(saddle=True)
+    count = []
+
+    def harmonic(fmax):
+        count.append(fmax)
+        minimum = len(count) == 3  # round 2, first direction
+        node._vibrations = _vibrations(saddle=not minimum)
+        return {"E": -float(len(count)), "imaginary": 0 if minimum else 1}
+
+    result = node._escape_saddle(
+        _P(), "CO", configuration, {"E": 0.0, "imaginary": 1}, harmonic
+    )
+    record = result["saddle re-optimized"]
+    assert len(count) == 4 and len(record["rounds"]) == 2
+    assert record["minimum reached"] and result["E"] == -3.0
+    assert record["rounds"][0]["chosen"] == "-"  # the lower saddle (E -2)
+    assert "saddle" not in result
+
+
+@pytest.mark.parametrize(
+    "changes, calls_made",
+    [
+        ({"saddle rounds": 1}, 2),
+        ({"saddle threshold": Q_(10000.0, "1/cm")}, 0),  # below it: a minimum
+    ],
+)
+def test_the_parameters(node, changes, calls_made):
+    configuration = _configuration()
+    node._vibrations = _vibrations(saddle=True)
+    harmonic, calls = _harmonic(node, configuration, lambda z: False)
+    node._escape_saddle(
+        _P(**changes), "CO", configuration, {"E": 0.0, "imaginary": 1}, harmonic
+    )
+    assert len(calls) == calls_made
+
+
+def _soft_saddle(frequency):
+    """VibrationsData with the saddle's imaginary frequency scaled to `frequency`
+    (cm^-1), keeping the rest of _vibrations' water-shaped Hessian."""
+    from ase import Atoms
+    from ase.vibrations import VibrationsData
+
+    curvature = -1.0 * (frequency / _expected_frequency()) ** 2
+    hessian, _ = _hessian(True, rotation=0.0, curvature=curvature)
+    return VibrationsData(Atoms(SYMBOLS, positions=START), hessian.reshape(3, 3, 3, 3))
+
+
+def test_the_default_threshold_is_30():
+    """Paul 2026-11-24: 30 cm^-1, the parameter and the code agree."""
+    from thermochemistry_step import ThermochemistryParameters
+
+    assert cbh_approach.SADDLE_THRESHOLD == 30.0
+    default = ThermochemistryParameters.parameters["saddle threshold"]["default"]
+    assert default == cbh_approach.SADDLE_THRESHOLD
+
+
+@pytest.mark.parametrize(
+    "threshold, calls_made",
+    [(None, 2), (Q_(50.0, "1/cm"), 0)],  # the default catches it; 50 would not
+)
+def test_a_soft_48i_saddle_is_caught_by_default(node, threshold, calls_made):
+    """The PM7 propyl nitrite control (thermo, job 5970) sat on a 48.1i saddle."""
+    configuration = _configuration()
+    node._vibrations = _soft_saddle(48.1)
+    frequency, _ = node._largest_imaginary_mode(cbh_approach.SADDLE_THRESHOLD)
+    assert frequency == pytest.approx(48.1, abs=0.5)
+    harmonic, calls = _harmonic(node, configuration, lambda z: True)
+    changes = {} if threshold is None else {"saddle threshold": threshold}
+    result = node._escape_saddle(
+        _P(**changes), "CCCON=O", configuration, {"E": 0.0, "imaginary": 1}, harmonic
+    )
+    assert len(calls) == calls_made
+    assert ("saddle re-optimized" in result) == (calls_made > 0)
+
+
+def test_the_displacement_parameter(node):
+    configuration = _configuration()
+    node._vibrations = _vibrations(saddle=True)
+    harmonic, calls = _harmonic(node, configuration, lambda z: True)
+    node._escape_saddle(
+        _P(**{"saddle displacement": Q_(0.1, "Å")}),
+        "CO",
+        configuration,
+        {"E": 0.0, "imaginary": 1},
+        harmonic,
+    )
+    assert all(moved == pytest.approx(0.1) for _, _, moved in calls)
+
+
+# A real methyl rotation saddle: propene with its methyl rotated to the top of the
+# barrier, with MMFF (RDKit) as the engine
+
+
+def _mmff_engine(smiles):
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    mol = Chem.AddHs(Chem.MolFromSmiles(smiles))
+    AllChem.EmbedMolecule(mol, randomSeed=7)
+    props = AllChem.MMFFGetMoleculeProperties(mol)
+    return mol, props
+
+
+def _mmff_hessian(mol, props, xyz, step=0.002):
+    """The Cartesian Hessian (eV/Å^2) by central differences of MMFF energies.
+    (RDKit's CalcGrad(positions) disagrees with its own energies by a factor of
+    ~4.18 here, so the energies are used.)"""
+    from rdkit.Chem import AllChem
+
+    ff = AllChem.MMFFGetMoleculeForceField(mol, props)
+    flat = np.asarray(xyz, dtype=float).ravel()
+    n3 = len(flat)
+
+    def energy(*moves):
+        x = flat.copy()
+        for k, d in moves:
+            x[k] += d
+        return ff.CalcEnergy(x.tolist())
+
+    E0 = energy()
+    H = np.zeros((n3, n3))
+    h = step
+    for a in range(n3):
+        H[a, a] = (energy((a, h)) - 2 * E0 + energy((a, -h))) / h**2
+        for b in range(a):
+            H[a, b] = H[b, a] = (
+                energy((a, h), (b, h))
+                - energy((a, h), (b, -h))
+                - energy((a, -h), (b, h))
+                + energy((a, -h), (b, -h))
+            ) / (4 * h * h)
+    return H * 0.0433641043  # kcal/mol/Å^2 -> eV/Å^2 (per molecule)
+
+
+def _mmff_harmonic(node, configuration, mol, props, constraint=None):
+    """optimize (MMFF, optionally with the methyl torsion held) + Hessian."""
+    from ase import Atoms
+    from ase.vibrations import VibrationsData
+    from rdkit.Chem import AllChem
+    from rdkit.Geometry import Point3D
+
+    symbols = [a.GetSymbol() for a in mol.GetAtoms()]
+
+    def harmonic(fmax):
+        conf = mol.GetConformer()
+        for i, (x, y, z) in enumerate(configuration.atoms.xyz):
+            conf.SetAtomPosition(i, Point3D(float(x), float(y), float(z)))
+        ff = AllChem.MMFFGetMoleculeForceField(mol, props)
+        if constraint is not None:
+            ff.MMFFAddTorsionConstraint(*constraint, False, 60.0, 60.0, 1.0e3)
+        for _ in range(50):  # until converged (0)
+            if ff.Minimize(maxIts=2000, forceTol=1e-8, energyTol=1e-14) == 0:
+                break
+        xyz = np.array(ff.Positions()).reshape(-1, 3)
+        configuration.atoms.xyz = xyz
+        E = AllChem.MMFFGetMoleculeForceField(mol, props).CalcEnergy(
+            xyz.ravel().tolist()
+        )
+        H = _mmff_hessian(mol, props, xyz)
+        n = len(symbols)
+        node._vibrations = VibrationsData(
+            Atoms(symbols, positions=xyz), H.reshape(n, 3, n, 3)
+        )
+        return {"E": E * 4.184, "imaginary": 0}
+
+    return harmonic
+
+
+def test_a_planted_methyl_saddle_ends_at_the_minimum(node):
+    pytest.importorskip("ase")
+    from rdkit.Chem import rdMolTransforms
+
+    mol, props = _mmff_engine("CC=C")
+    # An H on the methyl carbon (atom 0) and the torsion H-C0-C1=C2: the minimum
+    # has a C-H eclipsing C=C (0, 120 or 240 deg); hold it at 60 deg, the top of the
+    # barrier (MMFF: 8.44 against 6.48 kcal/mol)
+    h = next(
+        a.GetIdx() for a in mol.GetAtomWithIdx(0).GetNeighbors() if a.GetSymbol() == "H"
+    )
+    conf = mol.GetConformer()
+    rdMolTransforms.SetDihedralDeg(conf, h, 0, 1, 2, 60.0)
+    configuration = SimpleNamespace(n_atoms=mol.GetNumAtoms(), atoms=FakeAtoms())
+    configuration.atoms.xyz = np.array(conf.GetPositions())
+    configuration.atoms.symbols = [a.GetSymbol() for a in mol.GetAtoms()]
+    held = _mmff_harmonic(node, configuration, mol, props, constraint=(h, 0, 1, 2))
+    saddle = held(0.001)  # optimized with the torsion held at the barrier top
+    frequency, _ = node._largest_imaginary_mode(50.0)
+    assert frequency is not None and frequency > 100.0  # the methyl torsion
+    free = _mmff_harmonic(node, configuration, mol, props)
+    result = node._escape_saddle(
+        _P(**{"saddle threshold": Q_(50.0, "1/cm")}),
+        "CC=C",
+        configuration,
+        dict(saddle),
+        free,
+    )
+    record = result["saddle re-optimized"]
+    assert record["minimum reached"]
+    assert node._largest_imaginary_mode(50.0) == (None, None)
+    barrier = saddle["E"] - result["E"]
+    assert 3.0 < barrier < 15.0  # propene's methyl barrier, ~8 kJ/mol
+    dihedral = rdMolTransforms.GetDihedralDeg(mol.GetConformer(), h, 0, 1, 2)
+    # an H eclipses C=C again: the dihedral is a multiple of 120 degrees
+    assert abs((dihedral + 60.0) % 120.0 - 60.0) < 10.0
+
+
+def test_a_true_minimum_is_untouched(node):
+    pytest.importorskip("ase")
+    mol, props = _mmff_engine("CC=C")
+    configuration = SimpleNamespace(n_atoms=mol.GetNumAtoms(), atoms=FakeAtoms())
+    configuration.atoms.xyz = np.array(mol.GetConformer().GetPositions())
+    configuration.atoms.symbols = [a.GetSymbol() for a in mol.GetAtoms()]
+    free = _mmff_harmonic(node, configuration, mol, props)
+    minimum = free(0.001)
+    xyz = configuration.atoms.xyz.copy()
+    calls = []
+
+    def counting(fmax):
+        calls.append(fmax)
+        return free(fmax)
+
+    result = node._escape_saddle(_P(), "CC=C", configuration, dict(minimum), counting)
+    assert calls == [] and result == minimum
+    assert np.allclose(configuration.atoms.xyz, xyz)

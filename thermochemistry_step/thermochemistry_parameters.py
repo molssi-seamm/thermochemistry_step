@@ -379,10 +379,47 @@ class ThermochemistryParameters(seamm.Parameters):
             "description": "Saddle points:",
             "help_text": (
                 "A species that optimizes to a saddle point (an imaginary mode above "
-                "20i cm^-1, e.g. a planar CH3- or an eclipsed methyl) misses that "
-                "mode's enthalpy. Displace it along the mode, both ways if need be, "
-                "and optimize again more tightly to reach a minimum; or keep it, "
+                "the saddle threshold, e.g. a planar CH3- or an eclipsed methyl) "
+                "misses that mode's enthalpy. Displace it along the mode both ways, "
+                "optimize each again more tightly, and keep the lower minimum (a "
+                "second round from the lower if neither is one); or keep it, "
                 "flagged in the results and not added to the fragment store."
+            ),
+        },
+        "saddle threshold": {
+            "default": 30.0,
+            "kind": "float",
+            "default_units": "cm^-1",
+            "enumeration": tuple(),
+            "format_string": ".1f",
+            "description": "Saddle threshold:",
+            "help_text": (
+                "An imaginary frequency above this (beyond the translations and "
+                "rotations) makes the species a saddle point."
+            ),
+        },
+        "saddle displacement": {
+            "default": 0.3,
+            "kind": "float",
+            "default_units": "Å",
+            "enumeration": tuple(),
+            "format_string": ".2f",
+            "description": "Saddle displacement:",
+            "help_text": (
+                "How far the atom moving most is displaced along the imaginary mode, "
+                "each way, before optimizing again."
+            ),
+        },
+        "saddle rounds": {
+            "default": 2,
+            "kind": "integer",
+            "default_units": "",
+            "enumeration": tuple(),
+            "format_string": "",
+            "description": "Saddle rounds:",
+            "help_text": (
+                "The most rounds of displacing both ways: a second round starts from "
+                "the lower result of the first when neither is a minimum."
             ),
         },
         "energy property": {

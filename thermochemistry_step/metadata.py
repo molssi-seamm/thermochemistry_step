@@ -423,7 +423,16 @@ metadata["results"] = {
     "CBH saddle-point species": {
         "description": (
             "The species (target or fragments) left at a saddle point, with an "
-            "imaginary mode above 20i cm^-1; empty if none"
+            "imaginary mode above the saddle threshold; empty if none"
+        ),
+        "dimensionality": "scalar",
+        "type": "string",
+        "format": "",
+    },
+    "CBH saddle re-optimized species": {
+        "description": (
+            "The species (target or fragments) that optimized to a saddle point and "
+            "were displaced and optimized again; empty if none"
         ),
         "dimensionality": "scalar",
         "type": "string",
