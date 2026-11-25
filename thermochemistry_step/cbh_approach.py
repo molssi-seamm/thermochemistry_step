@@ -3059,18 +3059,24 @@ class CBHApproach:
             )
             refused = self._hessian_refusal()
             if refused is not None:
-                # Recompute it once at the same structure, in a new engine session
+                # Compute it again at the same structure, in a new engine session,
+                # by finite differences of the forces: a broken analytic Hessian
+                # is reproducible (ORCA 6.1.1, UKS r2SCAN-3c, 4-hydroxy-TEMPO)
                 printer.important(
                     __(
                         f"    The Hessian of {can} is broken ({refused}), so it is "
-                        "computed again at the same structure.",
+                        "computed again at the same structure, by finite "
+                        "differences of the forces.",
                         indent=4 * " ",
                         wrap=True,
                         dedent=False,
                     )
                 )
                 E0, hessian, how = self.optimize_and_hessian(
-                    configuration, delta_bohr, optimize=False
+                    configuration, delta_bohr, optimize=False, finite_differences=True
+                )
+                printer.important(
+                    __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
                 )
                 hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
                 self._vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
@@ -3596,13 +3602,14 @@ class CBHApproach:
         if not str(name).startswith("CBH:"):
             raise RuntimeError(
                 f"The Hessian of {can} is broken ({reason}), also when computed "
-                "again, so its thermochemistry cannot be computed."
+                "again by finite differences, so its thermochemistry cannot be "
+                "computed."
             )
         printer.important(
             __(
                 f"    Warning: the Hessian of the fragment {can} is broken ({reason}), "
-                "also when computed again. The rungs that need it fail, and it is "
-                "not added to the fragment store.",
+                "also when computed again by finite differences. The rungs that need "
+                "it fail, and it is not added to the fragment store.",
                 indent=4 * " ",
                 wrap=True,
                 dedent=False,

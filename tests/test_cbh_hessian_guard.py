@@ -39,13 +39,21 @@ MC = {
 
 
 class Engine:
-    def __init__(self, hessians):
+    """Analytic Hessians as listed; forces (for finite differences) from the
+    potential 1/2 x.F.x."""
+
+    def __init__(self, hessians, F=GOOD):
         self.x = np.zeros(15)
         self.hessians = list(hessians)
+        self.F = F
         self.n_hessians = 0
 
+    def forces(self, units="hartree/bohr"):
+        return -(self.F @ self.x)
+
     def set_coordinates(self, x, units="Å"):
-        self.x = np.asarray(x, dtype=float).reshape(-1) / BOHR
+        x = np.asarray(x, dtype=float).reshape(-1)
+        self.x = x if units == "bohr" else x / BOHR
 
     def energy(self, units="kJ/mol"):
         e = 0.5 * self.x @ GOOD @ self.x
@@ -80,10 +88,10 @@ def methane(tmp_path):
     return make
 
 
-def _run(node, configuration, monkeypatch, hessians):
+def _run(node, configuration, monkeypatch, hessians, F=GOOD):
     import seamm_exec.hessian as H
 
-    engine = Engine(hessians)
+    engine = Engine(hessians, F)
     sessions = []
 
     @contextlib.contextmanager
@@ -135,22 +143,28 @@ def test_a_sound_hessian_is_used_as_is(node, methane, monkeypatch):
 
 
 def test_a_broken_hessian_is_computed_again(node, methane, monkeypatch):
-    result, engine, sessions, _ = _run(node, methane("C"), monkeypatch, [BAD, GOOD])
-    # once more, at the same structure, in a new engine session
-    assert engine.n_hessians == 2 and len(sessions) == 2
+    result, engine, sessions, _ = _run(node, methane("C"), monkeypatch, [BAD])
+    # once more, at the same structure, in a new engine session, by finite
+    # differences of the forces (the analytic one is not asked for again)
+    assert engine.n_hessians == 1 and len(sessions) == 2
     assert "hessian refused" not in result and result["ZPE"] == 100.0
+    assert np.allclose(
+        node._vibrations.get_hessian_2d(),
+        Q_(GOOD, "hartree/bohr**2").m_as("eV/Å**2"),
+        atol=1e-4,
+    )
 
 
 def test_a_target_whose_hessian_stays_broken_fails(node, methane, monkeypatch):
     with pytest.raises(RuntimeError, match="Hessian of C is broken"):
-        _run(node, methane("C"), monkeypatch, [BAD, BAD])
+        _run(node, methane("C"), monkeypatch, [BAD], F=BAD)
 
 
 def test_a_fragment_whose_hessian_stays_broken_is_flagged(node, methane, monkeypatch):
     result, engine, sessions, displaced = _run(
-        node, methane("CBH:C"), monkeypatch, [BAD, BAD]
+        node, methane("CBH:C"), monkeypatch, [BAD], F=BAD
     )
-    assert engine.n_hessians == 2
+    assert engine.n_hessians == 1 and len(sessions) == 2
     assert "frequency of" in result["hessian refused"]
     assert "ZPE" not in result and "H298" not in result
     # no saddle handling on a broken Hessian
