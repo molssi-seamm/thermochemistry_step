@@ -1,6 +1,22 @@
 =======
 History
 =======
+2026.11.25.1 -- Bugfix: a broken Hessian is not chased as a saddle point
+    * A Hessian with any frequency, real or imaginary, above 5000 cm^-1
+      (``MAX_FREQUENCY``) is broken, not a saddle point. It is computed once more at
+      the same structure, in a new engine session, by finite differences of the
+      forces: ORCA 6.1.1's analytic UKS r2SCAN-3c Hessian of 4-hydroxy-TEMPO is
+      broken reproducibly, also from a clean directory. If it is still broken, a target
+      fails with the reason, and a fragment is flagged: the rungs that need it fail
+      and it is not added to the fragment store. Nothing is displaced. Before,
+      4-hydroxy-TEMPO's analytic Hessian with a frequency of -3.1e7 cm^-1 was treated
+      as a saddle point and re-optimized for four hours (job 6043).
+    * The size of the modes that should be zero is reported with the reason, but
+      does not refuse a Hessian: sound small-molecule Hessians reach 200 cm^-1 there.
+    * Tests: the resonance-form tests accept a direct match, which
+      seamm-thermochemistry 2026.11.25 now finds itself.
+    * Requires seamm-exec 2026.11.25.1 (finite-difference Hessians on request).
+
 2026.11.25 -- The SEAMM optimizer as a choice in CBH
     * New fragment settings *Optimizer* (ASE BFGS, the default, or the SEAMM
       optimizer) and *Cheap level for Hessians* (GFN2-xTB by default, PM7, or none

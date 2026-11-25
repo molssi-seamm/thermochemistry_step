@@ -116,9 +116,12 @@ class ModelChemistryHessian:
         optimizer="ASE BFGS",
         optimizer_options=None,
         cheap_level=None,
+        finite_differences=False,
     ):
         """Optionally optimize the structure (ASE BFGS or the SEAMM optimizer over
-        the warm engine), then the energy and Hessian, in one engine session. With
+        the warm engine), then the energy and Hessian, in one engine session.
+        With `finite_differences` the Hessian is central differences of the
+        engine's forces even when it has an analytic one. With
         `continuations` an unconverged optimization continues in the same
         session, so the Hessian is computed once, at the final structure.
 
@@ -140,6 +143,7 @@ class ModelChemistryHessian:
                 optimizer=optimizer,
                 optimizer_options=optimizer_options,
                 cheap_level=cheap_level,
+                finite_differences=finite_differences,
             )
         finally:
             self._fingerprints = driver.fingerprints

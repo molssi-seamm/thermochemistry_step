@@ -93,7 +93,9 @@ def test_different_species_differ(a, b):
 def test_lookup_target(tables, target, multiplicity, atct_id, via):
     entry, matched = lookup_target(tables, target, 0, multiplicity)
     assert entry["id"] == atct_id
-    assert matched == via
+    # seamm-thermochemistry 2026.11.25 finds a resonance form itself (InChIKey and
+    # hydrogens on the same atoms), so the match may come directly (None)
+    assert matched in (None, via)
 
 
 def test_no_match(tables):

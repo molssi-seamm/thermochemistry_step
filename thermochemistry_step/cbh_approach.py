@@ -71,6 +71,11 @@ SADDLE_TIGHTENING = 0.2
 #: 30 cm^-1 (Paul 2026-11-24): the PM7 propyl nitrite control sat on a 48.1i saddle
 SADDLE_THRESHOLD = 30.0
 SADDLE_ROUNDS = 2
+#: A Hessian with any frequency, real or imaginary, larger than this (cm^-1) is
+#: broken, not a saddle point: no vibration exceeds ~4400 cm^-1 (H2), and the
+#: largest real mode in E1's T4 frequencies was 3842. 4-hydroxy-TEMPO's analytic
+#: Hessian in job 6043 had -3.1e7 cm^-1 and was chased as a saddle for 4 hours.
+MAX_FREQUENCY = 5000.0
 
 #: The presets of the CBH approach (thermo's defaults, adopted 2026-11-08): the
 #: composite recipe (composite_step), and its geometry/frequency level and energy
@@ -2560,7 +2565,7 @@ class CBHApproach:
                 combined["H0"] = E + low["ZPE"]
             if "H298" in low:
                 combined["H298"] = E + (low["H298"] - low["E"])
-            for flag in ("imaginary", "converged", "broken"):
+            for flag in ("imaginary", "converged", "broken", "hessian refused"):
                 if flag in low:
                     combined[flag] = low[flag]
             energies[can] = combined
@@ -2674,7 +2679,7 @@ class CBHApproach:
                 combined["H0"] = E + low["ZPE"]
             if "H298" in low:
                 combined["H298"] = E + (low["H298"] - low["E"])
-            for flag in ("imaginary", "converged", "broken"):
+            for flag in ("imaginary", "converged", "broken", "hessian refused"):
                 if flag in low:
                     combined[flag] = low[flag]
             energies[can] = combined
@@ -3052,6 +3057,33 @@ class CBHApproach:
             printer.important(
                 __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
             )
+            refused = self._hessian_refusal()
+            if refused is not None:
+                # Compute it again at the same structure, in a new engine session,
+                # by finite differences of the forces: a broken analytic Hessian
+                # is reproducible (ORCA 6.1.1, UKS r2SCAN-3c, 4-hydroxy-TEMPO)
+                printer.important(
+                    __(
+                        f"    The Hessian of {can} is broken ({refused}), so it is "
+                        "computed again at the same structure, by finite "
+                        "differences of the forces.",
+                        indent=4 * " ",
+                        wrap=True,
+                        dedent=False,
+                    )
+                )
+                E0, hessian, how = self.optimize_and_hessian(
+                    configuration, delta_bohr, optimize=False, finite_differences=True
+                )
+                printer.important(
+                    __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
+                )
+                hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
+                self._vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
+                self._E0 = Q_(E0, "kJ/mol").m_as("eV")
+                refused = self._hessian_refusal()
+                if refused is not None:
+                    return self._refuse_hessian(configuration, can, refused, converged)
             data = self.harmonic_thermochemistry(
                 _P, [T_REF], "K", [1.0], "bar", print_frequencies=False
             )
@@ -3508,6 +3540,31 @@ class CBHApproach:
                 "not computed."
             )
 
+    def _hessian_refusal(self, limit=MAX_FREQUENCY):
+        """Why ``self._vibrations`` cannot be a molecule's Hessian, or None: a
+        frequency, real or imaginary, larger than `limit` cm^-1. The largest of
+        the translations and rotations, which should be zero, is given in the
+        reason as a diagnostic only (sound small-molecule Hessians reach 200
+        cm^-1 there: CH3O, T4)."""
+        from ase.units import invcm
+
+        vibrations = getattr(self, "_vibrations", None)
+        if vibrations is None:
+            return None
+        energies, _ = vibrations.get_energies_and_modes(all_atoms=True)
+        magnitude = np.abs(energies) / invcm
+        largest = float(np.max(magnitude))
+        if largest <= limit:
+            return None
+        zero = np.sort(magnitude)[: _n_zero_modes(vibrations)]
+        imaginary = np.abs(np.imag(energies)) > np.abs(np.real(energies))
+        kind = "imaginary " if imaginary[int(np.argmax(magnitude))] else ""
+        return (
+            f"a {kind}frequency of {largest:.0f} cm^-1 (more than {limit:.0f}); the "
+            f"largest of the modes that should be zero is {float(zero.max()):.1f} "
+            "cm^-1"
+        )
+
     def _largest_imaginary_mode(
         self, threshold=IMAGINARY_TOLERANCE, displacement=SADDLE_DISPLACEMENT
     ):
@@ -3537,6 +3594,33 @@ class CBHApproach:
             return None, None
         return frequency, mode * (displacement / largest)
 
+    def _refuse_hessian(self, configuration, can, reason, converged=None):
+        """A species whose Hessian is broken twice: a target fails; a fragment is
+        flagged, so the rungs that need it fail and it is not stored. No
+        thermochemistry is computed from the broken Hessian."""
+        name = configuration.system.name if configuration.system else ""
+        if not str(name).startswith("CBH:"):
+            raise RuntimeError(
+                f"The Hessian of {can} is broken ({reason}), also when computed "
+                "again by finite differences, so its thermochemistry cannot be "
+                "computed."
+            )
+        printer.important(
+            __(
+                f"    Warning: the Hessian of the fragment {can} is broken ({reason}), "
+                "also when computed again by finite differences. The rungs that need "
+                "it fail, and it is not added to the fragment store.",
+                indent=4 * " ",
+                wrap=True,
+                dedent=False,
+            )
+        )
+        self._vibrations = None
+        result = {"E": Q_(self._E0, "eV").m_as("kJ/mol"), "hessian refused": reason}
+        if converged is not None:
+            result["converged"] = converged
+        return result
+
     def _escape_saddle(self, _P, can, configuration, result, harmonic):
         """A species optimized to a saddle point (an imaginary mode above the
         'saddle threshold') is displaced along the mode both ways by the 'saddle
@@ -3553,6 +3637,9 @@ class CBHApproach:
             _P.get("saddle displacement", SADDLE_DISPLACEMENT), "Å"
         )
         rounds = max(1, int(_P.get("saddle rounds", SADDLE_ROUNDS)))
+        if result.get("hessian refused"):
+            # A broken Hessian is not a saddle point: nothing to displace along
+            return result
         frequency, mode = self._largest_imaginary_mode(threshold, displacement)
         if frequency is None:
             return result
@@ -3824,7 +3911,9 @@ class CBHApproach:
         unconverged = {
             can
             for can, e in energies.items()
-            if can != target and isinstance(e, dict) and e.get("converged") is False
+            if can != target
+            and isinstance(e, dict)
+            and (e.get("converged") is False or e.get("hessian refused"))
         }
         failed = {}
         for rung in usable:
@@ -3833,10 +3922,23 @@ class CBHApproach:
                 failed[rung] = needs
         if failed:
             left = [r for r in usable if r not in failed]
+            cans = sorted({c for v in failed.values() for c in v})
+            refused = [c for c in cans if energies[c].get("hessian refused")]
+            unconverged = [c for c in cans if c not in refused]
+            why = []
+            if unconverged:
+                why.append(
+                    "the optimization of "
+                    + ", ".join(unconverged)
+                    + " did not converge, even after continuing"
+                )
+            if refused:
+                why.append("the Hessian of " + ", ".join(refused) + " is broken")
             text = (
-                "\nThe optimization of "
-                + ", ".join(sorted({c for v in failed.values() for c in v}))
-                + " did not converge, even after continuing, so "
+                "\n"
+                + "; ".join(why)[0].upper()
+                + "; ".join(why)[1:]
+                + ", so "
                 + ", ".join(f"CBH-{r}" for r in failed)
                 + (" fails" if len(failed) == 1 else " fail")
                 + (
@@ -3952,11 +4054,19 @@ class CBHApproach:
         whose optimization did not converge, nor one whose structure changed."""
         if not isinstance(result, dict):
             return True
-        if result.get("converged") is False or result.get("broken"):
+        if (
+            result.get("converged") is False
+            or result.get("broken")
+            or result.get("hessian refused")
+        ):
             why = (
-                "its optimization did not converge"
-                if result.get("converged") is False
-                else "its structure changed"
+                "its Hessian is broken"
+                if result.get("hessian refused")
+                else (
+                    "its optimization did not converge"
+                    if result.get("converged") is False
+                    else "its structure changed"
+                )
             )
             printer.important(
                 __(
