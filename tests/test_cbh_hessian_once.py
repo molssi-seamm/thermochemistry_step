@@ -25,8 +25,9 @@ CH4 = [
     ("H", (-0.629, 0.629, -0.629)),
     ("H", (0.629, -0.629, -0.629)),
 ]
-#: A harmonic potential E = 1/2 x.K.x (E_h, bohr) for the fake engine
-K = np.diag(np.linspace(0.2, 1.6, 15))
+#: A harmonic potential E = 1/2 x.K.x (E_h, bohr) for the fake engine, with
+#: frequencies a molecule can have (below the Hessian guard's MAX_FREQUENCY)
+K = np.diag(np.linspace(0.05, 0.4, 15))
 BOHR = 0.529177210903  # Å
 #: How far each optimization block moves every coordinate, Å
 SHIFT = 0.01
