@@ -259,3 +259,27 @@ def test_conformers_optimized_only_when_it_applies(tk_node):
     tk_node["target conformer"].set("lowest of the embeddings (MMFF)")
     tk_node.reset_dialog()
     assert _mapped(tk_node["conformers optimized"])
+
+
+def test_cheap_level_only_for_the_seamm_optimizer(tk_node):
+    tk_node.create_dialog()
+    approaches = [
+        a
+        for a in tk_node.node.parameters["approach"].enumeration
+        if a.startswith("Isodesmic")
+    ]
+    tk_node["approach"].set(approaches[0])
+    tk_node["preset"].set("custom")
+    tk_node["optimize fragments"].set("yes")
+    tk_node["fragment optimizer"].set("ASE BFGS")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["fragment optimizer"])
+    assert not _mapped(tk_node["optimizer cheap level"])
+    tk_node["fragment optimizer"].set("SEAMM optimizer")
+    tk_node.reset_dialog()
+    assert _mapped(tk_node["optimizer cheap level"])
+    # nothing optimized: no optimizer to choose
+    tk_node["optimize fragments"].set("no")
+    tk_node.reset_dialog()
+    assert not _mapped(tk_node["fragment optimizer"])
+    assert not _mapped(tk_node["optimizer cheap level"])

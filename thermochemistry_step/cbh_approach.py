@@ -17,9 +17,10 @@ science lives in ``seamm_thermochemistry`` (``atct`` and ``cbh``).
 The energies H_i(T) come from one of three places:
 
 * "finite-difference harmonic": the subflowchart is run on each species, first
-  to optimize it (ASE BFGS) and then for the finite-difference Hessian; the
-  rigid-rotor harmonic-oscillator thermochemistry of the Harmonic approach
-  gives H(0 K) = E + ZPE and H(298.15 K);
+  to optimize it (ASE BFGS or the SEAMM optimizer) and then for the
+  finite-difference Hessian; the rigid-rotor harmonic-oscillator
+  thermochemistry of the Harmonic approach gives H(0 K) = E + ZPE and
+  H(298.15 K);
 * "finite-difference harmonic" with "thermal corrections" = none: the
   subflowchart's energy already is the enthalpy of formation at 298.15 K, as
   for MOPAC's NDDO methods, so only Δ_rH(298.15 K) is formed;
@@ -1679,7 +1680,12 @@ class CBHApproach:
                 E, converged = self._run_optimization(
                     can,
                     lambda **kw: self.optimize_and_energy(
-                        configuration, optimize=True, fmax=fmax, max_steps=steps, **kw
+                        configuration,
+                        optimize=True,
+                        fmax=fmax,
+                        max_steps=steps,
+                        **kw,
+                        **self._optimizer_kwargs(_P),
                     ),
                     True,
                     steps,
@@ -2995,7 +3001,12 @@ class CBHApproach:
             E, converged = self._run_optimization(
                 can,
                 lambda **kw: self.optimize_and_energy(
-                    configuration, optimize=optimize, fmax=fmax, max_steps=steps, **kw
+                    configuration,
+                    optimize=optimize,
+                    fmax=fmax,
+                    max_steps=steps,
+                    **kw,
+                    **self._optimizer_kwargs(_P),
                 ),
                 optimize,
                 steps,
@@ -3026,6 +3037,7 @@ class CBHApproach:
                     fmax=fmax,
                     max_steps=steps,
                     **kw,
+                    **self._optimizer_kwargs(_P),
                 ),
                 optimize,
                 steps,
@@ -3409,17 +3421,37 @@ class CBHApproach:
                     properties.add(full, kind, units=None, description=name)
                 properties.put(full, value)
 
+    @staticmethod
+    def _optimizer_kwargs(_P):
+        """The optimizer choice for seamm_exec's HessianDriver: {} for ASE's BFGS
+        (the driver's default), or the SEAMM optimizer with the cheap level whose
+        Hessian it uses (none: Lindh's model Hessian). CBH checks for saddle points
+        itself, so the optimizer's own minimum check stays off."""
+        choice = str(_P.get("fragment optimizer", "ASE BFGS"))
+        if not choice.upper().startswith("SEAMM"):
+            return {}
+        cheap = str(_P.get("optimizer cheap level", "none")).strip()
+        cheap = None if cheap.lower() in ("", "none") else cheap
+        return {
+            "optimizer": "SEAMM",
+            "optimizer_options": {} if cheap else {"hessian": "lindh"},
+            "cheap_level": cheap,
+        }
+
     def _optimize(self, configuration, _P, can="the species", fmax=None):
-        """Optimize the structure with ASE's BFGS through the subflowchart,
+        """Optimize the structure through the subflowchart, with ASE's BFGS or
+        the SEAMM optimizer (Lindh's model Hessian: no cheap level here),
         continuing once for as many steps again if it has not converged.
         Returns whether it converged; its energy (kJ/mol) is left in
         ``self._last_energy``."""
-        from ase.optimize import BFGS
-
         atoms = self.ase_atoms(configuration)
         if fmax is None:
             fmax = _P["fragment convergence"].m_as("eV/Å")
         steps = int(_P["fragment max steps"])
+        if self._optimizer_kwargs(_P):
+            return self._optimize_seamm(configuration, atoms, can, fmax, steps)
+        from ase.optimize import BFGS
+
         converged = BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
         if not converged:
             self._say_continuing(can, steps)
@@ -3428,6 +3460,36 @@ class CBHApproach:
         # The energy (kJ/mol) of the optimized structure, already computed
         self._last_energy = Q_(atoms.get_potential_energy(), "eV").m_as("kJ/mol")
         return bool(converged)
+
+    def _optimize_seamm(self, configuration, atoms, can, fmax, steps):
+        """The SEAMM optimizer through the subflowchart (ASE calculator), with
+        Lindh's model Hessian, continuing once from where it stopped."""
+        from seamm_optimizer import Optimizer
+
+        def engine(xyz):
+            atoms.positions = np.asarray(xyz, dtype=float)
+            return atoms.get_potential_energy(), -atoms.get_forces()
+
+        symbols = list(atoms.get_chemical_symbols())
+        result = None
+        for attempt in range(2):
+            if attempt:
+                self._say_continuing(can, steps)
+            result = Optimizer(
+                engine,
+                symbols,
+                atoms.positions.copy(),
+                fmax=fmax,
+                max_steps=steps,
+                hessian="lindh",
+                check_minimum=False,
+            ).run()
+            atoms.positions = np.asarray(result.xyz, dtype=float)
+            if result.converged:
+                break
+        configuration.atoms.set_coordinates(atoms.positions, fractionals=False)
+        self._last_energy = Q_(float(result.energy), "eV").m_as("kJ/mol")
+        return bool(result.converged)
 
     def _check_start(self, can, configuration):
         """Refuse a starting structure with atoms on top of each other, which
