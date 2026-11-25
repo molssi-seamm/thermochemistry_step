@@ -1,6 +1,14 @@
 =======
 History
 =======
+2026.11.25 -- The SEAMM optimizer as a choice in CBH
+    * New fragment settings *Optimizer* (ASE BFGS, the default, or the SEAMM
+      optimizer) and *Cheap level for Hessians* (GFN2-xTB by default, PM7, or none
+      for Lindh's model Hessian) for the species' optimizations. The cheap level is
+      shown only for the SEAMM optimizer. Through the subflowchart the SEAMM optimizer
+      uses Lindh's model Hessian.
+    * Requires seamm-optimizer 2026.11.24.2 and seamm-exec 2026.11.24 or later.
+
 2026.11.23.1 -- CBH saddle points: both ways, the lower minimum, two rounds
     * A species (target or fragment) whose Hessian shows an imaginary mode above the
       new *Saddle threshold* (default 30 cm^-1; it was a fixed 20 cm^-1) is now
