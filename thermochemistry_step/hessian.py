@@ -74,11 +74,16 @@ class ModelChemistryHessian:
         max_steps=200,
         continuations=0,
         on_continue=None,
+        optimizer="ASE BFGS",
+        optimizer_options=None,
+        cheap_level=None,
     ):
         """Optionally optimize the structure over the warm engine, then its
         energy (kJ/mol). With no engine (tasks) the energy only. With
         `continuations` an unconverged optimization continues in the same engine
-        session, calling ``on_continue(max_steps)`` first."""
+        session, calling ``on_continue(max_steps)`` first. `optimizer` ("ASE BFGS"
+        or "SEAMM"), `optimizer_options` and `cheap_level` are as in seamm_exec's
+        HessianDriver.optimize."""
         driver = self._hessian_driver()
         try:
             return driver.optimize_and_energy(
@@ -88,6 +93,9 @@ class ModelChemistryHessian:
                 max_steps,
                 continuations=continuations,
                 on_continue=on_continue,
+                optimizer=optimizer,
+                optimizer_options=optimizer_options,
+                cheap_level=cheap_level,
             )
         finally:
             self._fingerprints = driver.fingerprints
@@ -105,9 +113,12 @@ class ModelChemistryHessian:
         max_steps=200,
         continuations=0,
         on_continue=None,
+        optimizer="ASE BFGS",
+        optimizer_options=None,
+        cheap_level=None,
     ):
-        """Optionally optimize the structure (ASE BFGS over the warm engine),
-        then the energy and Hessian, in one engine session. With
+        """Optionally optimize the structure (ASE BFGS or the SEAMM optimizer over
+        the warm engine), then the energy and Hessian, in one engine session. With
         `continuations` an unconverged optimization continues in the same
         session, so the Hessian is computed once, at the final structure.
 
@@ -126,6 +137,9 @@ class ModelChemistryHessian:
                 max_steps,
                 continuations=continuations,
                 on_continue=on_continue,
+                optimizer=optimizer,
+                optimizer_options=optimizer_options,
+                cheap_level=cheap_level,
             )
         finally:
             self._fingerprints = driver.fingerprints

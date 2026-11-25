@@ -179,6 +179,7 @@ class TkThermochemistry(seamm.TkNode):
             "cbh energies",
             "thermal corrections",
             "optimize fragments",
+            "fragment optimizer",
             "fragment store",
             "reference values",
             "supplementary references",
@@ -349,6 +350,9 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]
+                keys.append("fragment optimizer")
+                if self["fragment optimizer"].get().startswith("SEAMM"):
+                    keys.append("optimizer cheap level")
                 if harmonic or preset != "custom":
                     keys.append("saddle points")
                     if self["saddle points"].get().startswith("displace"):
@@ -405,6 +409,9 @@ class TkThermochemistry(seamm.TkNode):
             keys.append("optimize fragments")
             if optimize:
                 keys += ["fragment convergence", "fragment max steps"]
+                keys.append("fragment optimizer")
+                if self["fragment optimizer"].get().startswith("SEAMM"):
+                    keys.append("optimizer cheap level")
                 if harmonic:
                     keys.append("saddle points")
                     if self["saddle points"].get().startswith("displace"):

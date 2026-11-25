@@ -288,7 +288,15 @@ Species energies
     SMILES as a system named ``CBH:<SMILES>``, optimized with the engine and
     its Hessian calculated, giving H(0 K) = E + ZPE and H(298.15 K). The
     optimization convergence and maximum steps, and the finite-difference step
-    size, are as for the harmonic approach. Or ``existing results (run
+    size, are as for the harmonic approach. *Optimizer* chooses how each species
+    is optimized: ``ASE BFGS`` (default; Cartesian BFGS) or the ``SEAMM
+    optimizer`` (internal coordinates, trust-region steps and a cheap-level
+    Hessian). With the SEAMM optimizer, *Cheap level for Hessians* is the model
+    chemistry whose Hessian starts the optimization and is recomputed when the
+    model keeps failing: ``xTB:SQM@GFN2-xTB`` (default), ``MOPAC:SQM@PM7``, or
+    ``none`` for Lindh's model Hessian. CBH checks for saddle points itself, so
+    the optimizer's own minimum check is off here. Through a subflowchart, the
+    SEAMM optimizer uses Lindh's model Hessian. Or ``existing results (run
     nothing)``: the energies are read from properties already stored on those
     systems, named by the three property patterns (energy, ZPE and enthalpy;
     each glob must match exactly one property), for example from an earlier

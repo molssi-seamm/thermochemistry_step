@@ -348,7 +348,7 @@ class ThermochemistryParameters(seamm.Parameters):
             "format_string": "",
             "description": "Optimize the structures:",
             "help_text": (
-                "Whether to optimize each species (ASE BFGS over the engine) "
+                "Whether to optimize each species (over the engine) "
                 "before the Hessian."
             ),
         },
@@ -369,6 +369,31 @@ class ThermochemistryParameters(seamm.Parameters):
             "format_string": "",
             "description": "Maximum optimization steps:",
             "help_text": "The maximum number of optimization steps per species.",
+        },
+        "fragment optimizer": {
+            "default": "ASE BFGS",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("ASE BFGS", "SEAMM optimizer"),
+            "format_string": "",
+            "description": "Optimizer:",
+            "help_text": (
+                "ASE's Cartesian BFGS, or the SEAMM optimizer (internal coordinates, "
+                "trust-region steps and a cheap-level or model Hessian)."
+            ),
+        },
+        "optimizer cheap level": {
+            "default": "xTB:SQM@GFN2-xTB",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("xTB:SQM@GFN2-xTB", "MOPAC:SQM@PM7", "none"),
+            "format_string": "",
+            "description": "Cheap level for Hessians:",
+            "help_text": (
+                "The SEAMM optimizer: a cheap model chemistry whose Hessian starts "
+                "the optimization and is recomputed when the model keeps failing. "
+                "'none' uses Lindh's model Hessian instead."
+            ),
         },
         "saddle points": {
             "default": "displace and re-optimize",
