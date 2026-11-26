@@ -117,6 +117,7 @@ class ModelChemistryHessian:
         optimizer_options=None,
         cheap_level=None,
         finite_differences=False,
+        check=False,
     ):
         """Optionally optimize the structure (ASE BFGS or the SEAMM optimizer over
         the warm engine), then the energy and Hessian, in one engine session.
@@ -124,6 +125,10 @@ class ModelChemistryHessian:
         engine's forces even when it has an analytic one. With
         `continuations` an unconverged optimization continues in the same
         session, so the Hessian is computed once, at the final structure.
+        With `check` a finite-difference Hessian is also tested against
+        differences of the gradient (seamm_exec raises ``HessianRefused`` if it,
+        or any of its points, fails). ``self._fd_info`` and
+        ``self._hessian_check`` say how it was made and checked.
 
         Returns
         -------
@@ -144,8 +149,11 @@ class ModelChemistryHessian:
                 optimizer_options=optimizer_options,
                 cheap_level=cheap_level,
                 finite_differences=finite_differences,
+                check=check,
             )
         finally:
+            self._fd_info = getattr(driver, "fd_info", None)
+            self._hessian_check = getattr(driver, "last_check", None)
             self._fingerprints = driver.fingerprints
             self._last_optimization = getattr(driver, "last_optimization", None)
             # (<S**2>, S(S+1)) at the end of the optimization, when the engine

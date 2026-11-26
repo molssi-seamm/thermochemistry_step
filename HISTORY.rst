@@ -1,6 +1,15 @@
 =======
 History
 =======
+2026.11.26 -- The guard's replacement Hessian is checked
+    * When a Hessian is refused, its finite-difference replacement is now made with a
+      tight SCF and every point from the reference orbitals and checked for a state
+      change, and is tested against differences of the gradient (seamm-exec
+      2026.11.26). A replacement that fails either refuses the species, as a Hessian
+      broken twice. Before, it was judged only by its largest frequency.
+    * The output says how the replacement was made and checked, with its zero modes as
+      information.
+
 2026.11.25.1 -- Bugfix: a broken Hessian is not chased as a saddle point
     * A Hessian with any frequency, real or imaginary, above 5000 cm^-1
       (``MAX_FREQUENCY``) is broken, not a saddle point. It is computed once more at

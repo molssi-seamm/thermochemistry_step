@@ -193,3 +193,32 @@ def test_the_refusal_names_the_frequency(node, methane):
         if refused:
             assert "imaginary frequency of" in reason
             assert "should be zero" in reason
+
+
+def test_a_replacement_with_a_point_in_another_state_is_refused(
+    node, methane, monkeypatch
+):
+    """The replacement finite-difference Hessian is made with every point checked
+    for a state change and tested against the gradients (seamm-exec 2026.11.26);
+    a failure refuses the species (science 2026-11-26)."""
+    import seamm_exec.hessian as H
+
+    monkeypatch.setattr(
+        H, "check_fd_points", lambda *a, **k: ["coordinate 4 +0.01 bohr: <S**2> moved"]
+    )
+    result, engine, sessions, displaced = _run(
+        node, methane("CBH:C"), monkeypatch, [BAD]
+    )
+    assert "S**2" in result["hessian refused"]
+    assert "ZPE" not in result and displaced == []
+
+
+def test_a_sound_replacement_is_checked_against_the_gradients(
+    node, methane, monkeypatch
+):
+    result, engine, sessions, _ = _run(node, methane("C"), monkeypatch, [BAD])
+    assert "hessian refused" not in result
+    check = node._hessian_check
+    assert check is not None and not check["refused"] and len(check["errors"]) == 3
+    assert node._fd_info["tight SCF"] is False  # this engine cannot tighten
+    assert len(node._fd_info["zero modes"]) == 6
