@@ -2949,20 +2949,41 @@ class CBHApproach:
             H = Q_(np.asarray(vibrations.get_hessian_2d()), "eV/Å**2").m_as(
                 "hartree/bohr**2"
             )
+            from seamm_util.fingerprint import geometry_fingerprint
+
             model = self.model or "unknown"
             properties = configuration.properties
+            # The engine's record of the frequency calculation: the analytic
+            # Hessian's, or the energy record for finite differences
+            records = getattr(self, "_fingerprints", None) or {}
+            analytic = how is not None and str(how).startswith("analytic")
+            record = records.get("hessian" if analytic else "energy")
             fingerprint = None
             name = f"frequency fingerprint#Thermochemistry#{model}"
             if properties.exists(name):
                 fingerprint = properties.get(name)["value"]
+            elif isinstance(record, dict):
+                fingerprint = record.get("fingerprint")
             info = {
                 "route": how,
                 "settings": fingerprint,
+                "calculation": record,
+                "geometry fingerprint": geometry_fingerprint(
+                    atoms.get_atomic_numbers(), atoms.get_positions()
+                ),
                 "model": model,
                 "species": can,
                 "charge": int(configuration.charge or 0),
                 "multiplicity": int(configuration.spin_multiplicity or 1),
             }
+            refused = (
+                self._hessian_refusal() if hasattr(self, "_hessian_refusal") else None
+            )
+            result = getattr(self, "_hessian_check", None)
+            if refused is None and result and result.get("refused"):
+                refused = f"it disagrees with the gradients: {result['reason']}"
+            if refused is not None:
+                info["refused"] = refused
             fd = getattr(self, "_fd_info", None)
             if fd and how and "finite" in str(how):
                 info["finite differences"] = fd

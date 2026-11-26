@@ -60,11 +60,15 @@ class ModelChemistryHessian:
         """The energy (kJ/mol) of the configuration with the Model Chemistry."""
         return self._hessian_driver().energy(configuration)
 
-    def energy_and_hessian(self, configuration, delta_bohr=0.01):
+    def energy_and_hessian(self, configuration, delta_bohr=0.01, check=False):
         """The energy (kJ/mol), the Cartesian Hessian (hartree/bohr², (3N, 3N))
         and how it was obtained: "analytic", "finite differences over MDI" or
-        "finite differences as tasks"."""
-        return self.optimize_and_hessian(configuration, delta_bohr, optimize=False)
+        "finite differences as tasks". `check` as in optimize_and_hessian
+        ("report": an analytic Hessian checked and the result kept in
+        ``self._hessian_check``, not refused)."""
+        return self.optimize_and_hessian(
+            configuration, delta_bohr, optimize=False, check=check
+        )
 
     def optimize_and_energy(
         self,

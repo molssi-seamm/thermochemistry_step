@@ -81,3 +81,38 @@ def test_keeping_never_fails_the_species(tmp_path):
         properties=Properties(), charge=0, spin_multiplicity=1
     )
     assert CBHApproach._save_species_hessian(me, configuration, "C", "x") is None
+
+
+def test_without_the_property_the_engine_record_gives_the_key(tmp_path):
+    """The harmonic thermochemistry of one structure stores no frequency
+    fingerprint property: the analytic Hessian's record gives it; the geometry
+    fingerprint is the stored geometry's; a broken Hessian is listed."""
+    from seamm_util.fingerprint import geometry_fingerprint
+
+    atoms = Atoms("H2", positions=[[0, 0, 0], [0.74, 0, 0]])
+    H = np.zeros((6, 6))
+    H[0, 0] = H[3, 3] = 0.5
+    H[0, 3] = H[3, 0] = -0.5
+    H_ev = Q_(H, "hartree/bohr**2").m_as("eV/Å**2")
+    record = {"fingerprint": "sha256:6b46", "version": "6.1.1"}
+    me = types.SimpleNamespace(
+        _vibrations=VibrationsData(atoms, H_ev.reshape(2, 3, 2, 3)),
+        _species_directory=lambda: tmp_path,
+        flowchart=types.SimpleNamespace(root_directory=tmp_path),
+        model="ORCA:CMP@R2SCAN-3C",
+        _fingerprints={"hessian": record, "energy": {"fingerprint": "e"}},
+        _hessian_refusal=lambda: "a frequency of 9999 cm^-1",
+    )
+    configuration = types.SimpleNamespace(
+        properties=Properties(), charge=0, spin_multiplicity=1
+    )
+    relative = CBHApproach._save_species_hessian(
+        me, configuration, "structure", "analytic"
+    )
+    info = load_hessian(tmp_path / relative)["info"]
+    assert info["settings"] == "sha256:6b46"
+    assert info["calculation"] == record
+    assert info["geometry fingerprint"] == geometry_fingerprint(
+        [1, 1], [[0, 0, 0], [0.74, 0, 0]]
+    )
+    assert info["refused"] == "a frequency of 9999 cm^-1"
