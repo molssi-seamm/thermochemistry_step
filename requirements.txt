@@ -3,7 +3,7 @@ molsystem>=2026.10.28
 numpy 
 seamm
 seamm_ase
-seamm_exec>=2026.11.26
+seamm_exec>=2026.11.26.1
 seamm_optimizer>=2026.11.24.2
 seamm_mdi>=2026.11.26
 seamm_thermochemistry[cbh]>=2026.11.23.1

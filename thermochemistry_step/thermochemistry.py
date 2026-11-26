@@ -946,6 +946,9 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
             self._working_configuration.atoms.coordinates = XYZ_save
             # Name the properties after the engine's model chemistry
             self.model = self._subflowchart_model()
+            how = "finite differences (ASE)"
+        # Keep the Hessian (Paul 2026-11-26): hessians/structure.hessian.npz
+        self._save_species_hessian(self._working_configuration, "structure", how)
         toc = time.perf_counter_ns()
         self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
 
