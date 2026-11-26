@@ -3072,12 +3072,26 @@ class CBHApproach:
                         dedent=False,
                     )
                 )
-                E0, hessian, how = self.optimize_and_hessian(
-                    configuration, delta_bohr, optimize=False, finite_differences=True
-                )
+                # Made reliably (a tight SCF, every point from the reference
+                # orbitals and checked for a state change) and tested against
+                # differences of the gradient: a replacement that fails either
+                # refuses the species (science 2026-11-26)
+                from seamm_exec.hessian import HessianRefused
+
+                try:
+                    E0, hessian, how = self.optimize_and_hessian(
+                        configuration,
+                        delta_bohr,
+                        optimize=False,
+                        finite_differences=True,
+                        check=True,
+                    )
+                except HessianRefused as e:
+                    return self._refuse_hessian(configuration, can, str(e), converged)
                 printer.important(
                     __(f"    Hessian: {how}", indent=4 * " ", wrap=False, dedent=False)
                 )
+                self._print_fd_check()
                 hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
                 self._vibrations = VibrationsData(atoms, hessian.reshape(n, 3, n, 3))
                 self._E0 = Q_(E0, "kJ/mol").m_as("eV")
@@ -3538,6 +3552,43 @@ class CBHApproach:
             raise RuntimeError(
                 f"The starting structure of {can} is broken ({problem}), so it is "
                 "not computed."
+            )
+
+    def _print_fd_check(self):
+        """Say how a replacement finite-difference Hessian was made and checked:
+        the guess and SCF of its points, the gradient-difference check, and its
+        zero modes (information only: sound ones reach 65 cm^-1 for small
+        radicals)."""
+        fd = getattr(self, "_fd_info", None) or {}
+        check = getattr(self, "_hessian_check", None) or {}
+        parts = []
+        if fd:
+            guess = fd.get("reference guess")
+            parts.append(
+                "every point from the reference orbitals"
+                if guess
+                else (
+                    "each point from its own guess"
+                    if guess is None
+                    else "the points chained from each other's orbitals"
+                )
+            )
+            if fd.get("tight SCF"):
+                parts.append("a tight SCF")
+        if check:
+            errors = ", ".join(f"{e:.4f}" for e in check.get("errors", []))
+            parts.append(f"checked against the gradients (e = {errors})")
+        if fd.get("zero modes"):
+            zero = ", ".join(f"{v:.1f}" for v in fd["zero modes"])
+            parts.append(f"modes that should be zero: {zero} cm^-1")
+        if parts:
+            printer.important(
+                __(
+                    "    The finite-difference Hessian: " + "; ".join(parts) + ".",
+                    indent=4 * " ",
+                    wrap=True,
+                    dedent=False,
+                )
             )
 
     def _hessian_refusal(self, limit=MAX_FREQUENCY):
