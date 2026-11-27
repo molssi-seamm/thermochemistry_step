@@ -1,6 +1,27 @@
 =======
 History
 =======
+2026.11.26.1 -- The Hessians are kept, and can be checked
+    * Every species' Hessian is written to hessians/<SMILES>.hessian.npz in the step's
+      directory (the harmonic thermochemistry of one structure:
+      hessians/structure.hessian.npz) with seamm-exec's save_hessian: E_h/bohr^2, with
+      the masses and the geometry it was computed at. Its record has the route, the
+      engine's calculation record and settings key, the geometry fingerprint, the model
+      chemistry, any finite-difference details and check, and, for a broken Hessian,
+      why. The harmonic thermochemistry of one structure also records the step's own
+      frequencies (full precision) and ZPE. The path, relative to the job's directory, is stored as the property
+      "hessian file#Thermochemistry#<model>". A species that ends at an earlier
+      saddle-escape attempt keeps that attempt's Hessian. Keeping it never fails a
+      species.
+    * New option for the harmonic approximation over the Model Chemistry's warm
+      engine, "Check the Hessian": the Hessian is tested against central differences
+      of the gradient (seamm-exec's check: three 0.005 Å RMS displacements from the
+      reference orbitals with a tight SCF, e <= 0.02, frequencies <= 5000 cm^-1). The
+      result is printed and kept with the Hessian. A broken Hessian, by the check or by
+      its frequencies, is reported and listed (the property "hessian
+      refused#Thermochemistry#<model>"), never replaced.
+    * Needs seamm-exec 2026.11.26.1.
+
 2026.11.26 -- The guard's replacement Hessian is checked
     * When a Hessian is refused, its finite-difference replacement is now made with a
       tight SCF and every point from the reference orbitals and checked for a state

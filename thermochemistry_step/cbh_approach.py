@@ -2883,6 +2883,9 @@ class CBHApproach:
                         result["converged"] = converged
                     # Keep them on the configuration for "existing results" runs
                     self._store_species_properties(configuration, data)
+                    self._save_species_hessian(
+                        configuration, can, "finite differences (ASE)"
+                    )
                     return result
 
                 fmax = _P["fragment convergence"].m_as("eV/Å")
@@ -2925,6 +2928,103 @@ class CBHApproach:
             properties.put(name, value)
         except Exception as e:  # a record must never fail the species
             logger.warning(f"Could not record the convergence: {e}")
+
+    def _save_species_hessian(self, configuration, can, how, extra=None):
+        """Keep the species' Hessian (Paul 2026-11-26): ``self._vibrations``
+        written with seamm_exec.save_hessian (E_h/bohr^2, masses, geometry, the
+        route and the frequency fingerprint) to ``hessians/<SMILES>.hessian.npz``
+        in the step's directory, and its path, relative to the job's directory,
+        stored as ``hessian file#Thermochemistry#<model>``. Never fails the
+        species."""
+        vibrations = getattr(self, "_vibrations", None)
+        directory = self._species_directory()
+        if vibrations is None or directory is None:
+            return None
+        if how is not None:
+            self._species_how = how
+        try:
+            from seamm_exec.hessian import save_hessian
+
+            atoms = vibrations.get_atoms()
+            H = Q_(np.asarray(vibrations.get_hessian_2d()), "eV/Å**2").m_as(
+                "hartree/bohr**2"
+            )
+            from seamm_util.fingerprint import geometry_fingerprint
+
+            model = self.model or "unknown"
+            properties = configuration.properties
+            # The engine's record of the frequency calculation: the analytic
+            # Hessian's, or the energy record for finite differences
+            records = getattr(self, "_fingerprints", None) or {}
+            analytic = how is not None and str(how).startswith("analytic")
+            record = records.get("hessian" if analytic else "energy")
+            fingerprint = None
+            name = f"frequency fingerprint#Thermochemistry#{model}"
+            if properties.exists(name):
+                fingerprint = properties.get(name)["value"]
+            elif isinstance(record, dict):
+                fingerprint = record.get("fingerprint")
+            info = {
+                "route": how,
+                "settings": fingerprint,
+                "calculation": record,
+                "geometry fingerprint": geometry_fingerprint(
+                    atoms.get_atomic_numbers(), atoms.get_positions()
+                ),
+                "model": model,
+                "species": can,
+                "charge": int(configuration.charge or 0),
+                "multiplicity": int(configuration.spin_multiplicity or 1),
+            }
+            refused = (
+                self._hessian_refusal() if hasattr(self, "_hessian_refusal") else None
+            )
+            result = getattr(self, "_hessian_check", None)
+            if refused is None and result and result.get("refused"):
+                refused = f"it disagrees with the gradients: {result['reason']}"
+            if refused is not None:
+                info["refused"] = refused
+            fd = getattr(self, "_fd_info", None)
+            if fd and how and "finite" in str(how):
+                info["finite differences"] = fd
+            for key, value in (extra or {}).items():
+                if key == "vibrational frequencies":
+                    info["frequencies (cm^-1)"] = [float(v) for v in value]
+                elif key in ("ZPE", "ZPE uncorrected"):
+                    info[f"{key} (kJ/mol)"] = float(value)
+                else:
+                    info[key] = value
+            check = getattr(self, "_hessian_check", None)
+            if check:
+                info["check"] = check
+            label = str(can).replace("/", "_").replace("\\", "-")
+            path = directory / "hessians" / f"{label}.hessian.npz"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            save_hessian(
+                path,
+                H,
+                atoms.get_masses(),
+                atoms.get_positions(),
+                atoms.get_chemical_symbols(),
+                **info,
+            )
+            try:
+                relative = os.path.relpath(path, self.flowchart.root_directory)
+            except Exception:
+                relative = str(path)
+            name = f"hessian file#Thermochemistry#{model}"
+            if not properties.exists(name):
+                properties.add(
+                    name,
+                    "str",
+                    description="the species' Hessian (E_h/bohr^2, .npz), relative "
+                    "to the job's directory",
+                )
+            properties.put(name, relative)
+            return relative
+        except Exception as e:  # keeping the Hessian must never fail the species
+            logger.warning(f"Could not keep the Hessian of {can}: {e}")
+            return None
 
     def _species_directory(self):
         """The step's directory, or None when it has none (outside a flowchart)."""
@@ -3113,6 +3213,7 @@ class CBHApproach:
                 result["converged"] = converged
             self._store_species_properties(configuration, data)
             self._store_fingerprints(configuration, how, can)
+            self._save_species_hessian(configuration, can, how)
             return result
 
         return self._escape_saddle(_P, can, configuration, harmonic(fmax), harmonic)
@@ -3792,6 +3893,9 @@ class CBHApproach:
             configuration.atoms.set_coordinates(chosen["xyz"], fractionals=False)
             self._vibrations = chosen["vibrations"]
             _restore_properties(configuration, chosen["properties"])
+            self._save_species_hessian(
+                configuration, can, getattr(self, "_species_how", None)
+            )
         result = chosen["result"]
         reached = chosen["imaginary"] is None
         record["minimum reached"] = reached

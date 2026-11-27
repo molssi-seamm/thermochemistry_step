@@ -133,7 +133,7 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         """The git version of this module."""
         return thermochemistry_step.__git_revision__
 
-    def model_chemistry_vibrations(self, configuration, step_size):
+    def model_chemistry_vibrations(self, configuration, step_size, check=False):
         """The energy (eV) and an ASE VibrationsData from the Model Chemistry.
 
         Parameters
@@ -147,7 +147,9 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         (float, ase.vibrations.VibrationsData, str)
         """
         delta_bohr = Q_(step_size, "Å").m_as("bohr")
-        E0, hessian, how = self.energy_and_hessian(configuration, delta_bohr)
+        E0, hessian, how = self.energy_and_hessian(
+            configuration, delta_bohr, check=check
+        )
         atoms = self.ase_atoms(configuration)
         hessian = Q_(np.asarray(hessian), "hartree/bohr**2").m_as("eV/Å**2")
         n = len(atoms)
@@ -208,6 +210,7 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         Ts, Tunits = self._values_and_units(_P["T"], "K")
         Ps, Punits = self._values_and_units(_P["P"], "bar")
         data = self.harmonic_thermochemistry(_P, Ts, Tunits, Ps, Punits)
+        self._harmonic_data = data  # for the Hessian file's record
 
         # Put any requested results into variables or tables
         self.store_results(
@@ -922,8 +925,9 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         if engine == "Model Chemistry":
             mc = self.model_chemistry()
             self.model = mc["level"]
+            check = "report" if _P.get("check the hessian", "no") == "yes" else False
             self._E0, self._vibrations, how = self.model_chemistry_vibrations(
-                self._working_configuration, step_size
+                self._working_configuration, step_size, check=check
             )
             printer.important(
                 __(
@@ -931,6 +935,20 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
                     indent=self.indent + 4 * " ",
                 )
             )
+            result = getattr(self, "_hessian_check", None) if check else None
+            if result:
+                errors = ", ".join(f"{e:.4f}" for e in result.get("errors", []))
+                verdict = (
+                    f"FAILED: {result['reason']}" if result.get("refused") else "passed"
+                )
+                printer.important(
+                    __(
+                        f"It was checked against differences of the gradient "
+                        f"(e = {errors}; largest frequency "
+                        f"{result.get('max frequency', 0):.0f} cm^-1): {verdict}.",
+                        indent=self.indent + 4 * " ",
+                    )
+                )
         else:
             # Get the Hessian ... save coordinates in case they are changed
             XYZ_save = self._working_configuration.atoms.coordinates
@@ -946,11 +964,45 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
             self._working_configuration.atoms.coordinates = XYZ_save
             # Name the properties after the engine's model chemistry
             self.model = self._subflowchart_model()
+            how = "finite differences (ASE)"
+        # A broken Hessian is reported, not replaced (the harmonic thermochemistry of
+        # one structure has no fallback): it is listed in the property
+        # "hessian refused" and in the Hessian file's record
+        refused = self._hessian_refusal()
+        result = getattr(self, "_hessian_check", None)
+        if refused is None and result and result.get("refused"):
+            refused = f"it disagrees with the gradients: {result['reason']}"
+        if refused is not None:
+            printer.important(
+                __(
+                    f"Warning: the Hessian is broken ({refused}); the thermochemistry "
+                    "below is not to be used.",
+                    indent=self.indent + 4 * " ",
+                )
+            )
+            name = f"hessian refused#Thermochemistry#{self.model}"
+            properties = self._working_configuration.properties
+            if not properties.exists(name):
+                properties.add(name, "str", description="why the Hessian is broken")
+            properties.put(name, refused)
         toc = time.perf_counter_ns()
         self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
 
         # Analyze the results
+        self._harmonic_data = None
         self.analyze(_P)
+        # Keep the Hessian (Paul 2026-11-26): hessians/structure.hessian.npz, with
+        # the step's own frequencies (full precision, cm^-1, imaginary negative)
+        # and ZPE (kJ/mol, unscaled)
+        data = self._harmonic_data or {}
+        extra = {
+            key: data[key]
+            for key in ("vibrational frequencies", "ZPE", "ZPE uncorrected")
+            if data.get(key) is not None
+        }
+        self._save_species_hessian(
+            self._working_configuration, "structure", how, extra=extra
+        )
         # Add other citations here or in the appropriate place in the code.
         # Add the bibtex to data/references.bib, and add a self.reference.cite
         # similar to the above to actually add the citation to the references.

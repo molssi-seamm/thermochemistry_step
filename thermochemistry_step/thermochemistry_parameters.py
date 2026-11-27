@@ -665,6 +665,22 @@ class ThermochemistryParameters(seamm.Parameters):
                 "program provides the analytic Hessian)."
             ),
         },
+        "check the hessian": {
+            "default": "no",
+            "kind": "enum",
+            "default_units": "",
+            "enumeration": ("no", "yes"),
+            "format_string": "",
+            "description": "Check the Hessian:",
+            "help_text": (
+                "Test the Hessian from the Model Chemistry's warm engine against "
+                "central differences of the gradient along three random displacements "
+                "(0.005 Å RMS, each from the reference orbitals with a tight SCF; "
+                "e = |H d - dg/2| / |H d| <= 0.02, frequencies <= 5000 cm^-1). The "
+                "result is printed and kept with the Hessian; a failing Hessian is "
+                "reported and listed, not replaced."
+            ),
+        },
         "# imaginary modes": {
             "default": "perceive",
             "kind": "integer",

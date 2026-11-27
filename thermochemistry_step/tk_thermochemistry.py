@@ -173,6 +173,7 @@ class TkThermochemistry(seamm.TkNode):
         for key in (
             "engine",
             "approach",
+            "hessian route",
             "cbh calculation",
             "preset",
             "include CBH-3",
@@ -283,11 +284,19 @@ class TkThermochemistry(seamm.TkNode):
                 row += 1
 
         if approach == "Harmonic approximation":
+            # The check needs the warm engine of the Model Chemistry
+            check = (
+                ("check the hessian",)
+                if engine == "Model Chemistry"
+                and not self["hessian route"].get().startswith("separate")
+                else ()
+            )
             for key in (
                 "# imaginary modes",
                 "spin multiplicity",
                 "symmetry number",
                 "hessian route",
+                *check,
                 "step size",
                 "T",
                 "P",
