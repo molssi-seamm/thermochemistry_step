@@ -8,7 +8,8 @@ History
       the masses and the geometry it was computed at. Its record has the route, the
       engine's calculation record and settings key, the geometry fingerprint, the model
       chemistry, any finite-difference details and check, and, for a broken Hessian,
-      why. The path, relative to the job's directory, is stored as the property
+      why. The harmonic thermochemistry of one structure also records the step's own
+      frequencies (full precision) and ZPE. The path, relative to the job's directory, is stored as the property
       "hessian file#Thermochemistry#<model>". A species that ends at an earlier
       saddle-escape attempt keeps that attempt's Hessian. Keeping it never fails a
       species.

@@ -210,6 +210,7 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
         Ts, Tunits = self._values_and_units(_P["T"], "K")
         Ps, Punits = self._values_and_units(_P["P"], "bar")
         data = self.harmonic_thermochemistry(_P, Ts, Tunits, Ps, Punits)
+        self._harmonic_data = data  # for the Hessian file's record
 
         # Put any requested results into variables or tables
         self.store_results(
@@ -984,13 +985,24 @@ class Thermochemistry(seamm.Node, ASE_mixin, ModelChemistryHessian, CBHApproach)
             if not properties.exists(name):
                 properties.add(name, "str", description="why the Hessian is broken")
             properties.put(name, refused)
-        # Keep the Hessian (Paul 2026-11-26): hessians/structure.hessian.npz
-        self._save_species_hessian(self._working_configuration, "structure", how)
         toc = time.perf_counter_ns()
         self._results["t_elapsed"] = round((toc - tic) * 1.0e-9, 3)
 
         # Analyze the results
+        self._harmonic_data = None
         self.analyze(_P)
+        # Keep the Hessian (Paul 2026-11-26): hessians/structure.hessian.npz, with
+        # the step's own frequencies (full precision, cm^-1, imaginary negative)
+        # and ZPE (kJ/mol, unscaled)
+        data = self._harmonic_data or {}
+        extra = {
+            key: data[key]
+            for key in ("vibrational frequencies", "ZPE", "ZPE uncorrected")
+            if data.get(key) is not None
+        }
+        self._save_species_hessian(
+            self._working_configuration, "structure", how, extra=extra
+        )
         # Add other citations here or in the appropriate place in the code.
         # Add the bibtex to data/references.bib, and add a self.reference.cite
         # similar to the above to actually add the citation to the references.

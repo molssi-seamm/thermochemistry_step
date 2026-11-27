@@ -116,3 +116,27 @@ def test_without_the_property_the_engine_record_gives_the_key(tmp_path):
         [1, 1], [[0, 0, 0], [0.74, 0, 0]]
     )
     assert info["refused"] == "a frequency of 9999 cm^-1"
+
+
+def test_the_steps_frequencies_and_zpe_go_in_the_record(tmp_path):
+    atoms = Atoms("H2", positions=[[0, 0, 0], [0.74, 0, 0]])
+    H = np.zeros((6, 6))
+    H[0, 0] = H[3, 3] = 0.5
+    H[0, 3] = H[3, 0] = -0.5
+    H_ev = Q_(H, "hartree/bohr**2").m_as("eV/Å**2")
+    me = types.SimpleNamespace(
+        _vibrations=VibrationsData(atoms, H_ev.reshape(2, 3, 2, 3)),
+        _species_directory=lambda: tmp_path,
+        flowchart=types.SimpleNamespace(root_directory=tmp_path),
+        model="m",
+    )
+    configuration = types.SimpleNamespace(
+        properties=Properties(), charge=0, spin_multiplicity=1
+    )
+    extra = {"vibrational frequencies": [4401.123456789], "ZPE": 26.3274512}
+    relative = CBHApproach._save_species_hessian(
+        me, configuration, "structure", "analytic", extra=extra
+    )
+    info = load_hessian(tmp_path / relative)["info"]
+    assert info["frequencies (cm^-1)"] == [4401.123456789]
+    assert info["ZPE (kJ/mol)"] == 26.3274512

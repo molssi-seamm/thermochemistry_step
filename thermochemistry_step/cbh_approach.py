@@ -2929,7 +2929,7 @@ class CBHApproach:
         except Exception as e:  # a record must never fail the species
             logger.warning(f"Could not record the convergence: {e}")
 
-    def _save_species_hessian(self, configuration, can, how):
+    def _save_species_hessian(self, configuration, can, how, extra=None):
         """Keep the species' Hessian (Paul 2026-11-26): ``self._vibrations``
         written with seamm_exec.save_hessian (E_h/bohr^2, masses, geometry, the
         route and the frequency fingerprint) to ``hessians/<SMILES>.hessian.npz``
@@ -2987,6 +2987,13 @@ class CBHApproach:
             fd = getattr(self, "_fd_info", None)
             if fd and how and "finite" in str(how):
                 info["finite differences"] = fd
+            for key, value in (extra or {}).items():
+                if key == "vibrational frequencies":
+                    info["frequencies (cm^-1)"] = [float(v) for v in value]
+                elif key in ("ZPE", "ZPE uncorrected"):
+                    info[f"{key} (kJ/mol)"] = float(value)
+                else:
+                    info[key] = value
             check = getattr(self, "_hessian_check", None)
             if check:
                 info["check"] = check
